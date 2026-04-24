@@ -684,9 +684,9 @@ export default function QuotePage() {
                     </div>
                   </div>
 
-                </div>{/* end right column */}
-              </div>{/* end two-column grid */}
-            </div>{/* end fade-in */}
+                </div>
+              </div>
+            </div>
         }
       </div>
 
