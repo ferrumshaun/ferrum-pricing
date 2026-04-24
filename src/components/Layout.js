@@ -61,6 +61,11 @@ export default function Layout() {
                 <div style={{ fontWeight: 600 }}>📞 Hosted Voice</div>
                 <div style={{ fontSize: 10, color: '#9ca3af' }}>VoIP seats, SIP trunking, hybrid hosting</div>
               </button>
+              <div style={{ height: 1, background: '#f3f4f6', margin: '2px 0' }}/>
+              <button onClick={() => { navigate('/bundle'); setNewMenuOpen(false); }} style={{ width: '100%', textAlign: 'left', padding: '8px 14px', background: 'none', border: 'none', fontSize: 12, color: '#374151', cursor: 'pointer', display: 'block' }}>
+                <div style={{ fontWeight: 600 }}>📦 Bundle Quote</div>
+                <div style={{ fontSize: 10, color: '#9ca3af' }}>Managed IT + Voice with bundle discount</div>
+              </button>
             </div>
           )}
         </div>

@@ -253,3 +253,15 @@ export function calcHybridMRR(seats, licenseType, isManagedIT, supportBundle, ho
   const sipMRR     = channels * sipRate;
   return { totalMRR: licMonthly + hostSell + sipMRR, tier, licMonthly, hostSell, sipMRR };
 }
+
+// ─── BUNDLE DISCOUNT LOGIC ────────────────────────────────────────────────────
+// contractTerm: 12 | 24 | 36
+// itBaseMRR: wB+uB+sB+lB+tB+vB only — no add-ons, no uplifts
+// voiceMRR: before discount
+export function calcBundleDiscount(contractTerm, itBaseMRR, voiceMRR) {
+  const TIERS = { 12: 0.05, 24: 0.10, 36: 0.15 };
+  const rate = TIERS[contractTerm] || 0;
+  const freePhones = contractTerm === 36 && itBaseMRR >= 750;
+  const voiceDiscount = voiceMRR * rate;
+  return { rate, voiceDiscount, freePhones, qualifies: rate > 0 };
+}

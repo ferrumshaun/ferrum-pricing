@@ -72,15 +72,17 @@ export default function QuotesPage() {
                 const totals = q.totals || {};
                 const gm = totals.impliedGM || totals.gm || 0;
                 const ss = STATUS_STYLE[q.status] || STATUS_STYLE.draft;
-                const isVoice = q.package_name?.startsWith('Voice');
+                const isVoice  = q.package_name?.startsWith('Voice');
+                const isBundle = q.package_name?.startsWith('Bundle');
                 return (
-                  <tr key={q.id} onClick={() => navigate(isVoice ? `/voice/${q.id}` : `/quotes/${q.id}`)} style={{ borderBottom: '1px solid #f3f4f6', background: i % 2 === 0 ? 'white' : '#fafafa', cursor: 'pointer' }}
+                  <tr key={q.id} onClick={() => navigate(isBundle ? `/bundle/${q.id}` : isVoice ? `/voice/${q.id}` : `/quotes/${q.id}`)} style={{ borderBottom: '1px solid #f3f4f6', background: i % 2 === 0 ? 'white' : '#fafafa', cursor: 'pointer' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#f0f7ff'}
                     onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'white' : '#fafafa'}>
                     <td style={{ padding: '8px 10px', fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#1e40af', fontWeight: 600 }}>{q.quote_number}</td>
                     <td style={{ padding: '8px 10px', fontWeight: 600, color: '#0f1e3c' }}>
                       {q.client_name}
-                      {q.package_name?.startsWith('Voice') && <span style={{ marginLeft:5, fontSize:9, background:'#7c3aed', color:'white', padding:'1px 5px', borderRadius:3, fontWeight:700 }}>Voice</span>}
+                      {isBundle && <span style={{ marginLeft:5, fontSize:9, background:'linear-gradient(135deg,#2563eb,#7c3aed)', color:'white', padding:'1px 5px', borderRadius:3, fontWeight:700 }}>Bundle</span>}
+                      {isVoice && !isBundle && <span style={{ marginLeft:5, fontSize:9, background:'#7c3aed', color:'white', padding:'1px 5px', borderRadius:3, fontWeight:700 }}>Voice</span>}
                     </td>
                     <td style={{ padding: '8px 10px', color: '#374151' }}>{q.package_name}</td>
                     <td style={{ padding: '8px 10px', color: '#6b7280' }}>{q.market_tier?.replace('_', ' ')}</td>
