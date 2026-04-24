@@ -5,7 +5,8 @@ import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 import { lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
 import { calcVoice, calcHybridMRR, getRecommendedTier, CX_TIERS, FAX_PACKAGES, YEALINK_MODELS } from '../lib/voicePricing';
-import { searchDeals, getDealFull } from '../lib/hubspot';
+import { searchDeals, getDealFull, updateDealDescription } from '../lib/hubspot';
+import QuoteNotes from '../components/QuoteNotes';
 
 const DEF = {
   quoteType: 'hosted', licenseType: 'pro',
@@ -37,7 +38,7 @@ export default function VoiceQuotePage() {
   const [recipientAddress, setRecipientAddress] = useState('');
   const [clientZip, setClientZip]   = useState('');
   const [zipResult, setZipResult]   = useState(null);
-  const [notes, setNotes]           = useState('');
+  const [dealDescription, setDealDescription]           = useState('');
   const [quoteStatus, setQuoteStatus] = useState('draft');
   const [saving, setSaving]         = useState(false);
   const [saveMsg, setSaveMsg]       = useState('');
@@ -68,7 +69,7 @@ export default function VoiceQuotePage() {
       setRecipientAddress(data.inputs?.recipientAddress || '');
       setClientZip(data.client_zip || '');
       setQuoteStatus(data.status || 'draft');
-      setNotes(data.notes || '');
+      setDealDescription(data.notes || '');
       setHubDealId(data.hubspot_deal_id || '');
       setHubDealUrl(data.hubspot_deal_url || '');
       setHubDealName(data.inputs?.hubspotDealName || '');
@@ -121,7 +122,7 @@ export default function VoiceQuotePage() {
     const payload = {
       client_name: recipientBiz, client_zip: clientZip,
       package_name: `Voice — ${v.quoteType}`,
-      status: quoteStatus, notes, inputs: allInputs,
+      status: quoteStatus, notes: dealDescription, inputs: allInputs,
       line_items: r?.lines || [], totals,
       hubspot_deal_id: hubDealId || null, hubspot_deal_url: hubDealUrl || null,
       updated_by: profile?.id,
@@ -131,8 +132,15 @@ export default function VoiceQuotePage() {
       ? await supabase.from('quotes').update(payload).eq('id', existingQuote.id).select().single()
       : await supabase.from('quotes').insert(payload).select().single();
     if (error) { setSaveMsg('Error: ' + error.message); setSaving(false); return; }
+
+    // Push deal description to HubSpot if linked
+    if (hubDealId && dealDescription) {
+      try { await updateDealDescription(hubDealId, dealDescription); }
+      catch (err) { console.warn('HubSpot description sync failed:', err.message); }
+    }
+
     await logActivity({ action: existingQuote ? 'UPDATE' : 'CREATE', entityType: 'quote', entityId: data.id, entityName: recipientBiz, changes: { type: 'voice', mrr: totals.finalMRR } });
-    setSaveMsg(`Saved as ${data.quote_number}`);
+    setSaveMsg(`Saved as ${data.quote_number}${hubDealId && dealDescription ? ' · HubSpot updated' : ''}`);
     setSaving(false);
     if (!existingQuote) navigate(`/voice/${data.id}`, { replace: true });
   }
@@ -574,15 +582,30 @@ export default function VoiceQuotePage() {
                   )}
 
                   {/* Notes */}
+                  {/* Deal Description */}
                   <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:6 }}>
-                      <div style={{ width:2, height:11, background:'#6b7280', borderRadius:2 }}/>
-                      <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', color:'#6b7280' }}>Internal Notes</span>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                        <div style={{ width:2, height:11, background:'#6b7280', borderRadius:2 }}/>
+                        <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', color:'#374151' }}>Deal Description / Information</span>
+                      </div>
+                      {hubDealId && <span style={{ fontSize:9, color:'#ff7a59', fontWeight:600 }}>↗ Syncs to HubSpot on save</span>}
                     </div>
-                    <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={4}
-                      placeholder="Scope discussions, client preferences, hardware decisions, waiver status..."
+                    <textarea value={dealDescription} onChange={e=>setDealDescription(e.target.value)} rows={3}
+                      placeholder="Describe the deal — client context, scope, key decisions, hardware choices, waiver status..."
                       style={{ width:'100%', padding:'7px 9px', border:'1px solid #e5e7eb', borderRadius:5, fontSize:11, resize:'vertical', outline:'none', lineHeight:1.6 }}/>
+                    <div style={{ fontSize:9, color:'#9ca3af', marginTop:3 }}>
+                      {hubDealId ? 'Pushed to HubSpot deal description on every save.' : 'Connect a HubSpot deal to sync automatically.'}
+                    </div>
                   </div>
+
+                  {/* Quote Notes Log */}
+                  <QuoteNotes
+                    quoteId={existingQuote?.id}
+                    quoteNumber={existingQuote?.quote_number}
+                    clientName={recipientBiz}
+                    hubDealId={hubDealId}
+                  />
 
                   {/* Deal summary */}
                   <div style={{ background:'#0f1e3c', borderRadius:6, padding:11 }}>

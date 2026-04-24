@@ -181,6 +181,37 @@ exports.handler = async (event) => {
         return { statusCode: r.status, headers: {'Content-Type':'application/json'}, body: JSON.stringify(r.data) };
       }
 
+      // ── Update deal description only ──────────────────────────────────────
+      case 'update_description': {
+        const r = await hs(token, 'PATCH', `/crm/v3/objects/deals/${payload.dealId}`, {
+          properties: { description: payload.description }
+        });
+        return { statusCode: r.status, headers: {'Content-Type':'application/json'}, body: JSON.stringify(r.data) };
+      }
+
+      // ── Create engagement note on a deal ─────────────────────────────────
+      case 'create_note': {
+        // Create the note object
+        const noteRes = await hs(token, 'POST', '/crm/v3/objects/notes', {
+          properties: {
+            hs_note_body:      payload.body,
+            hs_timestamp:      Date.now().toString(),
+          }
+        });
+        if (noteRes.status !== 201) {
+          return { statusCode: noteRes.status, headers: {'Content-Type':'application/json'}, body: JSON.stringify(noteRes.data) };
+        }
+        const noteId = noteRes.data.id;
+
+        // Associate note with the deal
+        await hs(token, 'PUT',
+          `/crm/v3/objects/notes/${noteId}/associations/deals/${payload.dealId}/note_to_deal`, {}
+        );
+
+        result = { noteId, success: true };
+        break;
+      }
+
       default:
         return { statusCode: 400, body: JSON.stringify({ error: `Unknown action: ${action}` }) };
     }

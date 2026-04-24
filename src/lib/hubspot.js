@@ -34,3 +34,13 @@ export async function createDeal(p)       {
   return { id: deal.id, url: deal.dealUrl || `https://app.hubspot.com/contacts/deals/${deal.id}` };
 }
 export async function updateDeal(dealId, p) { return callProxy('update', { dealId, ...p }); }
+
+// Push deal description field to HubSpot
+export async function updateDealDescription(dealId, description) {
+  return callProxy('update_description', { dealId, description });
+}
+
+// Post an engagement note — shows in HubSpot deal activity timeline
+export async function createHubspotNote(dealId, body) {
+  return callProxy('create_note', { dealId, body });
+}

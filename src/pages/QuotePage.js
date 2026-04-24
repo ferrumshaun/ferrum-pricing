@@ -4,7 +4,8 @@ import { supabase, logActivity } from '../lib/supabase';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 import { calcQuote, lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
-import { searchDeals, getDealFull, createDeal, updateDeal } from '../lib/hubspot';
+import { searchDeals, getDealFull, createDeal, updateDeal, updateDealDescription } from '../lib/hubspot';
+import QuoteNotes from '../components/QuoteNotes';
 
 const DEF_INPUTS = {
   users:0, sharedMailboxes:0, workstations:0, endpoints:0,
@@ -36,7 +37,7 @@ export default function QuotePage() {
   const [selectedPkg, setSelectedPkg] = useState(null);
   const [selectedMkt, setSelectedMkt] = useState(null);
   const [quoteStatus, setQuoteStatus] = useState('draft');
-  const [notes,       setNotes]       = useState('');
+  const [dealDescription, setDealDescription] = useState('');
   const [saving,      setSaving]      = useState(false);
   const [saveMsg,     setSaveMsg]     = useState('');
   const [existingQuote, setExistingQuote] = useState(null);
@@ -65,7 +66,7 @@ export default function QuotePage() {
       setRecipientAddress(data.inputs?.recipientAddress || '');
       setClientZip(data.client_zip || '');
       setQuoteStatus(data.status || 'draft');
-      setNotes(data.notes || '');
+      setDealDescription(data.notes || '');
       setHubDealId(data.hubspot_deal_id || '');
       setHubDealUrl(data.hubspot_deal_url || '');
       setHubDealName(data.inputs?.hubspotDealName || '');
@@ -215,7 +216,7 @@ export default function QuotePage() {
     const payload = {
       client_name: recipientBiz, client_zip: clientZip,
       market_tier: selectedMkt?.tier_key, package_name: selectedPkg?.name,
-      status: quoteStatus, notes, inputs: allInputs,
+      status: quoteStatus, notes: dealDescription, inputs: allInputs,
       line_items: result?.lineItems || [], totals,
       hubspot_deal_id: hubDealId || null,
       hubspot_deal_url: hubDealUrl || null,
@@ -229,10 +230,19 @@ export default function QuotePage() {
 
     if (error) { setSaveMsg('Error: ' + error.message); setSaving(false); return; }
 
+    // Push deal description to HubSpot if linked
+    if (hubDealId && dealDescription) {
+      try {
+        await updateDealDescription(hubDealId, dealDescription);
+      } catch (err) {
+        console.warn('HubSpot description sync failed:', err.message);
+      }
+    }
+
     await logActivity({ action: existingQuote ? 'UPDATE' : 'CREATE', entityType: 'quote', entityId: data.id, entityName: recipientBiz,
       changes: { status: quoteStatus, mrr: totals.finalMRR, package: selectedPkg?.name } });
 
-    setSaveMsg(`Saved as ${data.quote_number}`);
+    setSaveMsg(`Saved as ${data.quote_number}${hubDealId && dealDescription ? ' · HubSpot updated' : ''}`);
     setSaving(false);
     if (!existingQuote) navigate(`/quotes/${data.id}`, { replace: true });
   }
@@ -263,7 +273,7 @@ export default function QuotePage() {
       contract_value:   result.finalMRR * inputs.contractTerm + result.onboarding,
       discount_rate:    result.discRate,
       hubspot_deal_id:  hubDealId,
-      notes,
+      dealDescription,
     };
     const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -678,22 +688,33 @@ export default function QuotePage() {
                     ))}
                   </div>
 
-                  {/* Notes */}
+                  {/* Deal Description */}
                   <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:14 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
-                      <div style={{ width:2, height:11, background:'#6b7280', borderRadius:2 }}/>
-                      <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:'#6b7280' }}>Internal Notes</span>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        <div style={{ width:2, height:11, background:'#6b7280', borderRadius:2 }}/>
+                        <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:'#374151' }}>Deal Description / Information</span>
+                      </div>
+                      {hubDealId && <span style={{ fontSize:9, color:'#ff7a59', fontWeight:600 }}>↗ Syncs to HubSpot on save</span>}
                     </div>
                     <textarea
-                      value={notes}
-                      onChange={e => setNotes(e.target.value)}
-                      placeholder="Add notes about this quote — scope discussions, client preferences, follow-up items, pricing rationale..."
-                      style={{ width:'100%', minHeight:120, padding:'8px 10px', border:'1px solid #e5e7eb', borderRadius:5, fontSize:12, resize:'vertical', outline:'none', lineHeight:1.6, color:'#374151', fontFamily:'DM Sans, system-ui, sans-serif' }}
+                      value={dealDescription}
+                      onChange={e => setDealDescription(e.target.value)}
+                      placeholder="Describe the deal — client context, scope, key decisions, pricing rationale..."
+                      style={{ width:'100%', minHeight:100, padding:'8px 10px', border:'1px solid #e5e7eb', borderRadius:5, fontSize:12, resize:'vertical', outline:'none', lineHeight:1.6, color:'#374151', fontFamily:'DM Sans, system-ui, sans-serif' }}
                     />
                     <div style={{ fontSize:10, color:'#9ca3af', marginTop:4 }}>
-                      Notes are saved with the quote and visible to all team members.
+                      Saved with quote{hubDealId ? ' and pushed to HubSpot deal description on every save' : '. Connect a HubSpot deal to sync automatically.'}.
                     </div>
                   </div>
+
+                  {/* Quote Notes Log */}
+                  <QuoteNotes
+                    quoteId={existingQuote?.id}
+                    quoteNumber={existingQuote?.quote_number}
+                    clientName={recipientBiz}
+                    hubDealId={hubDealId}
+                  />
 
                 </div>
               </div>
