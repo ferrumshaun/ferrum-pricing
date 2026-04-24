@@ -517,16 +517,16 @@ export function IntegrationsAdmin() {
   async function testConnection() {
     setTesting(true); setTestMsg('');
     try {
-      const res = await fetch('https://api.hubapi.com/crm/v3/objects/deals?limit=1', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const res = await fetch('/.netlify/functions/hubspot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'test', token })
       });
+      const data = await res.json();
       if (res.ok) setTestMsg('✓ Connected successfully — HubSpot API is responding');
-      else {
-        const err = await res.json();
-        setTestMsg('✗ ' + (err.message || 'Connection failed — check your token'));
-      }
+      else setTestMsg('✗ ' + (data.message || data.error || 'Connection failed — check your token'));
     } catch {
-      setTestMsg('✗ Network error — could not reach HubSpot');
+      setTestMsg('✗ Network error — could not reach the proxy function');
     }
     setTesting(false);
   }
