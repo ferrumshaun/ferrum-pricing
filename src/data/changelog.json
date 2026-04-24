@@ -1,5 +1,30 @@
 [
   {
+    "version": "1.9.0",
+    "date": "2026-04-24",
+    "summary": "Quote revision history — automatic field-level diff tracking on every save",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Revision History panel on every quote — below Quote Notes, above nothing",
+        "Every save automatically creates a version snapshot — no manual steps required",
+        "Field-level diff view: see exactly what changed between saves (Users: 10 → 11, Package: Essentials → Plus, etc.)",
+        "Changes grouped by category: Quote, Details, Managed IT, Products, Voice, Pricing",
+        "Product adds and removes tracked explicitly — Added / Removed with product name",
+        "MRR delta shown per revision — +50/mo in red, -5/mo in green at a glance",
+        "Auto-generated one-line summary per revision: \"Package, Users, Contract Term\"",
+        "v1 always saved as Initial Save — clean starting point for every quote",
+        "Skips saving if nothing changed — no noise from accidental re-saves",
+        "Works across all three quote types: Managed IT, Voice, and Bundle"
+      ],
+      "improved": [
+        "What's New changelog added to portal — full release history from v1.0.0",
+        "Unread badge on What's New nav link shows how many releases since last visit"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "1.8.0",
     "date": "2026-04-24",
     "summary": "Bundle quotes with tiered voice discount and free phone logic",

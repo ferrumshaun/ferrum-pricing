@@ -6,7 +6,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
 import { calcVoice, calcHybridMRR, getRecommendedTier, CX_TIERS, FAX_PACKAGES, YEALINK_MODELS } from '../lib/voicePricing';
 import { searchDeals, getDealFull, updateDealDescription } from '../lib/hubspot';
-import QuoteNotes from '../components/QuoteNotes';
+import QuoteNotes    from '../components/QuoteNotes';
+import QuoteHistory  from '../components/QuoteHistory';
+import { saveQuoteVersion } from '../lib/quoteVersions';
 
 const DEF = {
   quoteType: 'hosted', licenseType: 'pro',
@@ -140,6 +142,16 @@ export default function VoiceQuotePage() {
     }
 
     await logActivity({ action: existingQuote ? 'UPDATE' : 'CREATE', entityType: 'quote', entityId: data.id, entityName: recipientBiz, changes: { type: 'voice', mrr: totals.finalMRR } });
+
+    await saveQuoteVersion({
+      quoteId: data.id,
+      quoteData: { client_name: recipientBiz, client_zip: clientZip, package_name: `Voice — ${v.quoteType}`, status: quoteStatus },
+      inputs: { proposalName, recipientContact, recipientEmail, recipientAddress, voice: v },
+      totals,
+      lineItems: r?.lines || [],
+      profile,
+    });
+
     setSaveMsg(`Saved as ${data.quote_number}${hubDealId && dealDescription ? ' · HubSpot updated' : ''}`);
     setSaving(false);
     if (!existingQuote) navigate(`/voice/${data.id}`, { replace: true });
@@ -606,6 +618,9 @@ export default function VoiceQuotePage() {
                     clientName={recipientBiz}
                     hubDealId={hubDealId}
                   />
+
+                  {/* Revision History */}
+                  <QuoteHistory quoteId={existingQuote?.id} />
 
                   {/* Deal summary */}
                   <div style={{ background:'#0f1e3c', borderRadius:6, padding:11 }}>

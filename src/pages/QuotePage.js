@@ -5,7 +5,9 @@ import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 import { calcQuote, lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
 import { searchDeals, getDealFull, createDeal, updateDeal, updateDealDescription } from '../lib/hubspot';
-import QuoteNotes from '../components/QuoteNotes';
+import QuoteNotes    from '../components/QuoteNotes';
+import QuoteHistory  from '../components/QuoteHistory';
+import { saveQuoteVersion } from '../lib/quoteVersions';
 
 const DEF_INPUTS = {
   users:0, sharedMailboxes:0, workstations:0, endpoints:0,
@@ -241,6 +243,16 @@ export default function QuotePage() {
 
     await logActivity({ action: existingQuote ? 'UPDATE' : 'CREATE', entityType: 'quote', entityId: data.id, entityName: recipientBiz,
       changes: { status: quoteStatus, mrr: totals.finalMRR, package: selectedPkg?.name } });
+
+    // Save version snapshot
+    await saveQuoteVersion({
+      quoteId: data.id,
+      quoteData: { client_name: recipientBiz, client_zip: clientZip, market_tier: selectedMkt?.tier_key, package_name: selectedPkg?.name, status: quoteStatus },
+      inputs: { ...inputs, proposalName, recipientContact, recipientEmail, recipientAddress },
+      totals,
+      lineItems: result?.lineItems || [],
+      profile,
+    });
 
     setSaveMsg(`Saved as ${data.quote_number}${hubDealId && dealDescription ? ' · HubSpot updated' : ''}`);
     setSaving(false);
@@ -715,6 +727,9 @@ export default function QuotePage() {
                     clientName={recipientBiz}
                     hubDealId={hubDealId}
                   />
+
+                  {/* Revision History */}
+                  <QuoteHistory quoteId={existingQuote?.id} />
 
                 </div>
               </div>

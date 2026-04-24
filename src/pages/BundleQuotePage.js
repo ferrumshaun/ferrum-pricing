@@ -6,7 +6,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { calcQuote, lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
 import { calcVoice, calcBundleDiscount, YEALINK_MODELS, FAX_PACKAGES, CX_TIERS, getRecommendedTier } from '../lib/voicePricing';
 import { searchDeals, getDealFull, updateDealDescription } from '../lib/hubspot';
-import QuoteNotes from '../components/QuoteNotes';
+import QuoteNotes    from '../components/QuoteNotes';
+import QuoteHistory  from '../components/QuoteHistory';
+import { saveQuoteVersion } from '../lib/quoteVersions';
 
 const DEF_IT = {
   users:0, sharedMailboxes:0, workstations:0, endpoints:0, mobileDevices:0,
@@ -251,6 +253,15 @@ export default function BundleQuotePage() {
 
     await logActivity({ action: existingQuote ? 'UPDATE' : 'CREATE', entityType: 'quote', entityId: data.id, entityName: recipientBiz,
       changes: { type: 'bundle', mrr: combinedMRR, it_mrr: itResult?.finalMRR, voice_mrr: voiceDiscountedMRR } });
+
+    await saveQuoteVersion({
+      quoteId: data.id,
+      quoteData: { client_name: recipientBiz, client_zip: clientZip, market_tier: selectedMkt?.tier_key, package_name: `Bundle — ${selectedPkg?.name || 'IT'} + Voice`, status: quoteStatus },
+      inputs: { proposalName, recipientContact, recipientEmail, recipientAddress, package_name: selectedPkg?.name, it: itInputs, voice: v },
+      totals: { finalMRR: combinedMRR, onboarding: combinedNRC, impliedGM: combinedGM, totalCost: combinedCost, contractValue: combinedTCV },
+      lineItems: [...(itResult?.lineItems || []), ...(voiceResultFinal?.lines || [])],
+      profile,
+    });
 
     setSaveMsg(`Saved as ${data.quote_number}${hubDealId && dealDescription ? ' · HubSpot updated' : ''}`);
     setSaving(false);
@@ -719,6 +730,9 @@ export default function BundleQuotePage() {
               clientName={recipientBiz}
               hubDealId={hubDealId}
             />
+
+            {/* Revision History */}
+            <QuoteHistory quoteId={existingQuote?.id} />
           </div>
         </div>
       </div>
