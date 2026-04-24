@@ -7,6 +7,7 @@ import QuotePage     from './pages/QuotePage';
 import QuotesPage    from './pages/QuotesPage';
 import AdminPage     from './pages/AdminPage';
 import ActivityPage  from './pages/ActivityPage';
+import VoiceQuotePage from './pages/VoiceQuotePage';
 import Layout        from './components/Layout';
 
 function RequireAuth({ children }) {
@@ -29,6 +30,8 @@ function AppRoutes() {
         <Route index           element={<QuotePage />} />
         <Route path="quotes"   element={<QuotesPage />} />
         <Route path="quotes/:id" element={<QuotePage />} />
+        <Route path="voice"    element={<VoiceQuotePage />} />
+        <Route path="voice/:id" element={<VoiceQuotePage />} />
         <Route path="admin"    element={<RequireAdmin><AdminPage /></RequireAdmin>} />
         <Route path="activity" element={<RequireAdmin><ActivityPage /></RequireAdmin>} />
       </Route>
