@@ -1,0 +1,231 @@
+[
+  {
+    "version": "1.8.0",
+    "date": "2026-04-24",
+    "summary": "Bundle quotes with tiered voice discount and free phone logic",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Bundle Quote type — combines Managed IT + Voice into a single quote with one quote number",
+        "Bundle quotes get FIT-B- prefix for instant identification in the Saved Quotes list",
+        "Tiered voice bundle discount: 12-month IT = 5% off voice, 24-month = 10%, 36-month = 15%",
+        "Free phone qualification: 36-month contract + IT base MRR ≥ $750/mo (base package rates only — no add-ons)",
+        "Bundle savings banner shows monthly savings and total savings over contract term",
+        "Near-miss indicator: shows how much more IT MRR is needed to qualify for free phones",
+        "Collapsible IT and Voice sections in bundle form — each shows live MRR in header badge",
+        "Combined cost model and gross margin across both services in one view"
+      ],
+      "improved": [
+        "New Quote dropdown now has three options: Managed IT, Hosted Voice, Bundle Quote",
+        "Saved Quotes list shows gradient Bundle badge distinct from Voice badge",
+        "Bundle quotes route correctly from the Saved Quotes list"
+      ],
+      "fixed": []
+    }
+  },
+  {
+    "version": "1.7.0",
+    "date": "2026-04-24",
+    "summary": "Deal Description syncs to HubSpot on save; Quote Notes log posts to HubSpot activity timeline",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Deal Description / Information field replaces Internal Notes — syncs to HubSpot deal description property on every save",
+        "Quote Notes log: append-only timestamped activity feed per quote — who added it, when, and what they said",
+        "Notes post to HubSpot as engagement notes, appearing in the deal's activity timeline with quote number and client name prefix",
+        "Notes are visible to all team members — full audit trail, no editing or deleting",
+        "Ctrl+Enter keyboard shortcut to submit notes quickly",
+        "HubSpot badge on individual notes confirms they were successfully posted",
+        "Save confirmation shows '· HubSpot updated' when description sync succeeds"
+      ],
+      "improved": [
+        "Both Managed IT and Voice quote pages use the same QuoteNotes component",
+        "Notes input disabled until quote is saved — prompts to save first"
+      ],
+      "fixed": [
+        "HubSpot note posting uses engagement notes API — appears in deal timeline, not just deal properties"
+      ]
+    }
+  },
+  {
+    "version": "1.6.0",
+    "date": "2026-04-24",
+    "summary": "Hosted Voice module: per-seat, hybrid hosting, and SIP trunking quotes with crossover analysis",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Voice Quote module with three quote types: Hosted Seats (per user), Hybrid Hosting (BYOPBX), SIP Trunking Only",
+        "Hosted Seats: Pro and Enterprise license tiers (3CX Pro/Enterprise), billable seat pricing, non-billable devices at $0 for full transparency",
+        "Hybrid Hosting: 3CX license tiers (Pro/Enterprise × 8/16/24 paths), AWS hosting, optional enhanced VM instance, Managed IT clients billed hosting-only",
+        "SIP Trunking: flat $19.95/concurrent call path",
+        "Crossover analysis: live comparison showing when hybrid hosting is cheaper than per-seat pricing",
+        "Numbers & DIDs: local DIDs ($1.50 w/CNAM), SMS-enabled DIDs (+$1.25), toll-free ($5.00), E911 ($2.50 flat), number porting ($25 NRC)",
+        "International dialing policy: none / standard / full open — waiver language auto-displays for elevated access",
+        "Virtual Fax packages: Email-Only ($9.95), Solo ($12), Team ($29), Business ($59), Infinity ($119), ATA device ($15 + $150 NRC)",
+        "Call recording, SMS/MMS with 10DLC registration and campaign fees, metered per-segment rates displayed for client acknowledgment",
+        "Yealink hardware: T33G/T43U/T46U/T48U — evergreen lease or outright purchase",
+        "Hardware discount logic: 36-month = free, 24-month = 50% off option",
+        "Estimated taxes card (20-30% configurable) with disclaimer language",
+        "Bundle discount: Managed IT clients toggle applies configurable % off voice MRR",
+        "All 18 voice pricing settings stored in Supabase — editable in Admin → Pricing Settings",
+        "HubSpot Connect Deal modal — auto-populates client details from deal company and contact",
+        "Voice quotes saved with purple Voice badge in Saved Quotes list"
+      ],
+      "improved": [
+        "New Quote button in nav becomes a dropdown with Managed IT and Hosted Voice options",
+        "Saved Quotes list routes Voice quotes to the Voice page, IT quotes to the IT page"
+      ],
+      "fixed": []
+    }
+  },
+  {
+    "version": "1.5.0",
+    "date": "2026-04-24",
+    "summary": "Separate sell and cost qty drivers per product; mobile devices field added",
+    "audience": "admin",
+    "categories": {
+      "new": [
+        "cost_qty_driver field on products — sell price and cost price can now use different quantity bases",
+        "SaaSAlerts: sells per user, costs per user (shared mailboxes no longer inflate cost)",
+        "INKY: sells and costs per mailbox (users + shared) — bills correctly for shared mailboxes",
+        "Mobile Devices field added to People & Devices section — phones and tablets",
+        "mobile_device qty driver added — products can now be priced per mobile device",
+        "Admin → Products shows both Qty Driver (Sell) and Qty Driver (Cost) fields",
+        "Quote line items show cost basis note when sell and cost drivers differ"
+      ],
+      "improved": [
+        "Pricing engine splits getSellQty and getCostQty for accurate margin tracking",
+        "Shared mailboxes field now correctly impacts only INKY pricing, not SaaSAlerts or DropSuite"
+      ],
+      "fixed": []
+    }
+  },
+  {
+    "version": "1.4.0",
+    "date": "2026-04-24",
+    "summary": "Market tier now adjusts sell price (Option B) for consistent margins nationwide",
+    "audience": "admin",
+    "categories": {
+      "new": [
+        "Market tier multiplier now applies to sell rates (WS, user, server, location, tenant, vendor) — not internal cost",
+        "Clients in smaller markets pay lower prices; FerrumIT maintains consistent margins everywhere",
+        "Floor protection ($350/mo minimum) still applies regardless of market adjustment"
+      ],
+      "improved": [
+        "Market tier label updated from '-10% labor' to '-10% pricing' throughout the app",
+        "Admin → Market Tiers field label updated to 'Pricing Multiplier' with clear description",
+        "Labor line in cost model no longer shows market multiplier (it no longer applies to cost)"
+      ],
+      "fixed": []
+    }
+  },
+  {
+    "version": "1.3.0",
+    "date": "2026-04-24",
+    "summary": "Flex time per package, package creation, location rate column, and product save fixes",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Flex time per package: configurable minutes per workstation per month (0 = not included, positive = minutes, -1 = unlimited)",
+        "Flex time visual card on quote output: shows total hours/month with progress bar, or 'By Request' / 'Unlimited' banners",
+        "Non-rollover indicator on flex time card",
+        "Add Package button in Admin → Packages — create new tiers from scratch",
+        "Activate/Deactivate toggle on packages — disable without deleting"
+      ],
+      "improved": [
+        "Admin → Packages table now shows location rate column",
+        "Package modal title correctly shows 'New Package' vs 'Edit Package'"
+      ],
+      "fixed": [
+        "Product save was silently failing — now shows error messages in the modal",
+        "Product edit modal clears previous errors when opening a new record",
+        "Reload Config button now shows '✓ Reloaded' confirmation feedback",
+        "Products admin calls global config reload after saving so quote builder reflects changes immediately"
+      ]
+    }
+  },
+  {
+    "version": "1.2.0",
+    "date": "2026-04-24",
+    "summary": "HubSpot full integration: Connect Deal auto-populates client fields, stage labels resolved, open deals only",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Connect Deal modal on quote form — search open HubSpot deals by name",
+        "Selecting a deal auto-populates: client name, contact name, contact email, business address, zip code",
+        "Zip code auto-extracts from company address and sets market tier automatically",
+        "Stage names now show human-readable labels (e.g. 'Appointment Scheduled') not numeric IDs",
+        "Closed/Lost and Closed/Won deals filtered from search results using stage label matching",
+        "Netlify Function proxy routes all HubSpot API calls server-side — CORS resolved",
+        "Admin → Integrations tab: paste HubSpot token, Test Connection button",
+        "Deal sync button pushes updated MRR and contract value back to HubSpot deal",
+        "Proposal Name, Recipient Business Name, Contact Name, Contact Email, Business Address fields added to quote form"
+      ],
+      "improved": [
+        "HubSpot token stored securely in Supabase — never in code or environment variables",
+        "Test Connection routes through proxy (fixed network error on direct browser call)"
+      ],
+      "fixed": [
+        "Zip code 60124 (Elgin, IL) now correctly shows Chicago suburbs instead of Hartford, CT",
+        "Full ZIP name lookup table expanded — 300+ metro areas with correct 3-digit prefix mapping"
+      ]
+    }
+  },
+  {
+    "version": "1.1.0",
+    "date": "2026-04-24",
+    "summary": "Microsoft SSO login, admin panel, activity log, and quote notes foundation",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Microsoft M365 SSO login — single click, no passwords, uses existing FerrumIT accounts",
+        "Auto-creates Supabase profile on first login from Microsoft identity",
+        "Admin panel with tabs: Products, Packages, Market Tiers, Pricing Settings, Users, Integrations",
+        "Full CRUD on products: name, category, sell price, cost price, qty driver, exclusive groups",
+        "Gross margin preview in product edit modal",
+        "Activate/Deactivate toggle on products — historical quotes not affected",
+        "Market Tiers admin: add/edit tiers, set pricing multipliers",
+        "Pricing Settings admin: edit any rate (onboarding, stack costs, burdened rate, contract discounts) without code changes",
+        "Users admin: set roles (admin/user), view last login",
+        "Activity Log: every change tracked with who, what field changed, old and new values, expandable diff view",
+        "Saved Quotes list: search by client name, filter by status, click to open any quote",
+        "Quote numbers auto-generated as FIT-YYYY-NNNN on save"
+      ],
+      "improved": [
+        "Login page shows 'Sign in with Microsoft' button with Microsoft logo",
+        "Nav shows Admin and Activity Log links for admin users only",
+        "User avatar with initials shown in top nav"
+      ],
+      "fixed": [
+        "Supabase invite links pointed to localhost — fixed by updating Site URL in Supabase Auth settings"
+      ]
+    }
+  },
+  {
+    "version": "1.0.0",
+    "date": "2026-04-24",
+    "summary": "Initial release: Managed IT quote builder with DB-driven pricing, market tiers, and add-on products",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Managed IT quote builder with live pricing engine",
+        "Package selection: Business Essentials, Business Plus, Enterprise",
+        "People & Devices inputs: users, shared mailboxes, workstations, endpoints, servers, locations, cloud tenants, vendors",
+        "Market tier selection with zip code lookup — auto-detects metro area and suggests tier",
+        "Risk & Compliance multipliers: industry risk, compliance level, complexity, coverage hours",
+        "Add-on product catalog: Cloud & Email Security, Endpoint Security, Backup & Recovery, Security Awareness, SIEM & SOC, Network & Connectivity, Strategic Advisory",
+        "Exclusive group logic — selecting one INKY tier deselects others automatically",
+        "Contract term discounts: 12mo (5%), 24mo (10%), 36mo (20%)",
+        "Executive reporting flag triggers Enterprise package recommendation",
+        "Cost model: tooling cost + service hours × burdened rate = total cost with implied GM",
+        "Onboarding fee calculator with $500 floor",
+        "Smart Pricing Table JSON export on every saved quote",
+        "All pricing data stored in Supabase — zero hardcoded rates",
+        "Supabase Auth with email/password, RLS policies on all tables",
+        "Deployed to Netlify with GitHub auto-deploy"
+      ],
+      "improved": [],
+      "fixed": []
+    }
+  }
+]

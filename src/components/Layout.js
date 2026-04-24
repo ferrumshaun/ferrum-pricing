@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import changelog from '../data/changelog.json';
+
+const STORAGE_KEY = 'ferrum_changelog_last_seen';
 
 const NAV = [
   { to: '/quotes',   label: 'Saved Quotes', icon: '📋' },
@@ -13,8 +16,17 @@ const ADMIN_NAV = [
 export default function Layout() {
   const { profile, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen,    setMenuOpen]    = useState(false);
   const [newMenuOpen, setNewMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const lastSeen = localStorage.getItem(STORAGE_KEY);
+    const count = lastSeen
+      ? changelog.filter(r => r.version > lastSeen).length
+      : changelog.length;
+    setUnreadCount(count);
+  }, []);
 
   async function handleSignOut() {
     await signOut();
@@ -76,6 +88,16 @@ export default function Layout() {
             <span>{icon}</span> {label}
           </NavLink>
         ))}
+
+        {/* What's New */}
+        <NavLink to="/changelog" style={({ isActive }) => navStyle(isActive)} onClick={() => setUnreadCount(0)}>
+          <span>🆕</span> What's New
+          {unreadCount > 0 && (
+            <span style={{ fontSize: 9, fontWeight: 700, background: '#2563eb', color: 'white', padding: '1px 5px', borderRadius: 8, marginLeft: 2 }}>
+              {unreadCount}
+            </span>
+          )}
+        </NavLink>
 
         <div style={{ flex: 1 }} />
 

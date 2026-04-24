@@ -9,7 +9,8 @@ import AdminPage     from './pages/AdminPage';
 import ActivityPage  from './pages/ActivityPage';
 import VoiceQuotePage from './pages/VoiceQuotePage';
 import BundleQuotePage from './pages/BundleQuotePage';
-import Layout        from './components/Layout';
+import ChangelogPage   from './pages/ChangelogPage';
+import Layout          from './components/Layout';
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -33,8 +34,9 @@ function AppRoutes() {
         <Route path="quotes/:id" element={<QuotePage />} />
         <Route path="voice"     element={<VoiceQuotePage />} />
         <Route path="voice/:id" element={<VoiceQuotePage />} />
-        <Route path="bundle"    element={<BundleQuotePage />} />
+        <Route path="bundle"     element={<BundleQuotePage />} />
         <Route path="bundle/:id" element={<BundleQuotePage />} />
+        <Route path="changelog"  element={<ChangelogPage />} />
         <Route path="admin"    element={<RequireAdmin><AdminPage /></RequireAdmin>} />
         <Route path="activity" element={<RequireAdmin><ActivityPage /></RequireAdmin>} />
       </Route>
