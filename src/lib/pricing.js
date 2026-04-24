@@ -193,14 +193,14 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings }) {
   const s = settings; // shorthand — settings is a key→value map
   const mktMult = parseFloat(marketTier.labor_multiplier) || 1;
 
-  // ── Managed IT base ──────────────────────────────────────────────────────
-  const wB  = inputs.workstations * pkg.ws_rate;
-  const uB  = inputs.users * pkg.user_rate;
-  const sB  = inputs.servers * pkg.server_rate;
-  const lB  = inputs.locations * pkg.location_rate;
-  const tB  = inputs.cloudTenants * pkg.tenant_rate;
+  // ── Managed IT base — market multiplier applied to sell rates ────────────
+  const wB  = inputs.workstations * pkg.ws_rate    * mktMult;
+  const uB  = inputs.users        * pkg.user_rate  * mktMult;
+  const sB  = inputs.servers      * pkg.server_rate * mktMult;
+  const lB  = inputs.locations    * pkg.location_rate * mktMult;
+  const tB  = inputs.cloudTenants * pkg.tenant_rate * mktMult;
   const xv  = Math.max(inputs.vendors - pkg.included_vendors, 0);
-  const vB  = xv * pkg.vendor_rate;
+  const vB  = xv * pkg.vendor_rate * mktMult;
 
   const epRatio = inputs.workstations > 0 ? inputs.endpoints / inputs.workstations : 0;
   const xEp = Math.max(inputs.endpoints - inputs.workstations * 1.25, 0);
@@ -267,7 +267,7 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings }) {
                + inputs.workstations * pkg.hrs_ws
                + inputs.servers      * pkg.hrs_server
                + inputs.locations    * pkg.hrs_location;
-  const svcCost = svcHrs * parseFloat(s.burdened_hourly_rate) * mktMult;
+  const svcCost = svcHrs * parseFloat(s.burdened_hourly_rate);
 
   const totalCost = toolingCost + svcCost + addonCost;
   const impliedGM = finalMRR > 0 ? 1 - totalCost / finalMRR : 0;

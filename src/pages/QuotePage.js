@@ -497,7 +497,7 @@ export default function QuotePage() {
                   <div style={{ fontSize:10, color:'#6b7280', marginTop:2 }}>
                     {recipientBiz && <span>{recipientBiz} · </span>}
                     {selectedPkg?.name} · {selectedMkt?.name} · {inputs.contractTerm}-month term
-                    {result.mktMult<1 && <span style={{ color:'#2563eb', marginLeft:4 }}>({Math.round((1-result.mktMult)*100)}% market adj.)</span>}
+                    {result.mktMult<1 && <span style={{ color:'#2563eb', marginLeft:4 }}>({Math.round((1-result.mktMult)*100)}% market pricing adjustment)</span>}
                   </div>
                   {recipientContact && <div style={{ fontSize:10, color:'#9ca3af', marginTop:1 }}>Contact: {recipientContact}{recipientEmail?` · ${recipientEmail}`:''}</div>}
                 </div>
@@ -644,7 +644,7 @@ export default function QuotePage() {
                   <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
                     <div style={{ fontSize:10, fontWeight:700, color:'#374151', marginBottom:6 }}>Cost Model</div>
                     <LI lbl="Tooling / stack" v={result.toolingCost} ind/>
-                    <LI lbl={`Labor (${result.svcHrs.toFixed(1)} hrs${result.mktMult<1?' × '+fmtPct(result.mktMult):''})`} v={result.svcCost} ind/>
+                    <LI lbl={`Labor (${result.svcHrs.toFixed(1)} hrs × $${settings.burdened_hourly_rate || 125}/hr)`} v={result.svcCost} ind/>
                     <LI lbl="Add-on delivery cost" v={result.addonCost} ind/>
                     <LI lbl="Estimated Total Cost" v={result.totalCost} bold/>
                     <div style={{ display:'flex', justifyContent:'space-between', padding:'5px 6px', background:gb, borderRadius:4, marginTop:4 }}>
