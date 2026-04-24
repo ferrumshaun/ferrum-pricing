@@ -8,6 +8,7 @@ import { searchDeals, getDealFull, createDeal, updateDeal, updateDealDescription
 import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
+import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
 
 const DEF_INPUTS = {
   users:0, sharedMailboxes:0, workstations:0, endpoints:0,
@@ -482,7 +483,7 @@ export default function QuotePage() {
         <Sec t="Deal Terms" c="#374151">
           <Grid2>
             <Fld lbl="Contract Term"><SI v={inputs.contractTerm} s={v=>set('contractTerm',+v)} opts={[['12','12 mo (5%)'],['24','24 mo (10%)'],['36','36 mo (20%)']]}/></Fld>
-            <Fld lbl="Status"><SI v={quoteStatus} s={setQuoteStatus} opts={[['draft','Draft'],['sent','Sent'],['won','Won'],['lost','Lost'],['expired','Expired']]}/></Fld>
+            <Fld lbl="Status"><SI v={quoteStatus} s={setQuoteStatus} opts={[['draft','Draft'],['in_review','In Review'],['approved','Approved'],['sent','Sent'],['won','Won'],['lost','Lost'],['expired','Expired']]}/></Fld>
           </Grid2>
           <div style={{ marginTop:4 }}>
             <Tog on={inputs.execReporting} set={v=>set('execReporting',v)} lbl="Executive Reporting Required" sub="Triggers Enterprise recommendation"/>
@@ -503,12 +504,27 @@ export default function QuotePage() {
               </button>
             )}
           </div>
+          {existingQuote && (
+            <div style={{ marginTop:6 }}>
+              <SendForReviewButton
+                quote={{ ...existingQuote, status: quoteStatus, inputs: { ...inputs, proposalName, recipientContact, recipientEmail } }}
+                quoteType="quotes"
+                onStatusChange={s => setQuoteStatus(s)}
+              />
+            </div>
+          )}
           {saveMsg && <div style={{ fontSize:11, color:'#166534', fontWeight:600, marginTop:5 }}>{saveMsg}</div>}
         </div>
       </div>
 
       {/* ── RIGHT PANEL ── */}
-      <div style={{ flex:1, overflowY:'auto', padding:'14px 16px', background:'#f8fafc', minWidth:0 }}>
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', background:'#f8fafc', minWidth:0 }}>
+        <ReviewBanner
+          quote={{ ...existingQuote, status: quoteStatus, hubspot_deal_id: hubDealId }}
+          quoteType="quotes"
+          onStatusChange={s => setQuoteStatus(s)}
+        />
+        <div style={{ flex:1, overflowY:'auto', padding:'14px 16px' }}>
         {!result
           ? <div style={{ textAlign:'center', color:'#9ca3af', marginTop:80, fontSize:12 }}>Enter client details to generate a quote</div>
           : <div className="fade-in">
@@ -735,6 +751,7 @@ export default function QuotePage() {
               </div>
             </div>
         }
+        </div>{/* end inner scroll */}
       </div>
 
       {/* ── HUBSPOT MODAL ── */}

@@ -1,5 +1,30 @@
 [
   {
+    "version": "2.0.0",
+    "date": "2026-04-24",
+    "summary": "Send for Review workflow — route quotes for approval with email notification and HubSpot sync",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Send for Review button on all quote types — appears after first save",
+        "Pick any team member as reviewer from a dropdown — sends them a direct email link",
+        "Optional note to reviewer: explain the discount, flag the competitive situation, etc.",
+        "Review banner shown to the reviewer at the top of the quote — yellow, hard to miss",
+        "Reviewer can Approve (turns quote green, status = Approved) or Return with Comments (back to Draft)",
+        "Feedback required before returning — reviewer must leave a comment",
+        "Both request and response automatically post as Quote Notes and to HubSpot activity timeline",
+        "Rep gets an email back with the decision and full feedback text",
+        "New quote statuses: In Review (amber) and Approved (green) — visible in Saved Quotes list",
+        "SPT export gate: Approved status is the future hook for Smart Pricing Table integration (noted in code)"
+      ],
+      "improved": [
+        "Saved Quotes status filter now includes In Review and Approved options",
+        "Status badges updated — In Review shows amber, Approved shows green"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "1.9.0",
     "date": "2026-04-24",
     "summary": "Quote revision history — automatic field-level diff tracking on every save",

@@ -9,6 +9,7 @@ import { searchDeals, getDealFull, updateDealDescription } from '../lib/hubspot'
 import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
+import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
 
 const DEF = {
   quoteType: 'hosted', licenseType: 'pro',
@@ -411,12 +412,27 @@ export default function VoiceQuotePage() {
             style={{ width:'100%', padding:'7px', background:'#0f1e3c', color:'white', border:'none', borderRadius:4, fontSize:11, fontWeight:600, cursor:'pointer', opacity:saving?0.7:1 }}>
             {saving ? 'Saving...' : existingQuote ? 'Update Quote' : 'Save Quote'}
           </button>
+          {existingQuote && (
+            <div style={{ marginTop:5 }}>
+              <SendForReviewButton
+                quote={{ ...existingQuote, status: quoteStatus }}
+                quoteType="voice"
+                onStatusChange={s => setQuoteStatus(s)}
+              />
+            </div>
+          )}
           {saveMsg && <div style={{ fontSize:11, color:'#166534', fontWeight:600, marginTop:4 }}>{saveMsg}</div>}
         </div>
       </div>
 
       {/* ── RIGHT PANEL ── */}
-      <div style={{ flex:1, overflowY:'auto', padding:'14px 16px', background:'#f8fafc', minWidth:0 }}>
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', background:'#f8fafc', minWidth:0 }}>
+        <ReviewBanner
+          quote={{ ...existingQuote, status: quoteStatus, hubspot_deal_id: hubDealId }}
+          quoteType="voice"
+          onStatusChange={s => setQuoteStatus(s)}
+        />
+        <div style={{ flex:1, overflowY:'auto', padding:'14px 16px' }}>
         {!result
           ? <div style={{ textAlign:'center', color:'#9ca3af', marginTop:80, fontSize:12 }}>Enter quote details to generate voice pricing</div>
           : <div className="fade-in">
@@ -648,6 +664,7 @@ export default function VoiceQuotePage() {
               </div>
             </div>
         }
+        </div>{/* end inner scroll */}
       </div>
 
       {/* ── HUBSPOT MODAL ── */}

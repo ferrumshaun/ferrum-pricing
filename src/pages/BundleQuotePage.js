@@ -9,6 +9,7 @@ import { searchDeals, getDealFull, updateDealDescription } from '../lib/hubspot'
 import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
+import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
 
 const DEF_IT = {
   users:0, sharedMailboxes:0, workstations:0, endpoints:0, mobileDevices:0,
@@ -543,12 +544,27 @@ export default function BundleQuotePage() {
             style={{ width:'100%', padding:'7px', background:'#0f1e3c', color:'white', border:'none', borderRadius:4, fontSize:11, fontWeight:600, cursor:'pointer', opacity:saving?0.7:1 }}>
             {saving ? 'Saving...' : existingQuote ? 'Update Bundle Quote' : 'Save Bundle Quote'}
           </button>
+          {existingQuote && (
+            <div style={{ marginTop:5 }}>
+              <SendForReviewButton
+                quote={{ ...existingQuote, status: quoteStatus }}
+                quoteType="bundle"
+                onStatusChange={s => setQuoteStatus(s)}
+              />
+            </div>
+          )}
           {saveMsg && <div style={{ fontSize:11, color:'#166534', fontWeight:600, marginTop:4 }}>{saveMsg}</div>}
         </div>
       </div>
 
       {/* ── RIGHT: Combined summary ── */}
-      <div style={{ flex:1, overflowY:'auto', padding:'14px 16px', background:'#f8fafc', minWidth:0 }}>
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', background:'#f8fafc', minWidth:0 }}>
+        <ReviewBanner
+          quote={{ ...existingQuote, status: quoteStatus, hubspot_deal_id: hubDealId }}
+          quoteType="bundle"
+          onStatusChange={s => setQuoteStatus(s)}
+        />
+        <div style={{ flex:1, overflowY:'auto', padding:'14px 16px' }}>
         <div className="fade-in">
           {/* Header */}
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
@@ -735,6 +751,7 @@ export default function BundleQuotePage() {
             <QuoteHistory quoteId={existingQuote?.id} />
           </div>
         </div>
+        </div>{/* end inner scroll */}
       </div>
 
       {/* ── HUBSPOT MODAL ── */}

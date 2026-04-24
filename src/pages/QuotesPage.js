@@ -4,11 +4,13 @@ import { supabase } from '../lib/supabase';
 import { fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
 
 const STATUS_STYLE = {
-  draft:   { bg: '#f3f4f6', color: '#6b7280' },
-  sent:    { bg: '#dbeafe', color: '#1e40af' },
-  won:     { bg: '#dcfce7', color: '#166534' },
-  lost:    { bg: '#fee2e2', color: '#991b1b' },
-  expired: { bg: '#fef3c7', color: '#92400e' },
+  draft:     { bg: '#f3f4f6', color: '#6b7280' },
+  in_review: { bg: '#fef3c7', color: '#92400e' },
+  approved:  { bg: '#dcfce7', color: '#166534' },
+  sent:      { bg: '#dbeafe', color: '#1e40af' },
+  won:       { bg: '#dcfce7', color: '#166534' },
+  lost:      { bg: '#fee2e2', color: '#991b1b' },
+  expired:   { bg: '#fef3c7', color: '#92400e' },
 };
 
 export default function QuotesPage() {
@@ -49,7 +51,7 @@ export default function QuotesPage() {
         <select value={status} onChange={e => setStatus(e.target.value)}
           style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, background: 'white' }}>
           <option value="">All statuses</option>
-          {['draft','sent','won','lost','expired'].map(s => <option key={s} value={s}>{s}</option>)}
+          {['draft','in_review','approved','sent','won','lost','expired'].map(s => <option key={s} value={s}>{s.replace('_',' ')}</option>)}
         </select>
       </div>
 
