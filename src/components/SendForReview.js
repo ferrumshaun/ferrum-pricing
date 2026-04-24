@@ -17,12 +17,12 @@ async function sendEmail(action, payload) {
 
 // ─── Send for Review Button + Modal ──────────────────────────────────────────
 export function SendForReviewButton({ quote, quoteType, onStatusChange }) {
-  const [open,       setOpen]       = useState(false);
-  const [teamMembers,setTeamMembers]= useState([]);
-  const [reviewerId, setReviewerId] = useState('');
-  const [repNote,    setRepNote]    = useState('');
-  const [sending,    setSending]    = useState(false);
-  const [msg,        setMsg]        = useState('');
+  const [open,        setOpen]        = useState(false);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [reviewerId,  setReviewerId]  = useState('');
+  const [repNote,     setRepNote]     = useState('');
+  const [sending,     setSending]     = useState(false);
+  const [msg,         setMsg]         = useState('');
   const { profile } = useAuth();
 
   useEffect(() => {
@@ -144,23 +144,23 @@ export function SendForReviewButton({ quote, quoteType, onStatusChange }) {
 
 // ─── Review Banner (shown to reviewer) ───────────────────────────────────────
 export function ReviewBanner({ quote, quoteType, onStatusChange }) {
-  const [feedback,  setFeedback]  = useState('');
-  const [submitting,setSubmitting]= useState(false);
-  const [msg,       setMsg]       = useState('');
+  const [feedback,    setFeedback]    = useState('');
+  const [submitting,  setSubmitting]  = useState(false);
+  const [msg,         setMsg]         = useState('');
+  const [requestNote, setRequestNote] = useState(null);  // ← moved above early return
   const { profile, isAdmin } = useAuth();
 
-  if (quote?.status !== 'in_review') return null;
-
-  // Find who sent it — look at the latest "Review requested" note
-  const [requestNote, setRequestNote] = useState(null);
+  // ← moved above early return, guarded by status check inside
   useEffect(() => {
-    if (!quote?.id) return;
+    if (!quote?.id || quote?.status !== 'in_review') return;
     supabase.from('quote_notes').select('*').eq('quote_id', quote.id)
       .ilike('body', 'Review requested%')
       .order('created_at', { ascending: false })
       .limit(1)
       .then(({ data }) => setRequestNote(data?.[0] || null));
-  }, [quote?.id]);
+  }, [quote?.id, quote?.status]);
+
+  if (quote?.status !== 'in_review') return null;
 
   async function submitReview(approved) {
     if (!feedback.trim() && !approved) { setMsg('Please add feedback before returning.'); return; }

@@ -1,5 +1,18 @@
 [
   {
+    "version": "2.0.1",
+    "date": "2026-04-24",
+    "summary": "Fix hooks order crash in Send for Review review banner",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [],
+      "fixed": [
+        "ReviewBanner: moved useState and useEffect above conditional early return — prevented runtime crash when opening an in-review quote"
+      ]
+    }
+  },
+  {
     "version": "2.0.0",
     "date": "2026-04-24",
     "summary": "Send for Review workflow — route quotes for approval with email notification and HubSpot sync",
