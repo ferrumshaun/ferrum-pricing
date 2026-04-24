@@ -13,7 +13,14 @@ const CATEGORIES = [
 
 export default function AdminPage() {
   const [tab, setTab] = useState('Products');
+  const [reloading, setReloading] = useState(false);
   const { reload } = useConfig();
+
+  async function handleReload() {
+    setReloading(true);
+    await reload();
+    setTimeout(() => setReloading(false), 800);
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -27,8 +34,8 @@ export default function AdminPage() {
           }}>{t}</button>
         ))}
         <div style={{ flex: 1 }} />
-        <button onClick={reload} style={{ margin: '6px 0', padding: '4px 10px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 11, color: '#6b7280' }}>
-          ↺ Reload config
+        <button onClick={handleReload} disabled={reloading} style={{ margin: '6px 0', padding: '4px 10px', background: reloading ? '#dcfce7' : '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 11, color: reloading ? '#166534' : '#6b7280', cursor: 'pointer' }}>
+          {reloading ? '✓ Reloaded' : '↺ Reload config'}
         </button>
       </div>
       <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
@@ -128,37 +135,75 @@ function ProductsAdmin() {
   const [loading,  setLoading]  = useState(true);
   const [editing,  setEditing]  = useState(null);
   const [saving,   setSaving]   = useState(false);
+  const [saveError,setSaveError]= useState('');
   const { profile } = useAuth();
+  const { reload } = useConfig();
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from('products').select('*').order('category').order('sort_order');
+    const { data, error } = await supabase.from('products').select('*').order('category').order('sort_order');
+    if (error) console.error('Load products error:', error);
     setProducts(data || []);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
 
   function startNew() {
+    setSaveError('');
     setEditing({ name:'', category:'', sub_category:'', description:'', sell_price:'', cost_price:'', qty_driver:'user', exclusive_group:'', sort_order:0, active:true, notes:'' });
   }
 
   async function save() {
-    setSaving(true);
+    setSaving(true); setSaveError('');
     const isNew = !editing.id;
-    const payload = { ...editing, sell_price: parseFloat(editing.sell_price), cost_price: parseFloat(editing.cost_price), sort_order: parseInt(editing.sort_order) || 0, updated_by: profile?.id };
-    if (!payload.exclusive_group) payload.exclusive_group = null;
-    if (!payload.sub_category) payload.sub_category = null;
+    const payload = {
+      name:            editing.name,
+      category:        editing.category,
+      sub_category:    editing.sub_category || null,
+      description:     editing.description || null,
+      sell_price:      parseFloat(editing.sell_price),
+      cost_price:      parseFloat(editing.cost_price),
+      qty_driver:      editing.qty_driver,
+      exclusive_group: editing.exclusive_group || null,
+      sort_order:      parseInt(editing.sort_order) || 0,
+      active:          editing.active !== false,
+      notes:           editing.notes || null,
+      updated_by:      profile?.id
+    };
+
+    // Validate
+    if (!payload.name) { setSaveError('Name is required.'); setSaving(false); return; }
+    if (!payload.category) { setSaveError('Category is required.'); setSaving(false); return; }
+    if (isNaN(payload.sell_price)) { setSaveError('Sell price must be a number.'); setSaving(false); return; }
+    if (isNaN(payload.cost_price)) { setSaveError('Cost price must be a number.'); setSaving(false); return; }
 
     const old = products.find(p => p.id === editing.id);
-    const { error } = isNew
-      ? await supabase.from('products').insert(payload)
-      : await supabase.from('products').update(payload).eq('id', editing.id);
-
-    if (!error) {
-      await logActivity({ action: isNew ? 'CREATE' : 'UPDATE', entityType: 'product', entityId: editing.id, entityName: editing.name,
-        changes: isNew ? payload : diffObjects(old, editing) });
-      setEditing(null); load();
+    let error;
+    if (isNew) {
+      const res = await supabase.from('products').insert(payload);
+      error = res.error;
+    } else {
+      const res = await supabase.from('products').update(payload).eq('id', editing.id);
+      error = res.error;
     }
+
+    if (error) {
+      console.error('Save product error:', error);
+      setSaveError(error.message || 'Save failed — check console for details.');
+      setSaving(false);
+      return;
+    }
+
+    await logActivity({
+      action: isNew ? 'CREATE' : 'UPDATE',
+      entityType: 'product',
+      entityId: editing.id,
+      entityName: editing.name,
+      changes: isNew ? payload : diffObjects(old, payload)
+    });
+    setEditing(null);
+    await load();
+    reload(); // also refresh the global config context
     setSaving(false);
   }
 
@@ -182,7 +227,7 @@ function ProductsAdmin() {
         </div>
         <button onClick={startNew} style={{ padding: '6px 14px', background: '#0f1e3c', color: 'white', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600 }}>+ Add Product</button>
       </div>
-      <AdminTable cols={['name','category','qty_driver','$sell','$cost','gm']} rows={rows} onEdit={setEditing} onToggle={toggle} loading={loading} />
+      <AdminTable cols={['name','category','qty_driver','$sell','$cost','gm']} rows={rows} onEdit={r => { setSaveError(''); setEditing(r); }} onToggle={toggle} loading={loading} />
       {editing && (
         <Modal title={editing.id ? 'Edit Product' : 'New Product'} onClose={() => setEditing(null)} onSave={save} saving={saving}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
@@ -213,6 +258,11 @@ function ProductsAdmin() {
           {editing.sell_price > 0 && editing.cost_price > 0 && (
             <div style={{ padding: '8px 10px', background: '#f0fdf4', borderRadius: 5, fontSize: 12, color: '#166534', marginTop: 4 }}>
               Gross margin: <strong>{((1 - editing.cost_price / editing.sell_price) * 100).toFixed(1)}%</strong>
+            </div>
+          )}
+          {saveError && (
+            <div style={{ padding: '8px 10px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 5, fontSize: 12, color: '#dc2626', marginTop: 8 }}>
+              ✗ {saveError}
             </div>
           )}
         </Modal>
