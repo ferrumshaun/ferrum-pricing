@@ -671,7 +671,7 @@ export default function QuotePage() {
                     <div>
                       <div style={{ fontSize:13, fontWeight:600, color:'#0f1e3c' }}>{d.properties.dealname}</div>
                       <div style={{ fontSize:11, color:'#6b7280', marginTop:2 }}>
-                        Stage: {d.properties.dealstage}
+                        Stage: {d.properties.dealstage_label || d.properties.dealstage}
                         {d.properties.amount && ` · $${parseFloat(d.properties.amount).toLocaleString()}`}
                         {d.properties.closedate && ` · Close: ${new Date(d.properties.closedate).toLocaleDateString()}`}
                       </div>

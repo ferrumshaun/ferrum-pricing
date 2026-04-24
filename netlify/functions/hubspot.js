@@ -1,6 +1,4 @@
 // Netlify serverless function — proxies HubSpot API calls server-side
-// Avoids CORS issues that occur when calling HubSpot directly from the browser
-
 const HUBSPOT_BASE = 'https://api.hubapi.com';
 
 async function hs(token, method, path, body) {
@@ -12,6 +10,20 @@ async function hs(token, method, path, body) {
   const res = await fetch(`${HUBSPOT_BASE}${path}`, opts);
   const data = await res.json();
   return { status: res.status, data };
+}
+
+// Fetch all pipeline stages and return a stageId → label map
+async function getStageLabelMap(token) {
+  const r = await hs(token, 'GET', '/crm/v3/pipelines/deals');
+  const map = {};
+  if (r.status === 200 && r.data.results) {
+    for (const pipeline of r.data.results) {
+      for (const stage of (pipeline.stages || [])) {
+        map[stage.id] = stage.label;
+      }
+    }
+  }
+  return map;
 }
 
 exports.handler = async (event) => {
@@ -31,44 +43,66 @@ exports.handler = async (event) => {
 
     switch (action) {
 
-      // ── Test connection ────────────────────────────────────────────────────
+      // ── Test connection ──────────────────────────────────────────────────
       case 'test': {
         const r = await hs(token, 'GET', '/crm/v3/objects/deals?limit=1');
         return { statusCode: r.status, headers: {'Content-Type':'application/json'}, body: JSON.stringify(r.data) };
       }
 
-      // ── Search open deals ──────────────────────────────────────────────────
+      // ── Search open deals ────────────────────────────────────────────────
       case 'search': {
+        // Build filters — always exclude closed
         const filters = [
           { propertyName: 'dealstage', operator: 'NOT_IN', values: ['closedlost', 'closedwon'] }
         ];
-        if (payload.query) {
-          filters.push({ propertyName: 'dealname', operator: 'CONTAINS_TOKEN', value: payload.query });
+        if (payload.query && payload.query.trim()) {
+          filters.push({ propertyName: 'dealname', operator: 'CONTAINS_TOKEN', value: payload.query.trim() });
         }
-        const r = await hs(token, 'POST', '/crm/v3/objects/deals/search', {
-          filterGroups: [{ filters }],
-          properties: ['dealname', 'dealstage', 'amount', 'closedate', 'pipeline'],
-          sorts: [{ propertyName: 'createdate', direction: 'DESCENDING' }],
-          limit: 20
-        });
-        return { statusCode: r.status, headers: {'Content-Type':'application/json'}, body: JSON.stringify(r.data) };
+
+        const [searchRes, stageMap] = await Promise.all([
+          hs(token, 'POST', '/crm/v3/objects/deals/search', {
+            filterGroups: [{ filters }],
+            properties: ['dealname', 'dealstage', 'amount', 'closedate', 'pipeline'],
+            sorts: [{ propertyName: 'createdate', direction: 'DESCENDING' }],
+            limit: 20
+          }),
+          getStageLabelMap(token)
+        ]);
+
+        // Resolve stage IDs to labels
+        if (searchRes.data.results) {
+          for (const deal of searchRes.data.results) {
+            const rawStage = deal.properties.dealstage;
+            deal.properties.dealstage_label = stageMap[rawStage] || rawStage;
+          }
+        }
+
+        return {
+          statusCode: searchRes.status,
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(searchRes.data)
+        };
       }
 
-      // ── Get full deal with associated company + contact ────────────────────
+      // ── Get full deal with company + contact ─────────────────────────────
       case 'get_deal_full': {
         const { dealId } = payload;
 
-        // 1. Get deal properties
-        const dealRes = await hs(token, 'GET',
-          `/crm/v3/objects/deals/${dealId}?properties=dealname,dealstage,amount,closedate,description`);
+        const [dealRes, stageMap] = await Promise.all([
+          hs(token, 'GET', `/crm/v3/objects/deals/${dealId}?properties=dealname,dealstage,amount,closedate,description`),
+          getStageLabelMap(token)
+        ]);
+
         if (dealRes.status !== 200) {
           return { statusCode: dealRes.status, body: JSON.stringify(dealRes.data) };
         }
-        const deal = dealRes.data;
 
-        // 2. Get associated companies
-        const compAssoc = await hs(token, 'GET',
-          `/crm/v3/objects/deals/${dealId}/associations/companies`);
+        const deal = dealRes.data;
+        const rawStage = deal.properties.dealstage;
+        deal.properties.dealstage_label = stageMap[rawStage] || rawStage;
+
+        // Associated company
+        const compAssoc = await hs(token, 'GET', `/crm/v3/objects/deals/${dealId}/associations/companies`);
         let company = null;
         if (compAssoc.data?.results?.length > 0) {
           const compId = compAssoc.data.results[0].id;
@@ -77,9 +111,8 @@ exports.handler = async (event) => {
           if (compRes.status === 200) company = compRes.data.properties;
         }
 
-        // 3. Get associated contacts
-        const contAssoc = await hs(token, 'GET',
-          `/crm/v3/objects/deals/${dealId}/associations/contacts`);
+        // Associated contact
+        const contAssoc = await hs(token, 'GET', `/crm/v3/objects/deals/${dealId}/associations/contacts`);
         let contact = null;
         if (contAssoc.data?.results?.length > 0) {
           const contId = contAssoc.data.results[0].id;
@@ -98,7 +131,7 @@ exports.handler = async (event) => {
         break;
       }
 
-      // ── Create deal ────────────────────────────────────────────────────────
+      // ── Create deal ──────────────────────────────────────────────────────
       case 'create': {
         const closeDate = new Date();
         closeDate.setDate(closeDate.getDate() + 30);
@@ -116,7 +149,7 @@ exports.handler = async (event) => {
         return { statusCode: r.status, headers: {'Content-Type':'application/json'}, body: JSON.stringify(result) };
       }
 
-      // ── Update deal ────────────────────────────────────────────────────────
+      // ── Update deal ──────────────────────────────────────────────────────
       case 'update': {
         const r = await hs(token, 'PATCH', `/crm/v3/objects/deals/${payload.dealId}`, {
           properties: {
