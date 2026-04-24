@@ -51,30 +51,51 @@ exports.handler = async (event) => {
 
       // ── Search open deals ────────────────────────────────────────────────
       case 'search': {
-        // Build filters — always exclude closed
-        const filters = [
-          { propertyName: 'dealstage', operator: 'NOT_IN', values: ['closedlost', 'closedwon'] }
-        ];
+        // First get the stage map so we can identify closed stages by label
+        const stageMap = await getStageLabelMap(token);
+
+        // Find stage IDs whose labels indicate closed (won or lost)
+        const closedStageIds = Object.entries(stageMap)
+          .filter(([, label]) => {
+            const l = label.toLowerCase();
+            return l.includes('closed') || l.includes('lost') || l.includes('won');
+          })
+          .map(([id]) => id);
+
+        // Search without stage filter — we'll filter client-side by label
+        // (HubSpot NOT_IN filter is unreliable with custom stage IDs)
+        const searchBody = {
+          filterGroups: [{}],
+          properties: ['dealname', 'dealstage', 'amount', 'closedate', 'pipeline'],
+          sorts: [{ propertyName: 'createdate', direction: 'DESCENDING' }],
+          limit: 50
+        };
+
+        // Add name filter if query provided
         if (payload.query && payload.query.trim()) {
-          filters.push({ propertyName: 'dealname', operator: 'CONTAINS_TOKEN', value: payload.query.trim() });
+          searchBody.filterGroups = [{
+            filters: [{ propertyName: 'dealname', operator: 'CONTAINS_TOKEN', value: payload.query.trim() }]
+          }];
         }
 
-        const [searchRes, stageMap] = await Promise.all([
-          hs(token, 'POST', '/crm/v3/objects/deals/search', {
-            filterGroups: [{ filters }],
-            properties: ['dealname', 'dealstage', 'amount', 'closedate', 'pipeline'],
-            sorts: [{ propertyName: 'createdate', direction: 'DESCENDING' }],
-            limit: 20
-          }),
-          getStageLabelMap(token)
-        ]);
+        const searchRes = await hs(token, 'POST', '/crm/v3/objects/deals/search', searchBody);
 
-        // Resolve stage IDs to labels
+        // Resolve stage labels and filter out closed deals
         if (searchRes.data.results) {
-          for (const deal of searchRes.data.results) {
-            const rawStage = deal.properties.dealstage;
-            deal.properties.dealstage_label = stageMap[rawStage] || rawStage;
-          }
+          searchRes.data.results = searchRes.data.results
+            .map(deal => {
+              const rawStage = deal.properties.dealstage;
+              deal.properties.dealstage_label = stageMap[rawStage] || rawStage;
+              return deal;
+            })
+            .filter(deal => {
+              // Exclude if stage ID is in our closed list
+              if (closedStageIds.includes(deal.properties.dealstage)) return false;
+              // Also exclude by label as a safety net
+              const label = (deal.properties.dealstage_label || '').toLowerCase();
+              if (label.includes('closed') || label.includes('lost') || label.includes('won')) return false;
+              return true;
+            });
         }
 
         return {
