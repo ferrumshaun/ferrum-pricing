@@ -4,6 +4,7 @@ import { supabase, logActivity } from '../lib/supabase';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 import { calcQuote, lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
+import { searchDeals, createDeal, updateDeal } from '../lib/hubspot';
 
 const DEF_INPUTS = {
   users:0, sharedMailboxes:0, workstations:0, endpoints:0,
@@ -30,8 +31,13 @@ export default function QuotePage() {
   const [notes,       setNotes]       = useState('');
   const [saving,      setSaving]      = useState(false);
   const [saveMsg,     setSaveMsg]     = useState('');
-  const [hubspotOpen, setHubspotOpen] = useState(false);
-  const [hubspotId,   setHubspotId]   = useState('');
+  const [hubspotOpen,    setHubspotOpen]    = useState(false);
+  const [hubspotId,      setHubspotId]      = useState('');
+  const [hubspotSearch,  setHubspotSearch]  = useState('');
+  const [hubspotResults, setHubspotResults] = useState([]);
+  const [hubspotLoading, setHubspotLoading] = useState(false);
+  const [hubspotMsg,     setHubspotMsg]     = useState('');
+  const [hubspotUrl,     setHubspotUrl]     = useState('');
   const [existingQuote, setExistingQuote] = useState(null);
 
   // Load existing quote if editing
@@ -135,7 +141,61 @@ export default function QuotePage() {
     if (!existingQuote) navigate(`/quotes/${data.id}`, { replace: true });
   }
 
-  // Export JSON for Smart Pricing Table
+  async function searchHubspot() {
+    if (!hubspotSearch.trim()) return;
+    setHubspotLoading(true); setHubspotMsg(''); setHubspotResults([]);
+    try {
+      const results = await searchDeals(hubspotSearch);
+      setHubspotResults(results);
+      if (results.length === 0) setHubspotMsg('No deals found matching that name.');
+    } catch (err) { setHubspotMsg('✗ ' + err.message); }
+    setHubspotLoading(false);
+  }
+
+  function linkDeal(deal) {
+    setHubspotId(deal.id);
+    setHubspotUrl(`https://app.hubspot.com/contacts/deals/${deal.id}`);
+    setHubspotResults([]);
+    setHubspotMsg(`✓ Linked to: ${deal.properties.dealname}`);
+  }
+
+  async function createHubspotDeal() {
+    if (!result) return;
+    setHubspotLoading(true); setHubspotMsg('');
+    try {
+      const deal = await createDeal({
+        clientName: clientName, mrr: result.finalMRR,
+        contractValue: result.finalMRR * inputs.contractTerm + result.onboarding,
+        packageName: selectedPkg?.name, quoteNumber: existingQuote?.quote_number || 'DRAFT',
+        contractTerm: inputs.contractTerm
+      });
+      setHubspotId(deal.id);
+      setHubspotUrl(deal.url);
+      setHubspotMsg(`✓ Deal created in HubSpot`);
+      // Auto-save the deal ID to the quote
+      if (existingQuote) {
+        await supabase.from('quotes').update({ hubspot_deal_id: deal.id, hubspot_deal_url: deal.url }).eq('id', existingQuote.id);
+      }
+      await logActivity({ action: 'HUBSPOT_CREATE', entityType: 'quote', entityId: existingQuote?.id, entityName: clientName, changes: { deal_id: deal.id } });
+    } catch (err) { setHubspotMsg('✗ ' + err.message); }
+    setHubspotLoading(false);
+  }
+
+  async function syncHubspotDeal() {
+    if (!result || !hubspotId) return;
+    setHubspotLoading(true); setHubspotMsg('');
+    try {
+      await updateDeal(hubspotId, {
+        mrr: result.finalMRR,
+        contractValue: result.finalMRR * inputs.contractTerm + result.onboarding,
+        packageName: selectedPkg?.name, quoteNumber: existingQuote?.quote_number || 'DRAFT',
+        contractTerm: inputs.contractTerm
+      });
+      setHubspotMsg('✓ Deal updated in HubSpot');
+      await logActivity({ action: 'HUBSPOT_SYNC', entityType: 'quote', entityId: existingQuote?.id, entityName: clientName });
+    } catch (err) { setHubspotMsg('✗ ' + err.message); }
+    setHubspotLoading(false);
+  }
   function exportSPT() {
     if (!result) return;
     const json = {
@@ -330,10 +390,54 @@ export default function QuotePage() {
           {/* HubSpot panel */}
           {hubspotOpen && (
             <div style={{ marginTop: 8, padding: 10, background: 'white', border: '1px solid #fed7aa', borderRadius: 5 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#c2410c', marginBottom: 6 }}>HubSpot Deal</div>
-              <input value={hubspotId} onChange={e=>setHubspotId(e.target.value)} placeholder="Existing Deal ID (optional)"
-                style={{ width: '100%', padding: '5px 7px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 11, outline: 'none', marginBottom: 6 }}/>
-              <div style={{ fontSize: 9, color: '#9ca3af' }}>Leave blank to create new deal on save. Or paste an existing deal ID to link.</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#c2410c', marginBottom: 8 }}>HubSpot Deal</div>
+
+              {/* Current link */}
+              {hubspotId && (
+                <div style={{ padding: '6px 8px', background: '#fff7ed', borderRadius: 4, fontSize: 11, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#92400e' }}>Linked: <strong>Deal #{hubspotId}</strong></span>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {hubspotUrl && <a href={hubspotUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: '#c2410c', fontWeight: 600 }}>View →</a>}
+                    <button onClick={syncHubspotDeal} disabled={hubspotLoading} style={{ fontSize: 10, color: '#166534', background: '#dcfce7', border: 'none', borderRadius: 3, padding: '1px 6px', cursor: 'pointer', fontWeight: 600 }}>Sync</button>
+                    <button onClick={() => { setHubspotId(''); setHubspotUrl(''); setHubspotMsg(''); }} style={{ fontSize: 10, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer' }}>Unlink</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Search existing */}
+              {!hubspotId && (
+                <>
+                  <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 4 }}>Search for existing deal</div>
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+                    <input value={hubspotSearch} onChange={e => setHubspotSearch(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && searchHubspot()}
+                      placeholder={clientName || 'Client name...'}
+                      style={{ flex: 1, padding: '4px 7px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 11, outline: 'none' }} />
+                    <button onClick={searchHubspot} disabled={hubspotLoading}
+                      style={{ padding: '4px 8px', background: '#ff7a59', color: 'white', border: 'none', borderRadius: 4, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
+                      {hubspotLoading ? '...' : 'Search'}
+                    </button>
+                  </div>
+                  {hubspotResults.map(d => (
+                    <div key={d.id} onClick={() => linkDeal(d)} style={{ padding: '5px 8px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, marginBottom: 3, cursor: 'pointer', fontSize: 11 }}
+                      onMouseEnter={e => e.currentTarget.style.background='#eff6ff'}
+                      onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}>
+                      <span style={{ fontWeight: 600, color: '#374151' }}>{d.properties.dealname}</span>
+                      <span style={{ color: '#9ca3af', marginLeft: 6, fontSize: 10 }}>{d.properties.dealstage}</span>
+                    </div>
+                  ))}
+                  <div style={{ fontSize: 10, color: '#6b7280', margin: '6px 0 4px' }}>— or create new —</div>
+                  <button onClick={createHubspotDeal} disabled={hubspotLoading || !clientName}
+                    style={{ width: '100%', padding: '5px', background: '#0f1e3c', color: 'white', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer', opacity: (!clientName || hubspotLoading) ? 0.6 : 1 }}>
+                    {hubspotLoading ? 'Creating...' : `Create deal for "${clientName}"`}
+                  </button>
+                </>
+              )}
+              {hubspotMsg && (
+                <div style={{ marginTop: 6, fontSize: 11, fontWeight: 500, color: hubspotMsg.startsWith('✓') ? '#166534' : '#dc2626' }}>
+                  {hubspotMsg}
+                </div>
+              )}
             </div>
           )}
         </div>

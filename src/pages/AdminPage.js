@@ -3,7 +3,7 @@ import { supabase, logActivity } from '../lib/supabase';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 
-const TABS = ['Products', 'Packages', 'Market Tiers', 'Pricing Settings', 'Users'];
+const TABS = ['Products', 'Packages', 'Market Tiers', 'Pricing Settings', 'Users', 'Integrations'];
 
 const QTY_DRIVERS = ['user','mailbox','workstation','location','server','flat','mixed'];
 const CATEGORIES = [
@@ -37,6 +37,7 @@ export default function AdminPage() {
         {tab === 'Market Tiers'     && <MarketTiersAdmin />}
         {tab === 'Pricing Settings' && <SettingsAdmin />}
         {tab === 'Users'            && <UsersAdmin />}
+        {tab === 'Integrations'     && <IntegrationsAdmin />}
       </div>
     </div>
   );
@@ -478,4 +479,134 @@ function diffObjects(oldObj, newObj) {
       changes[key] = { from: oldObj[key], to: newObj[key] };
   }
   return changes;
+}
+
+// ─── INTEGRATIONS ADMIN ───────────────────────────────────────────────────────
+export function IntegrationsAdmin() {
+  const [token,    setToken]    = useState('');
+  const [saved,    setSaved]    = useState(false);
+  const [loading,  setLoading]  = useState(true);
+  const [saving,   setSaving]   = useState(false);
+  const [testing,  setTesting]  = useState(false);
+  const [testMsg,  setTestMsg]  = useState('');
+  const { profile } = useAuth();
+
+  useEffect(() => {
+    supabase.from('pricing_settings').select('value').eq('key','hubspot_token').single()
+      .then(({ data }) => { if (data?.value) setToken(data.value); setLoading(false); });
+  }, []);
+
+  async function saveToken() {
+    setSaving(true); setSaved(false);
+    // Upsert the token into pricing_settings
+    const { error } = await supabase.from('pricing_settings').upsert({
+      key: 'hubspot_token', value: token, label: 'HubSpot Private App Token',
+      description: 'Private app token for HubSpot CRM integration', updated_by: profile?.id
+    }, { onConflict: 'key' });
+    if (!error) {
+      await supabase.from('activity_log').insert({
+        user_id: profile?.id, user_email: profile?.email,
+        action: 'UPDATE', entity_type: 'setting', entity_name: 'hubspot_token',
+        changes: { note: 'Token updated (value hidden)' }
+      });
+      setSaved(true);
+    }
+    setSaving(false);
+  }
+
+  async function testConnection() {
+    setTesting(true); setTestMsg('');
+    try {
+      const res = await fetch('https://api.hubapi.com/crm/v3/objects/deals?limit=1', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setTestMsg('✓ Connected successfully — HubSpot API is responding');
+      else {
+        const err = await res.json();
+        setTestMsg('✗ ' + (err.message || 'Connection failed — check your token'));
+      }
+    } catch {
+      setTestMsg('✗ Network error — could not reach HubSpot');
+    }
+    setTesting(false);
+  }
+
+  if (loading) return <div style={{ padding: 20, color: '#6b7280', fontSize: 12 }}>Loading...</div>;
+
+  return (
+    <div style={{ maxWidth: 600 }}>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: '#0f1e3c' }}>Integrations</h2>
+        <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Connect FerrumIT Pricing to your external tools</p>
+      </div>
+
+      {/* HubSpot */}
+      <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          <div style={{ width: 32, height: 32, background: '#ff7a59', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ color: 'white', fontSize: 14, fontWeight: 700 }}>H</span>
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0f1e3c' }}>HubSpot CRM</div>
+            <div style={{ fontSize: 11, color: '#6b7280' }}>Create and link deals from quotes</div>
+          </div>
+          {token && <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 600, color: '#166534', background: '#dcfce7', padding: '2px 7px', borderRadius: 3 }}>Configured</span>}
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+            Private App Token
+          </label>
+          <input
+            type="password"
+            value={token}
+            onChange={e => { setToken(e.target.value); setSaved(false); setTestMsg(''); }}
+            placeholder="pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            style={{ width: '100%', padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, fontFamily: 'DM Mono, monospace', outline: 'none' }}
+          />
+          <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 4 }}>
+            HubSpot → Settings → Integrations → Private Apps → your app → Token
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={saveToken} disabled={saving || !token}
+            style={{ padding: '6px 14px', background: '#0f1e3c', color: 'white', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (!token || saving) ? 0.6 : 1 }}>
+            {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save Token'}
+          </button>
+          <button onClick={testConnection} disabled={testing || !token}
+            style={{ padding: '6px 14px', background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (!token || testing) ? 0.6 : 1 }}>
+            {testing ? 'Testing...' : 'Test Connection'}
+          </button>
+        </div>
+
+        {testMsg && (
+          <div style={{ marginTop: 10, padding: '7px 10px', borderRadius: 5, fontSize: 12, fontWeight: 500,
+            background: testMsg.startsWith('✓') ? '#dcfce7' : '#fef2f2',
+            color: testMsg.startsWith('✓') ? '#166534' : '#dc2626',
+            border: `1px solid ${testMsg.startsWith('✓') ? '#bbf7d0' : '#fecaca'}` }}>
+            {testMsg}
+          </div>
+        )}
+      </div>
+
+      {/* Smart Pricing Table */}
+      <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <div style={{ width: 32, height: 32, background: '#2563eb', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ color: 'white', fontSize: 14, fontWeight: 700 }}>S</span>
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0f1e3c' }}>Smart Pricing Table</div>
+            <div style={{ fontSize: 11, color: '#6b7280' }}>JSON export available on every saved quote</div>
+          </div>
+          <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 600, color: '#1e40af', background: '#dbeafe', padding: '2px 7px', borderRadius: 3 }}>Export Only</span>
+        </div>
+        <p style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.6 }}>
+          Open any saved quote and click <strong>Export JSON</strong> to download a file ready to import into Smart Pricing Table.
+          Send us a sample SPT JSON file and we'll map the fields to match their exact import format.
+        </p>
+      </div>
+    </div>
+  );
 }
