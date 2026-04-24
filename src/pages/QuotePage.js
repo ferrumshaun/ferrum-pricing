@@ -607,7 +607,15 @@ export default function QuotePage() {
                     return Object.entries(byC).map(([cat,items])=>(
                       <span key={cat}>
                         <SH l={cat}/>
-                        {items.map(li=><LI key={li.product_id} lbl={`${li.product_name} (${li.qty} × $${li.sell_price})`} v={li.revenue} ind/>)}
+                        {items.map(li=>{
+                          const costDiffers = li.cost_qty_driver && li.cost_qty_driver !== li.qty_driver;
+                          return (
+                            <span key={li.product_id}>
+                              <LI lbl={`${li.product_name} (${li.qty} × $${li.sell_price})`} v={li.revenue} ind/>
+                              {costDiffers && <div style={{fontSize:8,color:'#9ca3af',marginLeft:16,marginBottom:2}}>cost basis: {li.cost_qty} {li.cost_qty_driver}s × ${li.cost_price}</div>}
+                            </span>
+                          );
+                        })}
                       </span>
                     ));
                   })()}

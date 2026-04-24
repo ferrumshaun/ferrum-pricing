@@ -221,19 +221,22 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings }) {
   let addonCost = 0;
 
   for (const product of products.filter(p => inputs.selectedProducts?.includes(p.id))) {
-    const qty = getQty(product, inputs);
-    const revenue = qty * product.sell_price;
-    const cost    = qty * product.cost_price;
+    const sellQty = getSellQty(product, inputs);
+    const costQty = getCostQty(product, inputs);
+    const revenue = sellQty * product.sell_price;
+    const cost    = costQty * product.cost_price;
     addonRevenue += revenue;
     addonCost    += cost;
     lineItems.push({
-      product_id:   product.id,
-      product_name: product.name,
-      category:     product.category,
-      qty_driver:   product.qty_driver,
-      qty,
-      sell_price:   product.sell_price,
-      cost_price:   product.cost_price,
+      product_id:       product.id,
+      product_name:     product.name,
+      category:         product.category,
+      qty_driver:       product.qty_driver,
+      cost_qty_driver:  product.cost_qty_driver || null,
+      qty:              sellQty,
+      cost_qty:         costQty,
+      sell_price:       product.sell_price,
+      cost_price:       product.cost_price,
       revenue,
       cost
     });
@@ -305,10 +308,10 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings }) {
   };
 }
 
-function getQty(product, inputs) {
-  switch (product.qty_driver) {
+function getQtyForDriver(driver, inputs) {
+  switch (driver) {
     case 'user':          return inputs.users;
-    case 'mailbox':       return inputs.users + inputs.sharedMailboxes;
+    case 'mailbox':       return inputs.users + (inputs.sharedMailboxes || 0);
     case 'workstation':   return inputs.workstations;
     case 'server':        return inputs.servers;
     case 'location':      return inputs.locations;
@@ -317,6 +320,17 @@ function getQty(product, inputs) {
     case 'mixed':         return inputs.workstations;
     default:              return 0;
   }
+}
+
+function getSellQty(product, inputs) {
+  return getQtyForDriver(product.qty_driver, inputs);
+}
+
+function getCostQty(product, inputs) {
+  // cost_qty_driver overrides qty_driver for cost calculation
+  // NULL means same as sell driver
+  const driver = product.cost_qty_driver || product.qty_driver;
+  return getQtyForDriver(driver, inputs);
 }
 
 // ─── FORMAT HELPERS ──────────────────────────────────────────────────────────

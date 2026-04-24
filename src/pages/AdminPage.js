@@ -168,6 +168,7 @@ function ProductsAdmin() {
       sort_order:      parseInt(editing.sort_order) || 0,
       active:          editing.active !== false,
       notes:           editing.notes || null,
+      cost_qty_driver: editing.cost_qty_driver || null,
       updated_by:      profile?.id
     };
 
@@ -240,8 +241,14 @@ function ProductsAdmin() {
             <Field label="Sub-category (optional)"><Input value={editing.sub_category || ''} onChange={v => setEditing(e => ({...e, sub_category: v}))} placeholder="e.g. INKY, vCIO" /></Field>
             <Field label="Sell Price ($)"><Input type="number" value={editing.sell_price} onChange={v => setEditing(e => ({...e, sell_price: v}))} /></Field>
             <Field label="Cost Price ($)"><Input type="number" value={editing.cost_price} onChange={v => setEditing(e => ({...e, cost_price: v}))} /></Field>
-            <Field label="Qty Driver">
+            <Field label="Qty Driver (Sell)">
               <Select value={editing.qty_driver} onChange={v => setEditing(e => ({...e, qty_driver: v}))} opts={QTY_DRIVERS.map(d => [d, d])} />
+            </Field>
+            <Field label="Qty Driver (Cost)" >
+              <div>
+                <Select value={editing.cost_qty_driver || ''} onChange={v => setEditing(e => ({...e, cost_qty_driver: v || null}))} opts={[['', '— same as sell —'], ...QTY_DRIVERS.map(d => [d, d])]} />
+                <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 3 }}>Override cost basis only — e.g. sell per mailbox but cost per user</div>
+              </div>
             </Field>
             <Field label="Exclusive Group (optional)">
               <Input value={editing.exclusive_group || ''} onChange={v => setEditing(e => ({...e, exclusive_group: v}))} placeholder="e.g. inky, endpoint_sec" />
