@@ -320,7 +320,26 @@ function PackagesAdmin() {
     setSaving(false);
   }
 
+  async function toggle(row) {
+    const { error } = await supabase.from('packages').update({ active: !row.active, updated_by: profile?.id }).eq('id', row.id);
+    if (!error) {
+      await logActivity({ action: row.active ? 'DEACTIVATE' : 'ACTIVATE', entityType: 'package', entityId: row.id, entityName: row.name });
+      load();
+    }
+  }
+
   const rows = packages.map(p => ({ ...p, '$ws': `$${p.ws_rate}/WS`, '$user': `$${p.user_rate}/user`, '$server': `$${p.server_rate}/server`, '$location': `$${p.location_rate}/loc` }));
+
+  function startNew() {
+    setEditing({
+      name: '', coverage: 'business_hours', active: true, sort_order: packages.length + 1,
+      ws_rate: '', user_rate: '', server_rate: '', location_rate: '', tenant_rate: 0,
+      included_vendors: 2, vendor_rate: 25,
+      hrs_user: 0.10, hrs_ws: 0.25, hrs_server: 0.60, hrs_location: 0.75,
+      flex_minutes_per_ws: 0, flex_label: 'Flex Time (Onsite / Tier 2 Support)',
+      ideal_desc: ''
+    });
+  }
 
   return (
     <div>
@@ -329,10 +348,11 @@ function PackagesAdmin() {
           <h2 style={{ fontSize: 14, fontWeight: 700, color: '#0f1e3c' }}>Managed IT Packages</h2>
           <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Base rates, support hours, and package configuration</p>
         </div>
+        <button onClick={startNew} style={{ padding: '6px 14px', background: '#0f1e3c', color: 'white', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>+ Add Package</button>
       </div>
-      <AdminTable cols={['name','$ws','$user','$server','$location','coverage']} rows={rows} onEdit={setEditing} loading={loading} />
+      <AdminTable cols={['name','$ws','$user','$server','$location','coverage']} rows={rows} onEdit={setEditing} onToggle={toggle} loading={loading} />
       {editing && (
-        <Modal title={`Edit Package: ${editing.name}`} onClose={() => setEditing(null)} onSave={save} saving={saving}>
+        <Modal title={editing.id ? `Edit Package: ${editing.name}` : 'New Package'} onClose={() => setEditing(null)} onSave={save} saving={saving}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
             <div style={{ gridColumn: '1/-1' }}><Field label="Package Name"><Input value={editing.name} onChange={v => setEditing(e => ({...e, name: v}))} /></Field></div>
             <Field label="Workstation Rate ($)"><Input type="number" value={editing.ws_rate} onChange={v => setEditing(e => ({...e, ws_rate: v}))} /></Field>
