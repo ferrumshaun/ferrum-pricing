@@ -521,6 +521,71 @@ export default function QuotePage() {
                 </div>
               )}
 
+              {/* ── Flex Time Card ── */}
+              {(() => {
+                const fmins = selectedPkg?.flex_minutes_per_ws ?? 0;
+                const flabel = selectedPkg?.flex_label || 'Flex Time (Onsite / Tier 2 Support)';
+                const ws = inputs.workstations;
+
+                if (fmins === -1) {
+                  // Unlimited
+                  return (
+                    <div style={{ marginBottom:10, padding:'10px 14px', background:'#f0fdf4', border:'1px solid #86efac', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                      <div>
+                        <div style={{ fontSize:11, fontWeight:700, color:'#166534' }}>∞ Unlimited {flabel}</div>
+                        <div style={{ fontSize:10, color:'#4ade80', marginTop:1 }}>Included with this package — no cap on onsite or escalated support time</div>
+                      </div>
+                      <div style={{ background:'#166534', color:'white', fontSize:12, fontWeight:700, padding:'4px 12px', borderRadius:5, flexShrink:0 }}>Unlimited</div>
+                    </div>
+                  );
+                }
+
+                if (fmins === 0 || !fmins) {
+                  // Not included
+                  return (
+                    <div style={{ marginBottom:10, padding:'10px 14px', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                      <div>
+                        <div style={{ fontSize:11, fontWeight:700, color:'#6b7280' }}>{flabel}</div>
+                        <div style={{ fontSize:10, color:'#9ca3af', marginTop:1 }}>Not included with this package — available by request</div>
+                      </div>
+                      <div style={{ background:'#f3f4f6', color:'#6b7280', fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:5, flexShrink:0, border:'1px solid #e5e7eb' }}>By Request</div>
+                    </div>
+                  );
+                }
+
+                // Calculated flex hours
+                const totalMins = ws * fmins;
+                const totalHrs  = totalMins / 60;
+                const pctFull   = Math.min(totalHrs / (ws * 2) * 100, 100); // progress bar relative to 2hrs/WS max
+
+                return (
+                  <div style={{ marginBottom:10, padding:'12px 14px', background:'#eff6ff', border:'1px solid #93c5fd', borderRadius:7 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
+                      <div>
+                        <div style={{ fontSize:11, fontWeight:700, color:'#1e40af' }}>{flabel}</div>
+                        <div style={{ fontSize:10, color:'#3b82f6', marginTop:1 }}>
+                          {ws} workstation{ws!==1?'s':''} × {fmins} min = <strong>{totalHrs % 1 === 0 ? totalHrs : totalHrs.toFixed(1)} hrs/month</strong> · non-rollover
+                        </div>
+                      </div>
+                      <div style={{ textAlign:'right', flexShrink:0, marginLeft:12 }}>
+                        <div style={{ fontSize:20, fontWeight:700, fontFamily:'DM Mono, monospace', color:'#1e40af', lineHeight:1 }}>
+                          {totalHrs % 1 === 0 ? totalHrs : totalHrs.toFixed(1)}
+                        </div>
+                        <div style={{ fontSize:9, color:'#3b82f6', fontWeight:600 }}>hrs / month</div>
+                      </div>
+                    </div>
+                    {/* Progress bar */}
+                    <div style={{ height:6, background:'#bfdbfe', borderRadius:3, overflow:'hidden' }}>
+                      <div style={{ height:'100%', width:`${pctFull}%`, background:'#2563eb', borderRadius:3, transition:'width 0.3s' }}/>
+                    </div>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
+                      <span style={{ fontSize:9, color:'#93c5fd' }}>{fmins} min per workstation</span>
+                      <span style={{ fontSize:9, color:'#93c5fd' }}>resets monthly</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                 {/* Line items */}
                 <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>

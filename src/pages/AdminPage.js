@@ -246,6 +246,8 @@ function PackagesAdmin() {
       included_vendors: parseInt(editing.included_vendors) || 2,
       hrs_user: parseFloat(editing.hrs_user), hrs_ws: parseFloat(editing.hrs_ws),
       hrs_server: parseFloat(editing.hrs_server), hrs_location: parseFloat(editing.hrs_location),
+      flex_minutes_per_ws: parseInt(editing.flex_minutes_per_ws) ?? 0,
+      flex_label: editing.flex_label || 'Flex Time (Onsite / Tier 2 Support)',
       updated_by: profile?.id
     };
     const old = packages.find(p => p.id === editing.id);
@@ -291,6 +293,16 @@ function PackagesAdmin() {
             <Field label="Hours / Workstation"><Input type="number" value={editing.hrs_ws} onChange={v => setEditing(e => ({...e, hrs_ws: v}))} /></Field>
             <Field label="Hours / Server"><Input type="number" value={editing.hrs_server} onChange={v => setEditing(e => ({...e, hrs_server: v}))} /></Field>
             <Field label="Hours / Location"><Input type="number" value={editing.hrs_location} onChange={v => setEditing(e => ({...e, hrs_location: v}))} /></Field>
+            <div style={{ gridColumn: '1/-1', fontSize: 11, fontWeight: 600, color: '#6b7280', margin: '8px 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Flex / Onsite Time Included</div>
+            <Field label="Flex Minutes Per Workstation / Month">
+              <div>
+                <Input type="number" value={editing.flex_minutes_per_ws ?? 0} onChange={v => setEditing(e => ({...e, flex_minutes_per_ws: parseInt(v)||0}))} />
+                <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 3 }}>0 = not included · positive = minutes per WS/month · -1 = unlimited</div>
+              </div>
+            </Field>
+            <Field label="Flex Time Label">
+              <Input value={editing.flex_label || ''} onChange={v => setEditing(e => ({...e, flex_label: v}))} placeholder="Flex Time (Onsite / Tier 2 Support)" />
+            </Field>
             <div style={{ gridColumn: '1/-1' }}><Field label="Ideal For (description)"><Input value={editing.ideal_desc || ''} onChange={v => setEditing(e => ({...e, ideal_desc: v}))} /></Field></div>
           </div>
         </Modal>
