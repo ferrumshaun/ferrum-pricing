@@ -8,6 +8,7 @@ import { searchDeals, getDealFull, createDeal, updateDeal } from '../lib/hubspot
 
 const DEF_INPUTS = {
   users:0, sharedMailboxes:0, workstations:0, endpoints:0,
+  mobileDevices:0,
   servers:0, locations:0, cloudTenants:0, vendors:0,
   requestedCoverage:'business_hours', compliance:'none',
   industryRisk:'low', complexity:'low', contractTerm:24,
@@ -399,6 +400,7 @@ export default function QuotePage() {
             <Fld lbl="Shared Mailboxes" sub="billing@ etc"><NI v={inputs.sharedMailboxes} s={v=>set('sharedMailboxes',v)}/></Fld>
             <Fld lbl="Workstations" sub="managed"><NI v={inputs.workstations} s={v=>set('workstations',v)}/></Fld>
             <Fld lbl="Total Devices" sub="density/SIEM"><NI v={inputs.endpoints} s={v=>set('endpoints',v)}/></Fld>
+            <Fld lbl="Mobile Devices" sub="phones + tablets"><NI v={inputs.mobileDevices||0} s={v=>set('mobileDevices',v)}/></Fld>
           </Grid2>
         </Sec>
 
@@ -655,6 +657,7 @@ export default function QuotePage() {
                       ['Package', selectedPkg?.name],
                       ['Market', selectedMkt?.name],
                       ['Contract', `${inputs.contractTerm} months`],
+                      inputs.mobileDevices > 0 && ['Mobile Devices', inputs.mobileDevices],
                       ['Monthly MRR', fmt$0(result.finalMRR)],
                       ['Onboarding', fmt$0(result.onboarding)],
                       ['Total Contract Value', fmt$0(result.finalMRR*inputs.contractTerm+result.onboarding)],

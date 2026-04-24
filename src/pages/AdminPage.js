@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const TABS = ['Products', 'Packages', 'Market Tiers', 'Pricing Settings', 'Users', 'Integrations'];
 
-const QTY_DRIVERS = ['user','mailbox','workstation','location','server','flat','mixed'];
+const QTY_DRIVERS = ['user','mailbox','workstation','location','server','flat','mixed','mobile_device'];
 const CATEGORIES = [
   'Cloud & Email Security','Endpoint Security','Backup & Recovery',
   'Security Awareness','SIEM & SOC','Network & Connectivity','Strategic Advisory'

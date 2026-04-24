@@ -307,14 +307,15 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings }) {
 
 function getQty(product, inputs) {
   switch (product.qty_driver) {
-    case 'user':        return inputs.users;
-    case 'mailbox':     return inputs.users + inputs.sharedMailboxes;
-    case 'workstation': return inputs.workstations;
-    case 'server':      return inputs.servers;
-    case 'location':    return inputs.locations;
-    case 'flat':        return 1;
-    case 'mixed':       return inputs.workstations; // fallback for mixed (e.g. backup overrides per-type)
-    default:            return 0;
+    case 'user':          return inputs.users;
+    case 'mailbox':       return inputs.users + inputs.sharedMailboxes;
+    case 'workstation':   return inputs.workstations;
+    case 'server':        return inputs.servers;
+    case 'location':      return inputs.locations;
+    case 'flat':          return 1;
+    case 'mobile_device': return inputs.mobileDevices || 0;
+    case 'mixed':         return inputs.workstations;
+    default:              return 0;
   }
 }
 
