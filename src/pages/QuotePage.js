@@ -666,7 +666,6 @@ export default function QuotePage() {
                       </div>
                     ))}
                   </div>
-                  </div>
 
                   {/* Notes */}
                   <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:14 }}>
@@ -685,9 +684,9 @@ export default function QuotePage() {
                     </div>
                   </div>
 
-                </div>
-              </div>
-            </div>
+                </div>{/* end right column */}
+              </div>{/* end two-column grid */}
+            </div>{/* end fade-in */}
         }
       </div>
 
