@@ -465,12 +465,6 @@ export default function QuotePage() {
           </div>
         </Sec>
 
-        {/* Notes */}
-        <Sec t="Notes" c="#6b7280">
-          <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} placeholder="Internal notes..."
-            style={{ width:'100%', padding:'6px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, resize:'vertical', outline:'none' }}/>
-        </Sec>
-
         {/* Save / Export */}
         <div style={{ padding:10, background:'#f8fafc', borderRadius:5, border:'1px solid #e5e7eb', marginTop:4 }}>
           <div style={{ display:'flex', gap:5 }}>
@@ -607,6 +601,25 @@ export default function QuotePage() {
                       </div>
                     ))}
                   </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:14 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+                      <div style={{ width:2, height:11, background:'#6b7280', borderRadius:2 }}/>
+                      <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:'#6b7280' }}>Internal Notes</span>
+                    </div>
+                    <textarea
+                      value={notes}
+                      onChange={e => setNotes(e.target.value)}
+                      placeholder="Add notes about this quote — scope discussions, client preferences, follow-up items, pricing rationale..."
+                      style={{ width:'100%', minHeight:120, padding:'8px 10px', border:'1px solid #e5e7eb', borderRadius:5, fontSize:12, resize:'vertical', outline:'none', lineHeight:1.6, color:'#374151', fontFamily:'DM Sans, system-ui, sans-serif' }}
+                    />
+                    <div style={{ fontSize:10, color:'#9ca3af', marginTop:4 }}>
+                      Notes are saved with the quote and visible to all team members.
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>
