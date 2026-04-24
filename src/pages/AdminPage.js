@@ -313,7 +313,7 @@ function PackagesAdmin() {
     setSaving(false);
   }
 
-  const rows = packages.map(p => ({ ...p, '$ws': `$${p.ws_rate}/WS`, '$user': `$${p.user_rate}/user`, '$server': `$${p.server_rate}/server` }));
+  const rows = packages.map(p => ({ ...p, '$ws': `$${p.ws_rate}/WS`, '$user': `$${p.user_rate}/user`, '$server': `$${p.server_rate}/server`, '$location': `$${p.location_rate}/loc` }));
 
   return (
     <div>
@@ -323,7 +323,7 @@ function PackagesAdmin() {
           <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Base rates, support hours, and package configuration</p>
         </div>
       </div>
-      <AdminTable cols={['name','$ws','$user','$server','coverage']} rows={rows} onEdit={setEditing} loading={loading} />
+      <AdminTable cols={['name','$ws','$user','$server','$location','coverage']} rows={rows} onEdit={setEditing} loading={loading} />
       {editing && (
         <Modal title={`Edit Package: ${editing.name}`} onClose={() => setEditing(null)} onSave={save} saving={saving}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
