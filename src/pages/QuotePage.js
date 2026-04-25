@@ -559,7 +559,7 @@ export default function QuotePage() {
             <div key={p.id} onClick={() => setSelectedPkg(p)} style={{ padding:'6px 7px', borderRadius:4, cursor:'pointer', marginBottom:2, border:`${selectedPkg?.id===p.id?'2':'1'}px solid ${selectedPkg?.id===p.id?'#2563eb':'#e5e7eb'}`, background:selectedPkg?.id===p.id?'#eff6ff':'white' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <span style={{ fontSize:10, fontWeight:700, color:selectedPkg?.id===p.id?'#1e40af':'#374151' }}>{p.name}</span>
-                <span style={{ fontSize:9, fontFamily:'DM Mono, monospace', color:'#6b7280', background:'#f3f4f6', padding:'1px 4px', borderRadius:3 }}>${p.ws_rate}/WS · ${p.user_rate}/user</span>
+                <span style={{ fontSize:9, fontFamily:'DM Mono, monospace', color:'#6b7280', background:'#f3f4f6', padding:'1px 4px', borderRadius:3 }}>${p.ws_rate}/WS · ${p.user_rate}/US</span>
               </div>
               <div style={{ fontSize:8, color:'#9ca3af', marginTop:1 }}>{p.ideal_desc}</div>
             </div>
@@ -875,8 +875,8 @@ export default function QuotePage() {
                 <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
                   <div style={{ fontSize:10, fontWeight:700, color:'#374151', marginBottom:6 }}>Monthly Recurring Revenue</div>
                   <SH l="Managed IT Services"/>
-                  <LI lbl={`Workstations (${inputs.workstations} × $${selectedPkg?.ws_rate})`} v={result.wB} ind/>
-                  <LI lbl={`User helpdesk (${inputs.users} × $${selectedPkg?.user_rate})`} v={result.uB} ind/>
+                  <LI lbl={`WS (${inputs.workstations} × $${selectedPkg?.ws_rate})`} v={result.wB} ind/>
+                  <LI lbl={`US (${inputs.users} × $${selectedPkg?.user_rate})`} v={result.uB} ind/>
                   <LI lbl="Servers" v={result.sB} ind/>
                   <LI lbl="Locations" v={result.lB} ind/>
                   <LI lbl="Cloud tenants" v={result.tB} ind/>

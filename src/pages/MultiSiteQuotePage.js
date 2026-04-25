@@ -583,7 +583,7 @@ export default function MultiSiteQuotePage() {
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <span style={{ fontSize:10, fontWeight:700, color:selectedPkg?.id===p.id?'#1e40af':'#374151' }}>{p.name}</span>
                     <span style={{ fontSize:9, fontFamily:'DM Mono, monospace', color:'#6b7280', background:'#f3f4f6', padding:'1px 4px', borderRadius:3 }}>
-                      ${p.ws_rate}/WS · ${p.user_rate}/user · {fmt$(p.location_rate)}/site
+                      ${p.ws_rate}/WS · ${p.user_rate}/US · {fmt$(p.location_rate)}/LOC
                     </span>
                   </div>
                 </div>
@@ -780,8 +780,8 @@ export default function MultiSiteQuotePage() {
                       <div style={{ padding:'0 12px 12px', borderTop:'1px solid #f1f5f9' }}>
                         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:4, marginTop:8 }}>
                           {[
-                            [`Users (${l.users} × ${fmt$(selectedPkg?.user_rate)})`, res.breakdown.users],
-                            [`Workstations (${l.workstations} × ${fmt$(selectedPkg?.ws_rate)})`, res.breakdown.workstations],
+                            [`US (${l.users} × ${fmt$(selectedPkg?.user_rate)})`, res.breakdown.users],
+                            [`WS (${l.workstations} × ${fmt$(selectedPkg?.ws_rate)})`, res.breakdown.workstations],
                             l.servers > 0 && [`Servers (${l.servers} × ${fmt$(selectedPkg?.server_rate)})`, res.breakdown.servers],
                             !res.isRestricted && res.breakdown.locationFee > 0 && [`Site Management Fee`, res.breakdown.locationFee],
                             res.breakdown.endpointUplift > 0 && ['Endpoint density uplift', res.breakdown.endpointUplift],

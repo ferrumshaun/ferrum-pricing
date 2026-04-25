@@ -378,7 +378,7 @@ function PackagesAdmin() {
     }
   }
 
-  const rows = packages.map(p => ({ ...p, '$ws': `$${p.ws_rate}/WS`, '$user': `$${p.user_rate}/user`, '$server': `$${p.server_rate}/server`, '$location': `$${p.location_rate}/loc` }));
+  const rows = packages.map(p => ({ ...p, '$ws': `$${p.ws_rate}/WS`, '$user': `$${p.user_rate}/US`, '$server': `$${p.server_rate}/server`, '$location': `$${p.location_rate}/LOC` }));
 
   function startNew() {
     setEditing({
