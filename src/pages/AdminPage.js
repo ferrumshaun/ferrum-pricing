@@ -529,7 +529,7 @@ function SettingsAdmin() {
         <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Global rates: onboarding costs, stack costs, burdened rate, contract discounts</p>
       </div>
       {loading ? <div style={{ padding: 20, color: '#6b7280', fontSize: 12 }}>Loading...</div> : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, tableLayout:'fixed' }}>
           <thead>
             <tr style={{ background: '#f9fafb' }}>
               {['Setting','Value','Description'].map(h => <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: '#6b7280', fontWeight: 600, borderBottom: '1px solid #e5e7eb', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>)}
@@ -540,7 +540,25 @@ function SettingsAdmin() {
             {settings.map((s, i) => (
               <tr key={s.id} style={{ borderBottom: '1px solid #f3f4f6', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                 <td style={{ padding: '8px 10px', fontWeight: 600, color: '#374151' }}>{s.label || s.key}</td>
-                <td style={{ padding: '8px 10px', fontFamily: 'DM Mono, monospace', color: '#1e40af', fontWeight: 600 }}>{s.value}</td>
+                <td style={{ padding: '8px 10px', maxWidth: 280, overflow: 'hidden' }}>
+                  {s.key === 'company_logo_url' ? (
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      {s.value?.startsWith('data:image') ? (
+                        <img src={s.value} alt="logo" style={{ height:24, maxWidth:80, objectFit:'contain', background:'#0f1e3c', borderRadius:3, padding:'2px 4px' }} />
+                      ) : (
+                        <span style={{ fontFamily:'DM Mono, monospace', color:'#1e40af', fontWeight:600, fontSize:10, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:200, display:'block' }}>
+                          {s.value?.length > 40 ? s.value.slice(0,40) + '…' : s.value}
+                        </span>
+                      )}
+                      <span style={{ fontSize:9, color:'#9ca3af' }}>{s.value?.startsWith('data:image') ? '(uploaded image)' : ''}</span>
+                    </div>
+                  ) : (
+                    <span style={{ fontFamily:'DM Mono, monospace', color:'#1e40af', fontWeight:600, fontSize:11,
+                      overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'block', maxWidth:260 }}>
+                      {s.value?.length > 60 ? s.value.slice(0,60) + '…' : s.value}
+                    </span>
+                  )}
+                </td>
                 <td style={{ padding: '8px 10px', color: '#6b7280', fontSize: 11 }}>{s.description}</td>
                 <td style={{ padding: '8px 10px' }}><button onClick={() => setEditing({...s})} style={btnStyle('#eff6ff','#1e40af')}>Edit</button></td>
               </tr>
