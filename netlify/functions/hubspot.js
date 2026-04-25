@@ -1,5 +1,6 @@
 // Netlify serverless function — proxies HubSpot API calls server-side
-const HUBSPOT_BASE = 'https://api.hubapi.com';
+const HUBSPOT_BASE   = 'https://api.hubapi.com';
+const HUBSPOT_PORTAL = '47514592'; // FerrumIT HubSpot portal ID — update if portal changes
 
 async function hs(token, method, path, body) {
   const opts = {
@@ -159,7 +160,7 @@ exports.handler = async (event) => {
           dealId: deal.id,
           company,
           contact,
-          dealUrl: `https://app.hubspot.com/contacts/deals/${deal.id}`
+          dealUrl: `https://app.hubspot.com/contacts/${HUBSPOT_PORTAL}/record/0-3/${deal.id}`
         };
         break;
       }
@@ -178,7 +179,7 @@ exports.handler = async (event) => {
             description: `FerrumIT Quote ${payload.quoteNumber} | Package: ${payload.packageName} | MRR: $${payload.mrr?.toFixed(2)}/mo | Term: ${payload.contractTerm} months`,
           }
         });
-        result = { ...r.data, dealUrl: `https://app.hubspot.com/contacts/deals/${r.data.id}` };
+        result = { ...r.data, dealUrl: `https://app.hubspot.com/contacts/${HUBSPOT_PORTAL}/record/0-3/${r.data.id}` };
         return { statusCode: r.status, headers: {'Content-Type':'application/json'}, body: JSON.stringify(result) };
       }
 

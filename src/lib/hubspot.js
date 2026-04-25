@@ -31,7 +31,7 @@ export async function searchDeals(query)  {
 export async function getDealFull(dealId) { return callProxy('get_deal_full', { dealId }); }
 export async function createDeal(p)       {
   const deal = await callProxy('create', p);
-  return { id: deal.id, url: deal.dealUrl || `https://app.hubspot.com/contacts/deals/${deal.id}` };
+  return { id: deal.id, url: deal.dealUrl || `https://app.hubspot.com/contacts/47514592/record/0-3/${deal.id}` };
 }
 export async function updateDeal(dealId, p) { return callProxy('update', { dealId, ...p }); }
 

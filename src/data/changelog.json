@@ -1,5 +1,19 @@
 [
   {
+    "version": "2.0.3",
+    "date": "2026-04-25",
+    "summary": "Fix HubSpot deal URL format and debug company association issue",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [],
+      "fixed": [
+        "HubSpot deal View link now uses correct URL format (/contacts/{portalId}/record/0-3/{dealId}) \u2014 old format was returning a HubSpot 404",
+        "Added debug logging to connectDeal to diagnose company association not returning data"
+      ]
+    }
+  },
+  {
     "version": "2.0.2",
     "date": "2026-04-25",
     "summary": "Fix HubSpot deal pull-in \u2014 business name, address, and zip now populate correctly",
