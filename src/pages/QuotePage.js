@@ -58,6 +58,9 @@ export default function QuotePage() {
   const [zipApplied,      setZipApplied]      = useState(false);
   const [marketCity,      setMarketCity]      = useState('');
   const [marketState,     setMarketState]     = useState('');
+  const [repId,              setRepId]              = useState(null);
+  const [repProfile,         setRepProfile]         = useState(null);
+  const [teamMembers,        setTeamMembers]        = useState([]);
   const [acceptedMktTier,    setAcceptedMktTier]    = useState(null);
   const [aiMultiplier,       setAiMultiplier]       = useState(null); // from accepted market analysis
   const [aiMultiplierTier,   setAiMultiplierTier]   = useState(null); // label e.g. "Standard"
@@ -86,6 +89,22 @@ export default function QuotePage() {
   const [hubDealUrl,  setHubDealUrl]  = useState('');
   const [hubSyncing,  setHubSyncing]  = useState(false);
 
+  // ── Load team members for rep selector ──────────────────────────────────────
+  useEffect(() => {
+    supabase.from('profiles').select('id, full_name, email, commission_rate').order('full_name')
+      .then(({ data }) => setTeamMembers(data || []));
+  }, []);
+
+  useEffect(() => {
+    if (!repId && profile?.id && !id) setRepId(profile.id);
+  }, [profile, id]);
+
+  useEffect(() => {
+    if (!repId || !teamMembers.length) return;
+    const rep = teamMembers.find(m => m.id === repId);
+    if (rep) setRepProfile(rep);
+  }, [repId, teamMembers]);
+
   // Load existing quote
   useEffect(() => {
     if (!id || id === 'new' || configLoading) return;
@@ -101,6 +120,7 @@ export default function QuotePage() {
       if (data.inputs?.marketCity)       setMarketCity(data.inputs.marketCity);
       if (data.inputs?.marketState)      setMarketState(data.inputs.marketState);
       if (data.inputs?.aiMultiplier != null) { setAiMultiplier(data.inputs.aiMultiplier); setAiMultiplierTier(data.inputs.aiMultiplierTier || null); }
+      if (data.rep_id) setRepId(data.rep_id);
       setQuoteStatus(data.status || 'draft');
       setDealDescription(data.notes || '');
       setHubDealId(data.hubspot_deal_id || '');
@@ -252,7 +272,7 @@ export default function QuotePage() {
   async function saveQuote() {
     if (!recipientBiz.trim()) { setSaveMsg('Please enter a recipient business name.'); return; }
     setSaving(true); setSaveMsg('');
-    const allInputs = { ...inputs, proposalName, recipientContact, recipientEmail, recipientAddress, hubspotDealName: hubDealName, marketCity, marketState, aiMultiplier: aiMultiplier ?? null, aiMultiplierTier: aiMultiplierTier ?? null };
+    const allInputs = { ...inputs, proposalName, recipientContact, recipientEmail, recipientAddress, hubspotDealName: hubDealName, marketCity, marketState, aiMultiplier: aiMultiplier ?? null, aiMultiplierTier: aiMultiplierTier ?? null, repId: repId || null, repName: repProfile?.full_name || repProfile?.email || null };
     const totals = result ? {
       finalMRR: result.finalMRR, onboarding: result.onboarding,
       impliedGM: result.impliedGM, totalCost: result.totalCost,
@@ -265,6 +285,7 @@ export default function QuotePage() {
       line_items: result?.lineItems || [], totals,
       hubspot_deal_id: hubDealId || null,
       hubspot_deal_url: hubDealUrl || null,
+      rep_id:    repId || profile?.id || null,
       updated_by: profile?.id,
     };
     if (!existingQuote) payload.created_by = profile?.id;
@@ -348,7 +369,10 @@ export default function QuotePage() {
   }
 
   const result = configLoading || !selectedPkg || !selectedMkt ? null
-    : calcQuote({ inputs, pkg: selectedPkg, marketTier: selectedMkt, products, settings, aiMultiplierOverride: aiMultiplier });
+    : calcQuote({ inputs, pkg: selectedPkg, marketTier: selectedMkt, products, settings,
+        aiMultiplierOverride: aiMultiplier,
+        repCommissionRate: repProfile?.commission_rate ?? null,
+      });
 
   if (configLoading) return <div style={{ padding: 24, color: '#6b7280', fontSize: 12 }}>Loading pricing data...</div>;
 
@@ -405,6 +429,18 @@ export default function QuotePage() {
 
         {/* ── Client / Proposal fields ── */}
         <Sec t="Proposal Details" c="#0f1e3c">
+          {/* Rep selector */}
+          <Fld lbl="Assigned Sales Rep">
+            <select value={repId || ''} onChange={e => setRepId(e.target.value)}
+              style={{ width:'100%', padding:'4px 7px', border:'1px solid #d1d5db', borderRadius:4, fontSize:10, background:'white', outline:'none' }}>
+              <option value="">— select rep —</option>
+              {teamMembers.map(m => (
+                <option key={m.id} value={m.id}>
+                  {m.full_name || m.email?.split('@')[0]}{m.commission_rate != null ? ` (${(m.commission_rate*100).toFixed(1)}% comm)` : ' (global rate)'}
+                </option>
+              ))}
+            </select>
+          </Fld>
           <Fld lbl="Proposal Name">
             <TI value={proposalName} onChange={setProposalName} placeholder="e.g. FerrumIT Managed IT — Acme Corp" />
           </Fld>
@@ -805,10 +841,28 @@ export default function QuotePage() {
                     <LI lbl={`Labor (${result.svcHrs.toFixed(1)} hrs × $${settings.burdened_hourly_rate || 125}/hr)`} v={result.svcCost} ind/>
                     <LI lbl="Add-on delivery cost" v={result.addonCost} ind/>
                     <LI lbl="Estimated Total Cost" v={result.totalCost} bold/>
+                    <div style={{ borderTop:'1px dashed #e5e7eb', margin:'5px 0' }}/>
+                    {result.protectedAddonRevenue > 0 && (
+                      <LI lbl="Protected product revenue (MSRP — no discount)" v={result.protectedAddonRevenue} ind muted/>
+                    )}
+                    {result.commission > 0 && (
+                      <LI lbl={`Commission — ${repProfile?.full_name || repProfile?.email?.split('@')[0] || 'Rep'} (${fmtPct(result.commissionRate)} on ${fmt$0(result.commissionBase)} commissionable MRR)`} v={-result.commission} ind/>
+                    )}
+                    {result.commission > 0 && (
+                      <LI lbl="Net MRR after commission" v={result.netAfterCommission} bold/>
+                    )}
                     <div style={{ display:'flex', justifyContent:'space-between', padding:'5px 6px', background:gb, borderRadius:4, marginTop:4 }}>
                       <span style={{ fontSize:10, fontWeight:700, color:gc }}>Implied Gross Margin</span>
                       <span style={{ fontSize:13, fontWeight:700, fontFamily:'DM Mono, monospace', color:gc }}>{fmtPct(result.impliedGM)}</span>
                     </div>
+                    {result.commission > 0 && (
+                      <div style={{ display:'flex', justifyContent:'space-between', padding:'4px 6px', background:'#f8fafc', borderRadius:4, marginTop:3 }}>
+                        <span style={{ fontSize:9, color:'#6b7280' }}>GM after commission</span>
+                        <span style={{ fontSize:11, fontWeight:700, fontFamily:'DM Mono, monospace', color: result.netAfterCommission - result.totalCost > 0 ? '#166534' : '#dc2626' }}>
+                          {fmtPct((result.netAfterCommission - result.totalCost) / result.finalMRR)}
+                        </span>
+                      </div>
+                    )}
                     {result.impliedGM<0.40&&<div style={{ marginTop:4, fontSize:9, color:'#92400e', background:'#fef3c7', padding:'3px 5px', borderRadius:3 }}>⚠ Below 40% — review scope or package.</div>}
                   </div>
 

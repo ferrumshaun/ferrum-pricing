@@ -187,7 +187,7 @@ const COMP_M = { none: 1.0, moderate: 1.12, high: 1.22 };
 const CPLX_M = { low: 1.0, medium: 1.08, high: 1.18 };
 
 // ─── MAIN CALC ───────────────────────────────────────────────────────────────
-export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMultiplierOverride }) {
+export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMultiplierOverride, repCommissionRate }) {
   if (!pkg || !marketTier || !settings) return null;
 
   const s = settings; // shorthand — settings is a key→value map
@@ -218,7 +218,9 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMulti
 
   // ── Selected add-on products ──────────────────────────────────────────────
   const lineItems = [];
-  let addonRevenue = 0;
+  let discountableAddonRevenue   = 0;  // products eligible for contract discount
+  let protectedAddonRevenue      = 0;  // MSRP products — never discounted
+  let nonCommissionAddonRevenue  = 0;  // products excluded from commission base
   let addonCost = 0;
 
   for (const product of products.filter(p => inputs.selectedProducts?.includes(p.id))) {
@@ -226,8 +228,17 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMulti
     const costQty = getCostQty(product, inputs);
     const revenue = sellQty * product.sell_price;
     const cost    = costQty * product.cost_price;
-    addonRevenue += revenue;
-    addonCost    += cost;
+
+    if (product.no_discount) {
+      protectedAddonRevenue += revenue;     // passes through at full MSRP
+    } else {
+      discountableAddonRevenue += revenue;  // eligible for contract discount
+    }
+    if (product.no_commission) {
+      nonCommissionAddonRevenue += revenue; // excluded from commission base
+    }
+
+    addonCost += cost;
     lineItems.push({
       product_id:       product.id,
       product_name:     product.name,
@@ -238,25 +249,42 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMulti
       cost_qty:         costQty,
       sell_price:       product.sell_price,
       cost_price:       product.cost_price,
+      no_discount:      product.no_discount  || false,
+      no_commission:    product.no_commission || false,
       revenue,
       cost
     });
   }
 
-  const opSubtotal = itSubtotal + addonRevenue;
+  const addonRevenue = discountableAddonRevenue + protectedAddonRevenue;
 
-  // ── Composite multiplier ──────────────────────────────────────────────────
+  // ── Composite multiplier (applies to labor + discountable addons only) ────
   const compMult = (RISK_M[inputs.industryRisk] || 1)
                  * (COMP_M[inputs.compliance]    || 1)
                  * (CPLX_M[inputs.complexity]    || 1);
-  const riskAdjMRR = opSubtotal * compMult;
 
-  // ── Floor + discount ──────────────────────────────────────────────────────
+  // Labor + discountable products get the risk/compliance multiplier
+  const discountableSubtotal = (itSubtotal + discountableAddonRevenue) * compMult;
+  // Protected products pass through untouched
+  const riskAdjMRR = discountableSubtotal + protectedAddonRevenue;
+
+  // ── Floor + discount (labor + discountable addons only) ───────────────────
   const floor    = parseFloat(s.min_commitment) || 350;
   const discKey  = `contract_disc_${inputs.contractTerm}`;
   const discRate = parseFloat(s[discKey]) || 0;
-  const discount = -Math.max(riskAdjMRR - floor, 0) * discRate;
-  const finalMRR = Math.max(riskAdjMRR + discount, floor);
+  // Discount only on the portion above the floor, and only on discountable revenue
+  const discountableAboveFloor = Math.max(discountableSubtotal - floor, 0);
+  const discount  = -discountableAboveFloor * discRate;
+  const discountedLabor = Math.max(discountableSubtotal + discount, floor);
+  const finalMRR  = discountedLabor + protectedAddonRevenue;
+
+  // ── Commission ────────────────────────────────────────────────────────────
+  // Rep-level rate takes priority over global setting
+  const commissionRate = repCommissionRate != null ? repCommissionRate : (parseFloat(s.commission_rate) || 0);
+  // Commission base = discounted labor + commissionable addons (excludes no_commission products)
+  const commissionBase  = discountedLabor + (discountableAddonRevenue - nonCommissionAddonRevenue) * (1 - discRate);
+  const commission      = commissionBase * commissionRate;
+  const netAfterCommission = finalMRR - commission;
 
   // ── Cost model ────────────────────────────────────────────────────────────
   const toolingCost = inputs.workstations * parseFloat(s.stack_cost_per_ws)
@@ -300,6 +328,8 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMulti
     // Summary
     opSubtotal, compMult, riskAdjMRR, floor,
     discount, discRate, finalMRR,
+    discountedLabor, protectedAddonRevenue, discountableAddonRevenue,
+    commission, commissionRate, commissionBase, netAfterCommission,
     // Cost model
     toolingCost, svcHrs, svcCost, addonCost, totalCost, impliedGM,
     // Onboarding

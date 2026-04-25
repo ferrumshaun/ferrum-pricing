@@ -152,7 +152,7 @@ function ProductsAdmin() {
 
   function startNew() {
     setSaveError('');
-    setEditing({ name:'', category:'', sub_category:'', description:'', sell_price:'', cost_price:'', qty_driver:'user', exclusive_group:'', sort_order:0, active:true, notes:'' });
+    setEditing({ name:'', category:'', sub_category:'', description:'', sell_price:'', cost_price:'', qty_driver:'user', exclusive_group:'', sort_order:0, active:true, notes:'', no_discount:false, no_commission:false });
   }
 
   async function save() {
@@ -171,6 +171,8 @@ function ProductsAdmin() {
       active:          editing.active !== false,
       notes:           editing.notes || null,
       cost_qty_driver: editing.cost_qty_driver || null,
+      no_discount:     editing.no_discount  || false,
+      no_commission:   editing.no_commission || false,
       updated_by:      profile?.id
     };
 
@@ -219,7 +221,10 @@ function ProductsAdmin() {
   }
 
   const margin = p => p.sell_price > 0 ? ((1 - p.cost_price / p.sell_price) * 100).toFixed(0) + '%' : '—';
-  const rows = products.map(p => ({ ...p, '$sell': `$${p.sell_price}`, '$cost': `$${p.cost_price}`, 'gm': margin(p) }));
+  const rows = products.map(p => ({ ...p,
+    '$sell': `$${p.sell_price}`, '$cost': `$${p.cost_price}`, 'gm': margin(p),
+    'flags': [p.no_discount ? '🔒 No Discount' : '', p.no_commission ? '💼 No Comm' : ''].filter(Boolean).join(' · ') || '—'
+  }));
 
   return (
     <div>
@@ -230,7 +235,7 @@ function ProductsAdmin() {
         </div>
         <button onClick={startNew} style={{ padding: '6px 14px', background: '#0f1e3c', color: 'white', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600 }}>+ Add Product</button>
       </div>
-      <AdminTable cols={['name','category','qty_driver','$sell','$cost','gm']} rows={rows} onEdit={r => { setSaveError(''); setEditing(r); }} onToggle={toggle} loading={loading} />
+      <AdminTable cols={['name','category','qty_driver','$sell','$cost','gm','flags']} rows={rows} onEdit={r => { setSaveError(''); setEditing(r); }} onToggle={toggle} loading={loading} />
       {editing && (
         <Modal title={editing.id ? 'Edit Product' : 'New Product'} onClose={() => setEditing(null)} onSave={save} saving={saving}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
@@ -255,6 +260,29 @@ function ProductsAdmin() {
             <Field label="Exclusive Group (optional)">
               <Input value={editing.exclusive_group || ''} onChange={v => setEditing(e => ({...e, exclusive_group: v}))} placeholder="e.g. inky, endpoint_sec" />
             </Field>
+            <div style={{ gridColumn:'1/-1', borderTop:'1px solid #f1f5f9', paddingTop:10, marginTop:2 }}>
+              <div style={{ fontSize:10, fontWeight:700, color:'#374151', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.05em' }}>Pricing Protection Flags</div>
+              <div style={{ display:'flex', gap:16, flexWrap:'wrap' }}>
+                <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer' }}>
+                  <input type="checkbox" checked={editing.no_discount || false}
+                    onChange={e2 => setEditing(e => ({...e, no_discount: e2.target.checked}))}
+                    style={{ width:14, height:14 }} />
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:700, color:'#0f1e3c' }}>No Discount</div>
+                    <div style={{ fontSize:9, color:'#6b7280' }}>MSRP product — never discounted. Contract term discounts do not apply.</div>
+                  </div>
+                </label>
+                <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer' }}>
+                  <input type="checkbox" checked={editing.no_commission || false}
+                    onChange={e2 => setEditing(e => ({...e, no_commission: e2.target.checked}))}
+                    style={{ width:14, height:14 }} />
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:700, color:'#0f1e3c' }}>No Commission</div>
+                    <div style={{ fontSize:9, color:'#6b7280' }}>Vendor pass-through — excluded from commissionable revenue base.</div>
+                  </div>
+                </label>
+              </div>
+            </div>
             <div style={{ gridColumn: '1/-1' }}>
               <Field label="Description"><Input value={editing.description || ''} onChange={v => setEditing(e => ({...e, description: v}))} /></Field>
             </div>
@@ -529,7 +557,7 @@ function UsersAdmin() {
   async function save() {
     setSaving(true);
     const old = users.find(u => u.id === editing.id);
-    const { error } = await supabase.from('profiles').update({ full_name: editing.full_name, role: editing.role }).eq('id', editing.id);
+    const { error } = await supabase.from('profiles').update({ full_name: editing.full_name, role: editing.role, commission_rate: editing.commission_rate != null && editing.commission_rate !== '' ? parseFloat(editing.commission_rate) : null }).eq('id', editing.id);
     if (!error) {
       await logActivity({ action: 'UPDATE', entityType: 'user', entityId: editing.id, entityName: editing.email, changes: diffObjects(old, editing) });
       setEditing(null); load();
@@ -537,7 +565,7 @@ function UsersAdmin() {
     setSaving(false);
   }
 
-  const rows = users.map(u => ({ ...u, last_login: u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never' }));
+  const rows = users.map(u => ({ ...u, last_login: u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never', commission: u.commission_rate != null ? `${(u.commission_rate * 100).toFixed(1)}%` : 'Global default' }));
 
   return (
     <div>
@@ -545,12 +573,21 @@ function UsersAdmin() {
         <h2 style={{ fontSize: 14, fontWeight: 700, color: '#0f1e3c' }}>Users</h2>
         <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Manage roles. New users sign up via Supabase Auth invite.</p>
       </div>
-      <AdminTable cols={['email','full_name','role','last_login']} rows={rows} onEdit={setEditing} loading={loading} />
+      <AdminTable cols={['email','full_name','role','commission','last_login']} rows={rows} onEdit={setEditing} loading={loading} />
       {editing && (
         <Modal title={`Edit User: ${editing.email}`} onClose={() => setEditing(null)} onSave={save} saving={saving}>
           <Field label="Full Name"><Input value={editing.full_name || ''} onChange={v => setEditing(e => ({...e, full_name: v}))} /></Field>
           <Field label="Role">
             <Select value={editing.role} onChange={v => setEditing(e => ({...e, role: v}))} opts={[['user','User'],['admin','Admin']]} />
+          </Field>
+          <Field label="Commission Rate (leave blank to use global default)">
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <Input type="number" value={editing.commission_rate != null ? (editing.commission_rate * 100).toFixed(1) : ''} step="0.1" min="0" max="100"
+                placeholder="e.g. 10 for 10% — blank = global default"
+                onChange={v => setEditing(e => ({...e, commission_rate: v === '' ? null : parseFloat(v) / 100}))} />
+              <span style={{ fontSize:11, color:'#6b7280' }}>%</span>
+            </div>
+            <div style={{ fontSize:9, color:'#9ca3af', marginTop:2 }}>Global default: from Admin → Pricing Settings → commission_rate</div>
           </Field>
           {editing.id === myProfile?.id && (
             <div style={{ padding: '7px 10px', background: '#fef3c7', borderRadius: 5, fontSize: 11, color: '#92400e', marginTop: 4 }}>You are editing your own account.</div>

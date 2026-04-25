@@ -1,5 +1,32 @@
 [
   {
+    "version": "2.4.0",
+    "date": "2026-04-25",
+    "summary": "Product discount/commission protection + per-rep commission rates + assigned rep on quotes",
+    "audience": "admin",
+    "categories": {
+      "new": [
+        "No Discount flag on products \u2014 MSRP products pass through at full vendor price, never discounted",
+        "No Commission flag on products \u2014 vendor pass-through products excluded from rep commission base",
+        "Assigned Sales Rep field on every Managed IT quote \u2014 defaults to the logged-in user, changeable at any time",
+        "Per-user commission rate in Admin \u2192 Users \u2014 set individually per team member (e.g. 8%, 10%, 12%)",
+        "Global commission rate fallback in Admin \u2192 Pricing Settings \u2014 applies when no user rate is set",
+        "Commission priority chain: rep rate \u2192 global rate \u2192 0%",
+        "Commission line in cost model shows rep name, rate, and commissionable base \u2014 fully transparent",
+        "Net MRR after commission and GM after commission shown in cost model",
+        "Protected product revenue shown as separate line \u2014 clear audit trail of what's protected",
+        "Flags visible in Admin \u2192 Products table \u2014 \ud83d\udd12 No Discount \u00b7 \ud83d\udcbc No Comm badges"
+      ],
+      "improved": [
+        "Contract term discounts now only apply to labor + discountable add-ons \u2014 MSRP products added after discount calculation",
+        "Risk/compliance multipliers scoped to discountable revenue only"
+      ],
+      "fixed": [
+        "Previously a contract discount applied to full MRR including MSRP products \u2014 costing unrecoverable margin on every deal with security tooling"
+      ]
+    }
+  },
+  {
     "version": "2.3.1",
     "date": "2026-04-25",
     "summary": "Fix market tier / AI analysis disconnect \u2014 AI multiplier now drives Managed IT pricing",
