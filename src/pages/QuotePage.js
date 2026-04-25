@@ -10,6 +10,7 @@ import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
 import MarketRateCard from '../components/MarketRateCard';
+import OnboardingIncentive, { formatIncentiveForExport } from '../components/OnboardingIncentive';
 
 const DEF_INPUTS = {
   users:0, sharedMailboxes:0, workstations:0, endpoints:0,
@@ -37,6 +38,8 @@ export default function QuotePage() {
   const [zipApplied,      setZipApplied]      = useState(false);
   const [marketCity,      setMarketCity]      = useState('');
   const [marketState,     setMarketState]     = useState('');
+  const [acceptedMktTier, setAcceptedMktTier] = useState(null);
+  const [obIncentive,     setObIncentive]     = useState(null);
 
   // ── Quote config ──────────────────────────────────────────────────────────
   const [inputs,      setInputs]      = useState(DEF_INPUTS);
@@ -296,8 +299,18 @@ export default function QuotePage() {
         ...result.lineItems.map(li => ({ description: li.product_name, quantity: li.qty, unit_price: li.sell_price, total: li.revenue, recurring: true })),
       ],
       monthly_mrr:      result.finalMRR,
-      onboarding_fee:   result.onboarding,
-      contract_value:   result.finalMRR * inputs.contractTerm + result.onboarding,
+      onboarding_fee:        result.onboarding,
+      onboarding_incentive:  obIncentive?.mode ? {
+        mode:         obIncentive.mode,
+        effectiveFee: obIncentive.effectiveFee,
+        monthlyAdd:   obIncentive.monthlyAdd   || 0,
+        splitMonths:  obIncentive.splitMonths  || 0,
+        discountPct:  obIncentive.discountPct  || 0,
+        discountAmount: obIncentive.discountAmount || 0,
+        fullFee:      result.onboarding,
+        export:       formatIncentiveForExport(obIncentive, result.onboarding),
+      } : null,
+      contract_value:   result.finalMRR * inputs.contractTerm + (obIncentive?.effectiveFee ?? result.onboarding),
       discount_rate:    result.discRate,
       hubspot_deal_id:  hubDealId,
       dealDescription,
@@ -563,7 +576,7 @@ export default function QuotePage() {
 
               {/* KPI cards */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:7, marginBottom:10 }}>
-                {[['Monthly MRR',fmt$0(result.finalMRR),'#0f1e3c','#f0f4ff'],['Onboarding',fmt$0(result.onboarding),'#0f766e','#f0fdf4'],['Implied GM',fmtPct(result.impliedGM),gc,gb],['Contract TCV',fmt$0(result.finalMRR*inputs.contractTerm+result.onboarding),'#6d28d9','#faf5ff']].map(([l,v,co,bg])=>(
+                {[['Monthly MRR',fmt$0(result.finalMRR),'#0f1e3c','#f0f4ff'],['Onboarding',fmt$0(obIncentive?.effectiveFee ?? result.onboarding),'#0f766e','#f0fdf4'],['Implied GM',fmtPct(result.impliedGM),gc,gb],['Contract TCV',fmt$0(result.finalMRR*inputs.contractTerm+result.onboarding),'#6d28d9','#faf5ff']].map(([l,v,co,bg])=>(
                   <div key={l} style={{ background:bg, borderRadius:5, padding:'7px 6px', textAlign:'center' }}>
                     <div style={{ fontSize:7, fontWeight:600, color:'#6b7280', letterSpacing:'.05em', textTransform:'uppercase', marginBottom:2 }}>{l}</div>
                     <div style={{ fontSize:13, fontWeight:700, fontFamily:'DM Mono, monospace', color:co }}>{v}</div>
@@ -693,6 +706,12 @@ export default function QuotePage() {
                     <div style={{ margin:'4px 0', borderTop:'2px solid #0f766e' }}/>
                     <LI lbl="Total Onboarding Fee" v={result.onboarding} hi/>
                   </div>
+                  <OnboardingIncentive
+                    fee={result.onboarding}
+                    marketTier={acceptedMktTier || (zipResult?.tier === 'major_metro' ? 'premium' : zipResult?.tier === 'mid_market' ? 'standard' : 'secondary')}
+                    contractTerm={inputs.contractTerm}
+                    onChange={inc => setObIncentive(inc)}
+                  />
 
                   {/* Cost model */}
                   <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
@@ -722,7 +741,7 @@ export default function QuotePage() {
                       inputs.mobileDevices > 0 && ['Mobile Devices', inputs.mobileDevices],
                       ['Monthly MRR', fmt$0(result.finalMRR)],
                       ['Onboarding', fmt$0(result.onboarding)],
-                      ['Total Contract Value', fmt$0(result.finalMRR*inputs.contractTerm+result.onboarding)],
+                      ['Total Contract Value', fmt$0(result.finalMRR*inputs.contractTerm+(obIncentive?.effectiveFee ?? result.onboarding))],
                       hubDealId&&['HubSpot Deal', hubDealName||`#${hubDealId}`],
                     ].filter(Boolean).map(([k,v])=>(
                       <div key={k} style={{ display:'flex', justifyContent:'space-between', padding:'3px 0', borderBottom:'1px solid #1e3a5f' }}>
@@ -761,6 +780,7 @@ export default function QuotePage() {
                         const tier = marketTiers.find(t => t.tier_key === suggestedTier);
                         if (tier) setSelectedMkt(tier);
                       }
+                      if (suggestedTier) setAcceptedMktTier(suggestedTier);
                     }}
                   />
 

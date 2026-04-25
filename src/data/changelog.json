@@ -1,5 +1,29 @@
 [
   {
+    "version": "2.2.0",
+    "date": "2026-04-25",
+    "summary": "Onboarding Incentive Engine \u2014 AI-recommended split payments and discounts on every Managed IT quote",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Onboarding Incentive card appears on every Managed IT quote below the one-time fee \u2014 AI recommends split payment or discount based on market tier and fee size",
+        "Split Payment option: $500\u2013750 up to 3 months, $750\u20131500 up to 6 months, $1500+ up to 12 months \u2014 monthly installment added to MRR for the split period",
+        "Discount option: 10%, 20%, 30%, 50%, or Full Waive \u2014 reduces effective one-time fee",
+        "AI recommendation shown with reasoning \u2014 e.g. 'Secondary market \u2014 50% discount can be the difference between winning and losing'",
+        "Accept or override the recommendation \u2014 both modes fully configurable",
+        "Legal default recovery note built in \u2014 all incentives forfeited on contract breach, full fee recoverable per MSA",
+        "Effective onboarding fee flows through to Contract Value, TCV, and quote save",
+        "Incentive details saved with the quote \u2014 mode, effective fee, monthly adder, discount pct, full original fee",
+        "formatIncentiveForExport() prepares incentive for Smart Pricing Table injection"
+      ],
+      "improved": [
+        "Contract Value and TCV now reflect effective onboarding fee when an incentive is applied",
+        "Onboarding summary card shows effective fee, not full fee, when incentive is active"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "2.1.2",
     "date": "2026-04-25",
     "summary": "Admin \u2192 Market Rates tab + fix AI analysis engine",
