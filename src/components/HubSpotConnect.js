@@ -139,7 +139,7 @@ export default function HubSpotConnect({
         {dealId && expanded && (
           <div style={{ borderTop:'1px solid #fed7aa', padding:'8px 10px' }}>
             <label style={{ display:'block', fontSize:9, fontWeight:600, color:'#374151', marginBottom:3 }}>
-              Deal Description / Notes
+              Deal Description / Information
               <span style={{ fontWeight:400, color:'#9ca3af', marginLeft:4 }}>(syncs to HubSpot on save)</span>
             </label>
             <textarea

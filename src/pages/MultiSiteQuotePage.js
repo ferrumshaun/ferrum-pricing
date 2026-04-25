@@ -556,8 +556,6 @@ export default function MultiSiteQuotePage() {
                 <Fld lbl="Contact Name"><TI value={recipientContact} onChange={setRecipientContact} /></Fld>
               </Grid2>
               <Fld lbl="Contact Email"><TI value={recipientEmail} onChange={setRecipientEmail} /></Fld>
-              <Fld lbl="Deal Notes"><textarea value={dealDescription} onChange={e => setDealDescription(e.target.value)} rows={2}
-                style={{ width:'100%', padding:'4px 7px', border:'1px solid #d1d5db', borderRadius:4, fontSize:10, resize:'vertical', outline:'none', lineHeight:1.5 }} /></Fld>
             </Sec>
 
             {/* Package & Term */}

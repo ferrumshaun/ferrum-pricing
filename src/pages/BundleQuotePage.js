@@ -833,20 +833,6 @@ export default function BundleQuotePage() {
               </div>
             </div>
 
-            {/* Deal description */}
-            <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                  <div style={{ width:2, height:11, background:'#6b7280', borderRadius:2 }}/>
-                  <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', color:'#374151' }}>Deal Description / Information</span>
-                </div>
-                {hubDealId && <span style={{ fontSize:9, color:'#ff7a59', fontWeight:600 }}>↗ Syncs to HubSpot on save</span>}
-              </div>
-              <textarea value={dealDescription} onChange={e=>setDealDescription(e.target.value)} rows={3}
-                placeholder="Client context, scope decisions, pricing rationale..."
-                style={{ width:'100%', padding:'7px 9px', border:'1px solid #e5e7eb', borderRadius:5, fontSize:11, resize:'vertical', outline:'none', lineHeight:1.6 }}/>
-            </div>
-
             {/* Quote notes */}
             <MarketRateCard
                     quoteId={existingQuote?.id}

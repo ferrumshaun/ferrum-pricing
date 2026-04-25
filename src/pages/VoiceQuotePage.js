@@ -626,25 +626,7 @@ export default function VoiceQuotePage() {
                     </div>
                   )}
 
-                  {/* Notes */}
-                  {/* Deal Description */}
-                  <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                        <div style={{ width:2, height:11, background:'#6b7280', borderRadius:2 }}/>
-                        <span style={{ fontSize:9, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', color:'#374151' }}>Deal Description / Information</span>
-                      </div>
-                      {hubDealId && <span style={{ fontSize:9, color:'#ff7a59', fontWeight:600 }}>↗ Syncs to HubSpot on save</span>}
-                    </div>
-                    <textarea value={dealDescription} onChange={e=>setDealDescription(e.target.value)} rows={3}
-                      placeholder="Describe the deal — client context, scope, key decisions, hardware choices, waiver status..."
-                      style={{ width:'100%', padding:'7px 9px', border:'1px solid #e5e7eb', borderRadius:5, fontSize:11, resize:'vertical', outline:'none', lineHeight:1.6 }}/>
-                    <div style={{ fontSize:9, color:'#9ca3af', marginTop:3 }}>
-                      {hubDealId ? 'Pushed to HubSpot deal description on every save.' : 'Connect a HubSpot deal to sync automatically.'}
-                    </div>
-                  </div>
-
-                  {/* Quote Notes Log */}
+                  {/* Market Rate Analysis */}
                   <MarketRateCard
                     quoteId={existingQuote?.id}
                     clientZip={clientZip}
@@ -655,17 +637,8 @@ export default function VoiceQuotePage() {
                       }
                     }}
                   />
-                  <QuoteNotes
-                    quoteId={existingQuote?.id}
-                    quoteNumber={existingQuote?.quote_number}
-                    clientName={recipientBiz}
-                    hubDealId={hubDealId}
-                  />
 
-                  {/* Revision History */}
-                  <QuoteHistory quoteId={existingQuote?.id} />
-
-                  {/* Deal summary */}
+                  {/* Deal summary — matches QuotePage position */}
                   <div style={{ background:'#0f1e3c', borderRadius:6, padding:11 }}>
                     <div style={{ fontSize:8, fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'#475569', marginBottom:6 }}>Deal Summary</div>
                     {[
@@ -688,6 +661,19 @@ export default function VoiceQuotePage() {
                     ))}
                   </div>
                 </div>
+
+                  {/* Quote Notes — same position as QuotePage */}
+                  {existingQuote && (
+                    <>
+                      <QuoteNotes
+                        quoteId={existingQuote.id}
+                        quoteNumber={existingQuote.quote_number}
+                        clientName={recipientBiz}
+                        hubDealId={hubDealId}
+                      />
+                      <QuoteHistory quoteId={existingQuote.id} />
+                    </>
+                  )}
               </div>
             </div>
         }
