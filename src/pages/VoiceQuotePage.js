@@ -112,6 +112,10 @@ export default function VoiceQuotePage() {
             if (tier) { setSelectedMkt(tier); setZipApplied(true); }
           }
         }
+      } else {
+        const extracted = full.deal.dealname?.split(/\s[-–—]\s/)?.[0]?.trim();
+        if (extracted) setRecipientBiz(extracted);
+        setHubMsg('⚠ No company linked to this deal in HubSpot — business name extracted from deal name. Add address manually or link a company in HubSpot.');
       }
       if (full.contact) {
         const name = [full.contact.firstname, full.contact.lastname].filter(Boolean).join(' ');

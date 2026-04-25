@@ -2,14 +2,16 @@
   {
     "version": "2.0.3",
     "date": "2026-04-25",
-    "summary": "Fix HubSpot deal URL format and debug company association issue",
+    "summary": "Fix HubSpot deal URL and handle deals with no company association",
     "audience": "all",
     "categories": {
       "new": [],
       "improved": [],
       "fixed": [
-        "HubSpot deal View link now uses correct URL format (/contacts/{portalId}/record/0-3/{dealId}) \u2014 old format was returning a HubSpot 404",
-        "Added debug logging to connectDeal to diagnose company association not returning data"
+        "HubSpot deal View link now uses correct URL format \u2014 old format was returning a HubSpot 404",
+        "Deals with no company associated in HubSpot now extract the business name from the deal name automatically",
+        "Warning message shown when no company is linked \u2014 prompts user to add address manually or link a company in HubSpot",
+        "Fix applies across all three quote types: Managed IT, Voice, and Bundle"
       ]
     }
   },

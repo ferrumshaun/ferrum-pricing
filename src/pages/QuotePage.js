@@ -167,6 +167,12 @@ export default function QuotePage() {
           setZipResult(zr);
           if (zr) applyZip(zr);
         }
+      } else {
+        // No company associated with this deal in HubSpot
+        // Extract business name from deal name (e.g. "Acme Corp - Email Security" → "Acme Corp")
+        const extracted = full.deal.dealname?.split(/\s[-–—]\s/)?.[0]?.trim();
+        if (extracted) setRecipientBiz(extracted);
+        setHubMsg('⚠ No company linked to this deal in HubSpot — business name extracted from deal name. Add address manually or link a company in HubSpot.');
       }
 
       // Populate contact

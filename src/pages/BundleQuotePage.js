@@ -158,6 +158,10 @@ export default function BundleQuotePage() {
         const addr = [full.company.address, full.company.city, full.company.state, full.company.zip].filter(Boolean).join(', ');
         if (addr) setRecipientAddress(addr);
         if (full.company.zip) { setClientZip(full.company.zip); const zr = lookupZip(full.company.zip); setZipResult(zr); if (zr) applyZip(zr); }
+      } else {
+        const extracted = full.deal.dealname?.split(/\s[-–—]\s/)?.[0]?.trim();
+        if (extracted) setRecipientBiz(extracted);
+        setHubMsg('⚠ No company linked to this deal in HubSpot — business name extracted from deal name. Add address manually or link a company in HubSpot.');
       }
       if (full.contact) {
         const name = [full.contact.firstname, full.contact.lastname].filter(Boolean).join(' ');
