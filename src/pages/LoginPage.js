@@ -6,11 +6,13 @@ import { supabase } from '../lib/supabase';
 export default function LoginPage() {
   const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
-  const [logoUrl, setLogoUrl] = useState(null);
+  const [logoUrl, setLogoUrl] = useState('/ferrum-logo.png');
 
   useEffect(() => {
+    // Try to load custom logo from DB — falls back to /ferrum-logo.png if unauthenticated or not set
     supabase.from('pricing_settings').select('value').eq('key', 'company_logo_url').single()
-      .then(({ data }) => { if (data?.value) setLogoUrl(data.value); });
+      .then(({ data }) => { if (data?.value) setLogoUrl(data.value); })
+      .catch(() => {}); // silently fall back to default
   }, []);
   const { user }  = useAuth();
   const navigate  = useNavigate();
