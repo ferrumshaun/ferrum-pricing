@@ -160,7 +160,12 @@ exports.handler = async (event) => {
           dealId: deal.id,
           company,
           contact,
-          dealUrl: `https://app.hubspot.com/contacts/${HUBSPOT_PORTAL}/record/0-3/${deal.id}`
+          dealUrl: `https://app.hubspot.com/contacts/${HUBSPOT_PORTAL}/record/0-3/${deal.id}`,
+          _debug: {
+            compAssocStatus: compAssoc.status,
+            compAssocResults: compAssoc.data?.results || [],
+            compAssocRaw: compAssoc.data,
+          }
         };
         break;
       }
