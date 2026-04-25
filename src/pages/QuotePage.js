@@ -137,6 +137,7 @@ export default function QuotePage() {
     setHubLoading(true); setHubMsg('Pulling deal details...');
     try {
       const full = await getDealFull(deal.id);
+      console.log('[HubSpot Debug] full response:', JSON.stringify(full, null, 2));
 
       // Link the deal
       setHubDealId(full.dealId);
