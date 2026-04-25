@@ -947,8 +947,6 @@ function CollapsibleSec({ title, open, onToggle, badge, color, children }) {
       </div>
       {open && <div style={{ padding:'10px 12px' }}>{children}</div>}
     </div>
-    </div>
-    </>
   );
 }
 
