@@ -1,5 +1,26 @@
 [
   {
+    "version": "2.3.0",
+    "date": "2026-04-25",
+    "summary": "Bundle / Unbundle \u2014 convert any IT or Voice quote to a Bundle and back",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Bundle with Voice button on saved Managed IT quotes \u2014 carries all client details, devices, users, products, HubSpot link, and market data into a new Bundle quote with IT pre-populated",
+        "Bundle with IT button on saved Hosted Voice quotes \u2014 carries all voice configuration, seat counts, hardware, and client details into a new Bundle quote with Voice pre-populated",
+        "Unbundle button on all Bundle quotes \u2014 opens a modal to choose Keep IT Only or Keep Hosted Voice Only",
+        "Keep IT Only \u2014 creates a new standalone IT quote with all device/user/product settings from the bundle intact",
+        "Keep Hosted Voice Only \u2014 creates a new standalone Voice quote with all seat/license/hardware settings from the bundle intact",
+        "Bundle quote remains in history after unbundling \u2014 nothing is deleted",
+        "All conversions preserve: client name, zip, market tier, HubSpot deal link, proposal details, and notes"
+      ],
+      "improved": [
+        "Routes /quotes/new, /voice/new, and /bundle/new added \u2014 enables navigation with pre-loaded state without clashing with existing quote IDs"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "2.2.0",
     "date": "2026-04-25",
     "summary": "Onboarding Incentive Engine \u2014 AI-recommended split payments and discounts on every Managed IT quote",

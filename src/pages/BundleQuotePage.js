@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, logActivity } from '../lib/supabase';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -40,6 +40,9 @@ export default function BundleQuotePage() {
   const { packages, products, marketTiers, settings, productsByCategory, exclusiveGroups, loading: configLoading } = useConfig();
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const location  = useLocation();
+  const [showUnbundle, setShowUnbundle] = useState(false);
+  const [unbundling,   setUnbundling]   = useState(false);
 
   // Shared client fields
   const [proposalName,     setProposalName]     = useState('');
@@ -91,7 +94,7 @@ export default function BundleQuotePage() {
 
   // Load existing
   useEffect(() => {
-    if (!id || configLoading) return;
+    if (!id || id === 'new' || configLoading) return;
     supabase.from('quotes').select('*').eq('id', id).single().then(({ data }) => {
       if (!data) return;
       setExistingQuote(data);
@@ -112,6 +115,96 @@ export default function BundleQuotePage() {
       if (data.market_tier && marketTiers.length) setSelectedMkt(marketTiers.find(t => t.tier_key === data.market_tier));
     });
   }, [id, configLoading, packages, marketTiers]);
+
+  // ── Handle conversion from IT or Voice quote ─────────────────────────────
+  useEffect(() => {
+    const from = location.state?.fromQuote;
+    if (!from || id || configLoading || !packages.length || !marketTiers.length) return;
+
+    // Populate shared client fields
+    setProposalName(from.proposalName || '');
+    setRecipientBiz(from.clientName   || '');
+    setRecipientContact(from.recipientContact || '');
+    setRecipientEmail(from.recipientEmail     || '');
+    setRecipientAddress(from.recipientAddress || '');
+    setClientZip(from.clientZip || '');
+    setDealDescription(from.notes || '');
+    setHubDealId(from.hubDealId   || '');
+    setHubDealUrl(from.hubDealUrl  || '');
+    setHubDealName(from.hubDealName || '');
+
+    // Restore market tier and package
+    if (from.marketTier && marketTiers.length) {
+      const tier = marketTiers.find(t => t.tier_key === from.marketTier);
+      if (tier) setSelectedMkt(tier);
+    }
+    if (from.packageName && packages.length) {
+      const pkg = packages.find(p => p.name === from.packageName);
+      if (pkg) setSelectedPkg(pkg);
+    }
+
+    // Pre-populate IT section from an IT quote conversion
+    if (from.type === 'it' && from.inputs) {
+      setItInputs(prev => ({ ...prev, ...from.inputs }));
+    }
+
+    // Pre-populate Voice section from a Voice quote conversion
+    if (from.type === 'voice' && from.voiceInputs) {
+      setV(prev => ({ ...prev, isManagedIT: true, ...from.voiceInputs }));
+    }
+  }, [location.state, id, configLoading, packages, marketTiers]);
+
+  // ── Unbundle handler ──────────────────────────────────────────────────────
+  async function handleUnbundle(keepType) {
+    if (!existingQuote) return;
+    setUnbundling(true);
+    try {
+      if (keepType === 'it') {
+        // Navigate to new IT quote pre-populated with bundle's IT data
+        navigate('/quotes/new', { state: { fromBundle: {
+          type: 'it',
+          clientName:       existingQuote.client_name,
+          clientZip:        existingQuote.client_zip,
+          marketTier:       existingQuote.market_tier,
+          packageName:      existingQuote.inputs?.package_name,
+          proposalName:     existingQuote.inputs?.proposalName,
+          recipientContact: existingQuote.inputs?.recipientContact,
+          recipientEmail:   existingQuote.inputs?.recipientEmail,
+          recipientAddress: existingQuote.inputs?.recipientAddress,
+          notes:            existingQuote.notes,
+          hubDealId:        existingQuote.hubspot_deal_id,
+          hubDealUrl:       existingQuote.hubspot_deal_url,
+          hubDealName:      existingQuote.inputs?.hubspotDealName,
+          inputs:           existingQuote.inputs?.it || {},
+          sourceQuoteId:    existingQuote.id,
+          sourceQuoteNum:   existingQuote.quote_number,
+        }}});
+      } else if (keepType === 'voice') {
+        // Navigate to new Voice quote pre-populated with bundle's Voice data
+        navigate('/voice/new', { state: { fromBundle: {
+          type: 'voice',
+          clientName:       existingQuote.client_name,
+          clientZip:        existingQuote.client_zip,
+          marketTier:       existingQuote.market_tier,
+          proposalName:     existingQuote.inputs?.proposalName,
+          recipientContact: existingQuote.inputs?.recipientContact,
+          recipientEmail:   existingQuote.inputs?.recipientEmail,
+          recipientAddress: existingQuote.inputs?.recipientAddress,
+          notes:            existingQuote.notes,
+          hubDealId:        existingQuote.hubspot_deal_id,
+          hubDealUrl:       existingQuote.hubspot_deal_url,
+          hubDealName:      existingQuote.inputs?.hubspotDealName,
+          voiceInputs:      existingQuote.inputs?.voice || {},
+          sourceQuoteId:    existingQuote.id,
+          sourceQuoteNum:   existingQuote.quote_number,
+        }}});
+      }
+    } catch (err) {
+      alert('Unbundle failed: ' + err.message);
+    }
+    setUnbundling(false);
+    setShowUnbundle(false);
+  }
 
   function handleZipChange(val) {
     setClientZip(val); setZipApplied(false);
@@ -277,6 +370,37 @@ export default function BundleQuotePage() {
   }
 
   return (
+    <>
+    {/* ── Unbundle Modal ──────────────────────────────────────────────── */}
+    {showUnbundle && (
+      <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:400 }}>
+        <div style={{ background:'white', borderRadius:10, padding:28, width:440, boxShadow:'0 8px 32px rgba(0,0,0,0.15)' }}>
+          <h3 style={{ fontSize:15, fontWeight:700, color:'#0f1e3c', margin:'0 0 6px' }}>Unbundle Quote</h3>
+          <p style={{ fontSize:12, color:'#6b7280', margin:'0 0 20px' }}>
+            Choose which service to keep as a standalone quote. The bundle quote will remain in your history.
+          </p>
+          <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:20 }}>
+            <button onClick={() => handleUnbundle('it')} disabled={unbundling}
+              style={{ padding:'12px 16px', background:'#f0f4ff', border:'2px solid #2563eb', borderRadius:7, cursor:'pointer', textAlign:'left', opacity: unbundling ? 0.6 : 1 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:'#1e40af', marginBottom:3 }}>🖥 Keep Managed IT Only</div>
+              <div style={{ fontSize:11, color:'#3b82f6' }}>Opens a new IT quote with all device, user, and product settings intact. Voice section removed.</div>
+            </button>
+            <button onClick={() => handleUnbundle('voice')} disabled={unbundling}
+              style={{ padding:'12px 16px', background:'#faf5ff', border:'2px solid #7c3aed', borderRadius:7, cursor:'pointer', textAlign:'left', opacity: unbundling ? 0.6 : 1 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:'#6d28d9', marginBottom:3 }}>📞 Keep Hosted Voice Only</div>
+              <div style={{ fontSize:11, color:'#7c3aed' }}>Opens a new Voice quote with all seat, license, and hardware settings intact. IT section removed.</div>
+            </button>
+          </div>
+          <div style={{ display:'flex', justifyContent:'flex-end', gap:8, alignItems:'center' }}>
+            {unbundling && <span style={{ fontSize:11, color:'#6b7280' }}>Creating new quote...</span>}
+            <button onClick={() => setShowUnbundle(false)} disabled={unbundling}
+              style={{ padding:'7px 16px', background:'#f3f4f6', border:'1px solid #e5e7eb', borderRadius:5, fontSize:12, color:'#374151', cursor:'pointer' }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div style={{ display:'flex', height:'100%', overflow:'hidden' }}>
 
       {/* ── LEFT: IT + Voice inputs ── */}
@@ -822,6 +946,8 @@ function CollapsibleSec({ title, open, onToggle, badge, color, children }) {
       </div>
       {open && <div style={{ padding:'10px 12px' }}>{children}</div>}
     </div>
+    </div>
+    </>
   );
 }
 

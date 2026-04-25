@@ -30,12 +30,15 @@ function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
         <Route index           element={<QuotePage />} />
-        <Route path="quotes"   element={<QuotesPage />} />
-        <Route path="quotes/:id" element={<QuotePage />} />
-        <Route path="voice"     element={<VoiceQuotePage />} />
-        <Route path="voice/:id" element={<VoiceQuotePage />} />
-        <Route path="bundle"     element={<BundleQuotePage />} />
-        <Route path="bundle/:id" element={<BundleQuotePage />} />
+        <Route path="quotes"      element={<QuotesPage />} />
+        <Route path="quotes/new"   element={<QuotePage />} />
+        <Route path="quotes/:id"   element={<QuotePage />} />
+        <Route path="voice"        element={<VoiceQuotePage />} />
+        <Route path="voice/new"    element={<VoiceQuotePage />} />
+        <Route path="voice/:id"    element={<VoiceQuotePage />} />
+        <Route path="bundle"       element={<BundleQuotePage />} />
+        <Route path="bundle/new"   element={<BundleQuotePage />} />
+        <Route path="bundle/:id"   element={<BundleQuotePage />} />
         <Route path="changelog"  element={<ChangelogPage />} />
         <Route path="admin"    element={<RequireAdmin><AdminPage /></RequireAdmin>} />
         <Route path="activity" element={<RequireAdmin><ActivityPage /></RequireAdmin>} />

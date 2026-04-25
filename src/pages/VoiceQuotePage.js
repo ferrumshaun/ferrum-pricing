@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, logActivity } from '../lib/supabase';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -33,6 +33,24 @@ export default function VoiceQuotePage() {
   const { settings, loading: configLoading } = useConfig();
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // ── Handle conversion from Bundle (unbundle → Voice) ─────────────────────
+  useEffect(() => {
+    const from = location.state?.fromBundle;
+    if (!from || from.type !== 'voice' || configLoading) return;
+    setRecipientBiz(from.clientName       || '');
+    setProposalName(from.proposalName     || '');
+    setRecipientContact(from.recipientContact || '');
+    setRecipientEmail(from.recipientEmail     || '');
+    setRecipientAddress(from.recipientAddress || '');
+    setClientZip(from.clientZip || '');
+    setDealDescription(from.notes || '');
+    setHubDealId(from.hubDealId   || '');
+    setHubDealUrl(from.hubDealUrl  || '');
+    setHubDealName(from.hubDealName || '');
+    if (from.voiceInputs) setV(prev => ({ ...prev, ...from.voiceInputs }));
+  }, [location.state, configLoading]);
 
   const [v, setV]               = useState(DEF);
   const [proposalName, setProposalName] = useState('');
@@ -65,7 +83,7 @@ export default function VoiceQuotePage() {
 
   // Load existing quote
   useEffect(() => {
-    if (!id || configLoading) return;
+    if (!id || id === 'new' || configLoading) return;
     supabase.from('quotes').select('*').eq('id', id).single().then(({ data }) => {
       if (!data) return;
       setExistingQuote(data);
@@ -431,12 +449,24 @@ export default function VoiceQuotePage() {
             {saving ? 'Saving...' : existingQuote ? 'Update Quote' : 'Save Quote'}
           </button>
           {existingQuote && (
-            <div style={{ marginTop:5 }}>
+            <div style={{ marginTop:5, display:'flex', gap:6, flexWrap:'wrap' }}>
               <SendForReviewButton
                 quote={{ ...existingQuote, status: quoteStatus }}
                 quoteType="voice"
                 onStatusChange={s => setQuoteStatus(s)}
               />
+              <button
+                onClick={() => navigate('/bundle/new', { state: { fromQuote: {
+                  type: 'voice',
+                  clientName: recipientBiz, clientZip,
+                  proposalName, recipientContact, recipientEmail, recipientAddress,
+                  notes: dealDescription,
+                  hubDealId, hubDealUrl, hubDealName,
+                  voiceInputs: { ...v },
+                }}})}
+                style={{ padding:'6px 10px', background:'#faf5ff', border:'1px solid #ddd6fe', borderRadius:4, fontSize:11, color:'#6d28d9', fontWeight:600, cursor:'pointer' }}>
+                📦 Bundle with IT
+              </button>
             </div>
           )}
           {saveMsg && <div style={{ fontSize:11, color:'#166534', fontWeight:600, marginTop:4 }}>{saveMsg}</div>}

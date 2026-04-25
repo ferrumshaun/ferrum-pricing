@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, logActivity } from '../lib/supabase';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,6 +26,26 @@ export default function QuotePage() {
   const { packages, products, marketTiers, settings, productsByCategory, exclusiveGroups, loading: configLoading } = useConfig();
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // ── Handle conversion from Bundle (unbundle → IT) ────────────────────────
+  useEffect(() => {
+    const from = location.state?.fromBundle;
+    if (!from || from.type !== 'it' || configLoading || !packages.length || !marketTiers.length) return;
+    setRecipientBiz(from.clientName       || '');
+    setProposalName(from.proposalName     || '');
+    setRecipientContact(from.recipientContact || '');
+    setRecipientEmail(from.recipientEmail     || '');
+    setRecipientAddress(from.recipientAddress || '');
+    setClientZip(from.clientZip || '');
+    setDealDescription(from.notes || '');
+    setHubDealId(from.hubDealId   || '');
+    setHubDealUrl(from.hubDealUrl  || '');
+    setHubDealName(from.hubDealName || '');
+    if (from.marketTier) { const t = marketTiers.find(t => t.tier_key === from.marketTier); if (t) setSelectedMkt(t); }
+    if (from.packageName) { const p = packages.find(p => p.name === from.packageName); if (p) setSelectedPkg(p); }
+    if (from.inputs) setInputs(prev => ({ ...prev, ...from.inputs }));
+  }, [location.state, configLoading, packages, marketTiers]);
 
   // ── Quote metadata ────────────────────────────────────────────────────────
   const [proposalName,    setProposalName]    = useState('');
@@ -64,7 +84,7 @@ export default function QuotePage() {
 
   // Load existing quote
   useEffect(() => {
-    if (!id || configLoading) return;
+    if (!id || id === 'new' || configLoading) return;
     supabase.from('quotes').select('*').eq('id', id).single().then(({ data }) => {
       if (!data) return;
       setExistingQuote(data);
@@ -534,12 +554,26 @@ export default function QuotePage() {
             )}
           </div>
           {existingQuote && (
-            <div style={{ marginTop:6 }}>
+            <div style={{ marginTop:6, display:'flex', gap:6, flexWrap:'wrap' }}>
               <SendForReviewButton
                 quote={{ ...existingQuote, status: quoteStatus, inputs: { ...inputs, proposalName, recipientContact, recipientEmail } }}
                 quoteType="quotes"
                 onStatusChange={s => setQuoteStatus(s)}
               />
+              <button
+                onClick={() => navigate('/bundle/new', { state: { fromQuote: {
+                  type: 'it',
+                  clientName: recipientBiz, clientZip,
+                  marketTier: selectedMkt?.tier_key,
+                  packageName: selectedPkg?.name,
+                  proposalName, recipientContact, recipientEmail, recipientAddress,
+                  notes: dealDescription,
+                  hubDealId, hubDealUrl, hubDealName,
+                  inputs: { ...inputs },
+                }}})}
+                style={{ padding:'6px 10px', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:4, fontSize:11, color:'#166534', fontWeight:600, cursor:'pointer' }}>
+                📦 Bundle with Voice
+              </button>
             </div>
           )}
           {saveMsg && <div style={{ fontSize:11, color:'#166534', fontWeight:600, marginTop:5 }}>{saveMsg}</div>}
