@@ -374,7 +374,9 @@ export default function QuotePage() {
         repCommissionRate: repProfile?.commission_rate ?? null,
       });
 
-  // Multi-term preview — calc all 3 terms silently
+  if (configLoading) return <div style={{ padding: 24, color: '#6b7280', fontSize: 12 }}>Loading pricing data...</div>;
+
+  // Multi-term preview — calc all 3 terms silently (safe: configLoading already guarded above)
   const multiTermResults = (result && selectedPkg && selectedMkt) ? [12, 24, 36].map(term => ({
     term,
     result: calcQuote({ inputs: { ...inputs, contractTerm: term }, pkg: selectedPkg, marketTier: selectedMkt,
@@ -389,11 +391,9 @@ export default function QuotePage() {
   const unselectedRecommended = recommendedProducts.filter(p => !(inputs.selectedProducts || []).includes(p.id));
 
   // Payment surcharge settings
-  const ccSurcharge   = parseFloat(settings.payment_cc_surcharge) || 0.02;
-  const achFee        = parseFloat(settings.payment_ach_fee)      || 0;
-  const checkFee      = parseFloat(settings.payment_check_fee)    || 10;
-
-  if (configLoading) return <div style={{ padding: 24, color: '#6b7280', fontSize: 12 }}>Loading pricing data...</div>;
+  const ccSurcharge = parseFloat(settings?.payment_cc_surcharge) || 0.02;
+  const achFee      = parseFloat(settings?.payment_ach_fee)      || 0;
+  const checkFee    = parseFloat(settings?.payment_check_fee)    || 10;
 
   const mktColor = { major_metro:'#1e40af', mid_market:'#065f46', small_market:'#6d28d9' };
   const mktBg    = { major_metro:'#dbeafe', mid_market:'#d1fae5', small_market:'#ede9fe' };
