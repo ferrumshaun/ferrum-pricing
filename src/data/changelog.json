@@ -1,5 +1,33 @@
 [
   {
+    "version": "2.5.0",
+    "date": "2026-04-25",
+    "summary": "Multi-Site IT Quotes \u2014 fair market pricing across multiple locations with volume discount",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Multi-Site IT quote type (FIT-MS- prefix) \u2014 New Quote \u2192 \ud83c\udfe2 Multi-Site IT",
+        "Location builder \u2014 add unlimited locations, each with name, address, zip, type, users, workstations, servers, endpoints",
+        "Standard vs Restricted location types \u2014 Standard includes site management fee and network layer; Restricted (co-work/shared/3rd-party) is users and devices only, no network layer, no site fee",
+        "Site management fee pulls from the selected package (pkg.location_rate) \u2014 never hardcoded",
+        "Per-location market analysis \u2014 zip code triggers AI market rate lookup, pricing multiplier applied per location",
+        "Multi-location volume discount: 2-4 locations = 3%, 5-9 = 5%, 10-19 = 8%, 20+ = 10% (stored in pricing_settings, fully configurable)",
+        "Contract term discount stacks on top of multi-location discount",
+        "Add-on products applied once at quote level \u2014 qty scales to total users/workstations across all locations",
+        "Per-location on-site and dispatch rate card shown in the expanded location breakdown",
+        "Covered Locations section on the quote \u2014 legally binding list of all addresses covered under the agreement",
+        "Convert to Single Location \u2014 opens a new standard IT quote with location 1 data, multi-site quote stays in history",
+        "SPT export includes full covered_locations_assumption field with every address listed",
+        "HubSpot connect, Quote Notes, Send for Review, version history all work on multi-site quotes"
+      ],
+      "improved": [
+        "New Quote dropdown now has four options: Managed IT, Hosted Voice, Bundle Quote, Multi-Site IT",
+        "Saved Quotes list shows purple Multi-Site badge and routes correctly"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "2.4.1",
     "date": "2026-04-25",
     "summary": "Company logo branding + KPI strip layout fix + opSubtotal crash fix",

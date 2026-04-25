@@ -374,3 +374,78 @@ export const fmt$0 = v => fmt$(v, 0);
 export const fmtPct = v => v == null ? '—' : (v * 100).toFixed(1) + '%';
 export const gmColor = g => g >= 0.45 ? '#166534' : g >= 0.30 ? '#92400e' : '#991b1b';
 export const gmBg    = g => g >= 0.45 ? '#dcfce7' : g >= 0.30 ? '#fef3c7' : '#fee2e2';
+
+// ─── Multi-Site Quote Functions ───────────────────────────────────────────────
+
+// Calculate MRR for a single location
+export function calcLocationMRR({ location, pkg, marketMultiplier, settings }) {
+  if (!pkg || !location) return null;
+  const s = settings;
+  const mktMult = parseFloat(marketMultiplier) || 1;
+  const isStandard = location.type !== 'restricted';
+
+  const users        = parseInt(location.users)        || 0;
+  const workstations = parseInt(location.workstations) || 0;
+  const servers      = parseInt(location.servers)      || 0;
+  const endpoints    = parseInt(location.endpoints)    || 0;
+  const locationFee  = isStandard ? (parseFloat(pkg.location_rate) || 0) : 0;
+
+  // Endpoint density uplift
+  const epRatio = workstations > 0 ? endpoints / workstations : 0;
+  const xEp     = Math.max(endpoints - workstations * 1.25, 0);
+  const epRate  = epRatio <= 1.75
+    ? parseFloat(s.ep_uplift_moderate) || 0
+    : parseFloat(s.ep_uplift_high)     || 0;
+  const eB = xEp * epRate;
+
+  const base = users * pkg.user_rate
+             + workstations * pkg.ws_rate
+             + servers * pkg.server_rate
+             + locationFee
+             + eB;
+
+  const mrr = base * mktMult;
+
+  return {
+    mrr,
+    base,
+    mktMult,
+    isRestricted: !isStandard,
+    breakdown: {
+      users:         users * pkg.user_rate * mktMult,
+      workstations:  workstations * pkg.ws_rate * mktMult,
+      servers:       servers * pkg.server_rate * mktMult,
+      locationFee:   locationFee * mktMult,
+      endpointUplift: eB * mktMult,
+    },
+  };
+}
+
+// Get multi-location discount rate from settings
+export function getMultiSiteDiscount(locationCount, settings) {
+  const s = settings || {};
+  if (locationCount >= 20) return parseFloat(s.multisite_disc_20plus) || 0.10;
+  if (locationCount >= 10) return parseFloat(s.multisite_disc_10_19)  || 0.08;
+  if (locationCount >= 5)  return parseFloat(s.multisite_disc_5_9)    || 0.05;
+  if (locationCount >= 2)  return parseFloat(s.multisite_disc_2_4)    || 0.03;
+  return 0;
+}
+
+// Create a blank location object
+export function createLocation(overrides = {}) {
+  return {
+    id:            'loc_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    name:          '',
+    address:       '',
+    city:          '',
+    state:         '',
+    zip:           '',
+    type:          'standard',
+    users:         0,
+    workstations:  0,
+    servers:       0,
+    endpoints:     0,
+    mobileDevices: 0,
+    ...overrides,
+  };
+}

@@ -93,6 +93,10 @@ export default function Layout() {
                 <div style={{ fontWeight: 600 }}>📦 Bundle Quote</div>
                 <div style={{ fontSize: 10, color: '#9ca3af' }}>Managed IT + Voice with bundle discount</div>
               </button>
+              <button onClick={() => { navigate('/multisite'); setNewMenuOpen(false); }} style={{ width: '100%', textAlign: 'left', padding: '8px 14px', background: 'none', border: 'none', fontSize: 12, color: '#374151', cursor: 'pointer', display: 'block' }}>
+                <div style={{ fontWeight: 600 }}>🏢 Multi-Site IT</div>
+                <div style={{ fontSize: 10, color: '#9ca3af' }}>Multiple locations — blended market rates + volume discount</div>
+              </button>
             </div>
           )}
         </div>
