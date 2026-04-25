@@ -456,7 +456,7 @@ export default function QuotePage() {
                 · <strong>{pendingMultiplier.multiplier === 1 ? 'No adjustment' : pendingMultiplier.multiplier > 1 ? `+${Math.round((pendingMultiplier.multiplier - 1) * 100)}% pricing` : `-${Math.round((1 - pendingMultiplier.multiplier) * 100)}% pricing`}</strong>
                 {' '}<span style={{ fontSize:9, color:'#6b7280' }}>(multiplier: {pendingMultiplier.multiplier}×)</span>
               </div>
-              <div style={{ display:'flex', gap:6' }}>
+              <div style={{ display:'flex', gap:6 }}>
                 <button onClick={() => {
                   setAiMultiplier(pendingMultiplier.multiplier);
                   setAiMultiplierTier(pendingMultiplier.tier);
