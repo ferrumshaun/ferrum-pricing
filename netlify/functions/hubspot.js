@@ -123,23 +123,35 @@ exports.handler = async (event) => {
         deal.properties.dealstage_label = stageMap[rawStage] || rawStage;
 
         // Associated company
+        // HubSpot associations API returns `id` (v3) or `toObjectId` (v4) depending on portal version
         const compAssoc = await hs(token, 'GET', `/crm/v3/objects/deals/${dealId}/associations/companies`);
         let company = null;
         if (compAssoc.data?.results?.length > 0) {
-          const compId = compAssoc.data.results[0].id;
-          const compRes = await hs(token, 'GET',
-            `/crm/v3/objects/companies/${compId}?properties=name,address,address2,city,state,zip,country,phone,domain`);
-          if (compRes.status === 200) company = compRes.data.properties;
+          const compId = compAssoc.data.results[0].id || compAssoc.data.results[0].toObjectId;
+          if (compId) {
+            const compRes = await hs(token, 'GET',
+              `/crm/v3/objects/companies/${compId}?properties=name,address,address2,city,state,zip,country,phone,domain`);
+            if (compRes.status === 200) {
+              company = compRes.data.properties;
+              // If company name is blank, fall back to deal name so recipientBiz always populates
+              if (!company.name && deal.properties.dealname) {
+                company.name = deal.properties.dealname;
+              }
+            }
+          }
         }
 
         // Associated contact
+        // Same v3/v4 ID handling
         const contAssoc = await hs(token, 'GET', `/crm/v3/objects/deals/${dealId}/associations/contacts`);
         let contact = null;
         if (contAssoc.data?.results?.length > 0) {
-          const contId = contAssoc.data.results[0].id;
-          const contRes = await hs(token, 'GET',
-            `/crm/v3/objects/contacts/${contId}?properties=firstname,lastname,email,phone,jobtitle`);
-          if (contRes.status === 200) contact = contRes.data.properties;
+          const contId = contAssoc.data.results[0].id || contAssoc.data.results[0].toObjectId;
+          if (contId) {
+            const contRes = await hs(token, 'GET',
+              `/crm/v3/objects/contacts/${contId}?properties=firstname,lastname,email,phone,jobtitle`);
+            if (contRes.status === 200) contact = contRes.data.properties;
+          }
         }
 
         result = {

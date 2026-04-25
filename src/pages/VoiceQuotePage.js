@@ -41,6 +41,7 @@ export default function VoiceQuotePage() {
   const [recipientAddress, setRecipientAddress] = useState('');
   const [clientZip, setClientZip]   = useState('');
   const [zipResult, setZipResult]   = useState(null);
+  const [zipApplied, setZipApplied] = useState(false);
   const [dealDescription, setDealDescription]           = useState('');
   const [quoteStatus, setQuoteStatus] = useState('draft');
   const [saving, setSaving]         = useState(false);
@@ -102,7 +103,15 @@ export default function VoiceQuotePage() {
         if (full.company.name) setRecipientBiz(full.company.name);
         const addr = [full.company.address, full.company.city, full.company.state, full.company.zip].filter(Boolean).join(', ');
         if (addr) setRecipientAddress(addr);
-        if (full.company.zip) { setClientZip(full.company.zip); setZipResult(lookupZip(full.company.zip)); }
+        if (full.company.zip) {
+          setClientZip(full.company.zip);
+          const zr = lookupZip(full.company.zip);
+          setZipResult(zr);
+          if (zr) {
+            const tier = marketTiers.find(t => t.tier_key === zr.tier);
+            if (tier) { setSelectedMkt(tier); setZipApplied(true); }
+          }
+        }
       }
       if (full.contact) {
         const name = [full.contact.firstname, full.contact.lastname].filter(Boolean).join(' ');
