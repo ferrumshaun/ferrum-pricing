@@ -14,7 +14,8 @@
       ],
       "improved": [
         "AI analysis engine now always returns city and state \u2014 cleaner DB matching and zip indexing",
-        "Fixed model name in AI analysis function \u2014 was using an invalid model string causing all analyses to fail"
+        "Fixed model name in AI analysis function \u2014 was using an invalid model string causing all analyses to fail",
+        "New market feedback \u2014 loading message now says 'Checking database \u2014 if this is a new market, we'll run an AI analysis. Stand by...' and a blue banner confirms when a new market has been analyzed and saved"
       ],
       "fixed": [
         "Market Rate Analysis card now correctly triggers from zip code alone \u2014 was silently failing because lookupZip does not return city/state fields"

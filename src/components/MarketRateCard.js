@@ -22,11 +22,13 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted }) 
   const [refreshing,  setRefreshing]  = useState(false);
   const [error,       setError]       = useState('');
   const [showDetail,  setShowDetail]  = useState(false);
+  const [isNewMarket, setIsNewMarket] = useState(false);
+  const [statusMsg,   setStatusMsg]   = useState('');
 
   // Load market analysis when city/state available
   const loadAnalysis = useCallback(async (force = false) => {
     if (!clientZip || clientZip.length < 5) return;
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setStatusMsg('');
     try {
       const { analysis: result, wasRefreshed } = await getOrAnalyzeMarket(clientZip, force);
       setAnalysis(result);
@@ -36,7 +38,14 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted }) 
         setOverrides({});
         setAccepted(false);
       }
-      if (wasRefreshed) console.log('[MarketRates] Analysis refreshed for', result.city, result.state);
+      if (wasRefreshed && result.analysis_source === 'ai_generated') {
+        setIsNewMarket(true);
+        setStatusMsg('🆕 New market — AI analysis complete for ' + result.city + ', ' + result.state);
+        setTimeout(() => setStatusMsg(''), 6000);
+      } else if (wasRefreshed) {
+        setStatusMsg('↻ Analysis refreshed');
+        setTimeout(() => setStatusMsg(''), 3000);
+      }
     } catch (err) {
       setError('Market analysis unavailable: ' + err.message);
     }
@@ -124,9 +133,14 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted }) 
       <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '14px 16px', marginTop: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 14, height: 14, border: '2px solid #2563eb', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-          <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 600 }}>
-            Analyzing market rates for {clientZip}...
-          </span>
+          <div>
+            <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 600 }}>
+              Analyzing market rates for {clientZip}...
+            </span>
+            <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>
+              Checking database — if this is a new market, we'll run an AI analysis. Stand by...
+            </div>
+          </div>
         </div>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
@@ -195,6 +209,14 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted }) 
           </button>
         </div>
       </div>
+
+      {/* ── New market / status banner ──────────────────────────────────── */}
+      {statusMsg && (
+        <div style={{ padding: '7px 14px', background: isNewMarket ? '#eff6ff' : '#f0fdf4', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: isNewMarket ? '#1e40af' : '#166534' }}>{statusMsg}</span>
+          <span style={{ fontSize: 10, color: '#6b7280' }}>· This market has been saved and will load instantly next time</span>
+        </div>
+      )}
 
       {/* ── Compact summary strip (always visible) ─────────────────────── */}
       <div style={{ padding: '8px 14px', background: 'white', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
