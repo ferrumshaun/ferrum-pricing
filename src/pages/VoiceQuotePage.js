@@ -10,6 +10,7 @@ import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import MarketRateCard from '../components/MarketRateCard';
 
 const DEF = {
   quoteType: 'hosted', licenseType: 'pro',
@@ -42,6 +43,8 @@ export default function VoiceQuotePage() {
   const [clientZip, setClientZip]   = useState('');
   const [zipResult, setZipResult]   = useState(null);
   const [zipApplied, setZipApplied] = useState(false);
+  const [marketCity,  setMarketCity]  = useState('');
+  const [marketState, setMarketState] = useState('');
   const [dealDescription, setDealDescription]           = useState('');
   const [quoteStatus, setQuoteStatus] = useState('draft');
   const [saving, setSaving]         = useState(false);
@@ -110,6 +113,8 @@ export default function VoiceQuotePage() {
           if (zr) {
             const tier = marketTiers.find(t => t.tier_key === zr.tier);
             if (tier) { setSelectedMkt(tier); setZipApplied(true); }
+            if (zr.city)  setMarketCity(zr.city);
+            if (zr.state) setMarketState(zr.state);
           }
         }
       } else {
@@ -641,6 +646,18 @@ export default function VoiceQuotePage() {
                   </div>
 
                   {/* Quote Notes Log */}
+                  <MarketRateCard
+                    quoteId={existingQuote?.id}
+                    clientZip={clientZip}
+                    marketCity={marketCity}
+                    marketState={marketState}
+                    onRatesAccepted={(rates, suggestedTier) => {
+                      if (suggestedTier && marketTiers.length) {
+                        const tier = marketTiers.find(t => t.tier_key === suggestedTier);
+                        if (tier) setSelectedMkt(tier);
+                      }
+                    }}
+                  />
                   <QuoteNotes
                     quoteId={existingQuote?.id}
                     quoteNumber={existingQuote?.quote_number}

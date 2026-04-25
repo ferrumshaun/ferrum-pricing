@@ -1,5 +1,32 @@
 [
   {
+    "version": "2.1.0",
+    "date": "2026-04-25",
+    "summary": "Market Rate Intelligence Engine \u2014 AI-powered, per-market labor rate analysis on every quote",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Market Rate Analysis card on all three quote types \u2014 triggers automatically when zip code is applied",
+        "AI-powered market analysis for any city/state using CoL index, median income, local labor rates, and MSP market intelligence",
+        "61 markets pre-loaded from Ferrum market research (Apr 2026) \u2014 AI handles any market not in the seed data",
+        "Rates analyzed: Remote Support, On-Site Dispatch (2hr block), On-Site Additional Hourly, Dev/CRM/Web, Design/UX, PC Setup",
+        "After-hours rates auto-calculated at 1.5\u00d7 the market on-site rate \u2014 dispatch fees scale with market CoL",
+        "FAIR / SLIGHTLY HIGH / HIGH / LOW rating for each rate vs. FerrumIT published rates",
+        "Accept All Rates button saves the market rate sheet to the quote \u2014 or override individual lines before accepting",
+        "Managed IT pricing multiplier recommendation shown \u2014 apply via the Market Tier selector to align package rates with market",
+        "Market intelligence notes per market \u2014 primary industries, MSP selling angles, compliance hooks",
+        "Last analyzed date always visible \u2014 auto-refreshes if analysis is older than 6 months",
+        "Manual Refresh button available on every market card",
+        "Analysis source shown: imported (from Apr 2026 research) or AI-generated (new markets)"
+      ],
+      "improved": [
+        "Static Area 2 surcharge (+30%) removed \u2014 replaced by real market rate analysis per city",
+        "Market tier selection now guided by AI recommendation \u2014 shows suggested tier and pricing multiplier"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "2.0.4",
     "date": "2026-04-25",
     "summary": "HubSpot deal connect UX improvements and Deal Summary label fix",

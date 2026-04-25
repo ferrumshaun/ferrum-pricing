@@ -9,6 +9,7 @@ import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import MarketRateCard from '../components/MarketRateCard';
 
 const DEF_INPUTS = {
   users:0, sharedMailboxes:0, workstations:0, endpoints:0,
@@ -34,6 +35,8 @@ export default function QuotePage() {
   const [clientZip,       setClientZip]       = useState('');
   const [zipResult,       setZipResult]       = useState(null);
   const [zipApplied,      setZipApplied]      = useState(false);
+  const [marketCity,      setMarketCity]      = useState('');
+  const [marketState,     setMarketState]     = useState('');
 
   // ── Quote config ──────────────────────────────────────────────────────────
   const [inputs,      setInputs]      = useState(DEF_INPUTS);
@@ -68,6 +71,8 @@ export default function QuotePage() {
       setRecipientEmail(data.inputs?.recipientEmail || '');
       setRecipientAddress(data.inputs?.recipientAddress || '');
       setClientZip(data.client_zip || '');
+      if (data.inputs?.marketCity)  setMarketCity(data.inputs.marketCity);
+      if (data.inputs?.marketState) setMarketState(data.inputs.marketState);
       setQuoteStatus(data.status || 'draft');
       setDealDescription(data.notes || '');
       setHubDealId(data.hubspot_deal_id || '');
@@ -99,6 +104,9 @@ export default function QuotePage() {
     if (!r) return;
     const tier = marketTiers.find(t => t.tier_key === r.tier);
     if (tier) { setSelectedMkt(tier); setZipApplied(true); }
+    // Capture city/state for market rate analysis
+    if (r.city) setMarketCity(r.city);
+    if (r.state) setMarketState(r.state);
   }
 
   // Product toggle with exclusive group handling
@@ -216,7 +224,7 @@ export default function QuotePage() {
   async function saveQuote() {
     if (!recipientBiz.trim()) { setSaveMsg('Please enter a recipient business name.'); return; }
     setSaving(true); setSaveMsg('');
-    const allInputs = { ...inputs, proposalName, recipientContact, recipientEmail, recipientAddress, hubspotDealName: hubDealName };
+    const allInputs = { ...inputs, proposalName, recipientContact, recipientEmail, recipientAddress, hubspotDealName: hubDealName, marketCity, marketState };
     const totals = result ? {
       finalMRR: result.finalMRR, onboarding: result.onboarding,
       impliedGM: result.impliedGM, totalCost: result.totalCost,
@@ -743,6 +751,20 @@ export default function QuotePage() {
                       Saved with quote{hubDealId ? ' and pushed to HubSpot deal description on every save' : '. Connect a HubSpot deal to sync automatically.'}.
                     </div>
                   </div>
+
+                  {/* Market Rate Analysis */}
+                  <MarketRateCard
+                    quoteId={existingQuote?.id}
+                    clientZip={clientZip}
+                    marketCity={marketCity}
+                    marketState={marketState}
+                    onRatesAccepted={(rates, suggestedTier) => {
+                      if (suggestedTier && marketTiers.length) {
+                        const tier = marketTiers.find(t => t.tier_key === suggestedTier);
+                        if (tier) setSelectedMkt(tier);
+                      }
+                    }}
+                  />
 
                   {/* Quote Notes Log */}
                   <QuoteNotes

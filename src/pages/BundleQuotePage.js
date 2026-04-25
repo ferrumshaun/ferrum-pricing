@@ -10,6 +10,7 @@ import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import MarketRateCard from '../components/MarketRateCard';
 
 const DEF_IT = {
   users:0, sharedMailboxes:0, workstations:0, endpoints:0, mobileDevices:0,
@@ -49,6 +50,8 @@ export default function BundleQuotePage() {
   const [clientZip,        setClientZip]        = useState('');
   const [zipResult,        setZipResult]        = useState(null);
   const [zipApplied,       setZipApplied]       = useState(false);
+  const [marketCity,       setMarketCity]       = useState('');
+  const [marketState,      setMarketState]      = useState('');
   const [dealDescription,  setDealDescription]  = useState('');
   const [quoteStatus,      setQuoteStatus]      = useState('draft');
   const [saving,           setSaving]           = useState(false);
@@ -744,6 +747,18 @@ export default function BundleQuotePage() {
             </div>
 
             {/* Quote notes */}
+            <MarketRateCard
+                    quoteId={existingQuote?.id}
+                    clientZip={clientZip}
+                    marketCity={marketCity}
+                    marketState={marketState}
+                    onRatesAccepted={(rates, suggestedTier) => {
+                      if (suggestedTier && marketTiers.length) {
+                        const tier = marketTiers.find(t => t.tier_key === suggestedTier);
+                        if (tier) setSelectedMkt(tier);
+                      }
+                    }}
+                  />
             <QuoteNotes
               quoteId={existingQuote?.id}
               quoteNumber={existingQuote?.quote_number}
