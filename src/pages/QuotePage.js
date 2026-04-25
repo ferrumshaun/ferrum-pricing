@@ -58,8 +58,12 @@ export default function QuotePage() {
   const [zipApplied,      setZipApplied]      = useState(false);
   const [marketCity,      setMarketCity]      = useState('');
   const [marketState,     setMarketState]     = useState('');
-  const [acceptedMktTier, setAcceptedMktTier] = useState(null);
-  const [obIncentive,     setObIncentive]     = useState(null);
+  const [acceptedMktTier,    setAcceptedMktTier]    = useState(null);
+  const [aiMultiplier,       setAiMultiplier]       = useState(null); // from accepted market analysis
+  const [aiMultiplierTier,   setAiMultiplierTier]   = useState(null); // label e.g. "Standard"
+  const [showMktRecommend,   setShowMktRecommend]   = useState(false);
+  const [pendingMultiplier,  setPendingMultiplier]  = useState(null); // waiting for user to accept
+  const [obIncentive,        setObIncentive]        = useState(null);
 
   // ── Quote config ──────────────────────────────────────────────────────────
   const [inputs,      setInputs]      = useState(DEF_INPUTS);
@@ -94,8 +98,9 @@ export default function QuotePage() {
       setRecipientEmail(data.inputs?.recipientEmail || '');
       setRecipientAddress(data.inputs?.recipientAddress || '');
       setClientZip(data.client_zip || '');
-      if (data.inputs?.marketCity)  setMarketCity(data.inputs.marketCity);
-      if (data.inputs?.marketState) setMarketState(data.inputs.marketState);
+      if (data.inputs?.marketCity)       setMarketCity(data.inputs.marketCity);
+      if (data.inputs?.marketState)      setMarketState(data.inputs.marketState);
+      if (data.inputs?.aiMultiplier != null) { setAiMultiplier(data.inputs.aiMultiplier); setAiMultiplierTier(data.inputs.aiMultiplierTier || null); }
       setQuoteStatus(data.status || 'draft');
       setDealDescription(data.notes || '');
       setHubDealId(data.hubspot_deal_id || '');
@@ -247,7 +252,7 @@ export default function QuotePage() {
   async function saveQuote() {
     if (!recipientBiz.trim()) { setSaveMsg('Please enter a recipient business name.'); return; }
     setSaving(true); setSaveMsg('');
-    const allInputs = { ...inputs, proposalName, recipientContact, recipientEmail, recipientAddress, hubspotDealName: hubDealName, marketCity, marketState };
+    const allInputs = { ...inputs, proposalName, recipientContact, recipientEmail, recipientAddress, hubspotDealName: hubDealName, marketCity, marketState, aiMultiplier: aiMultiplier ?? null, aiMultiplierTier: aiMultiplierTier ?? null };
     const totals = result ? {
       finalMRR: result.finalMRR, onboarding: result.onboarding,
       impliedGM: result.impliedGM, totalCost: result.totalCost,
@@ -343,7 +348,7 @@ export default function QuotePage() {
   }
 
   const result = configLoading || !selectedPkg || !selectedMkt ? null
-    : calcQuote({ inputs, pkg: selectedPkg, marketTier: selectedMkt, products, settings });
+    : calcQuote({ inputs, pkg: selectedPkg, marketTier: selectedMkt, products, settings, aiMultiplierOverride: aiMultiplier });
 
   if (configLoading) return <div style={{ padding: 24, color: '#6b7280', fontSize: 12 }}>Loading pricing data...</div>;
 
@@ -439,12 +444,58 @@ export default function QuotePage() {
 
         {/* Market tier */}
         <Sec t="Market Tier" c="#0f1e3c">
+
+          {/* AI recommendation banner */}
+          {showMktRecommend && pendingMultiplier && (
+            <div style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:5, padding:'8px 10px', marginBottom:8 }}>
+              <div style={{ fontSize:10, fontWeight:700, color:'#1e40af', marginBottom:3 }}>
+                📊 AI Market Recommendation
+              </div>
+              <div style={{ fontSize:10, color:'#1e40af', marginBottom:6 }}>
+                <strong>{pendingMultiplier.city}, {pendingMultiplier.state}</strong> — {pendingMultiplier.tier?.charAt(0).toUpperCase() + pendingMultiplier.tier?.slice(1)} market
+                · <strong>{pendingMultiplier.multiplier === 1 ? 'No adjustment' : pendingMultiplier.multiplier > 1 ? `+${Math.round((pendingMultiplier.multiplier - 1) * 100)}% pricing` : `-${Math.round((1 - pendingMultiplier.multiplier) * 100)}% pricing`}</strong>
+                {' '}<span style={{ fontSize:9, color:'#6b7280' }}>(multiplier: {pendingMultiplier.multiplier}×)</span>
+              </div>
+              <div style={{ display:'flex', gap:6' }}>
+                <button onClick={() => {
+                  setAiMultiplier(pendingMultiplier.multiplier);
+                  setAiMultiplierTier(pendingMultiplier.tier);
+                  setShowMktRecommend(false);
+                }} style={{ padding:'4px 12px', background:'#1e40af', color:'white', border:'none', borderRadius:4, fontSize:10, fontWeight:700, cursor:'pointer' }}>
+                  Apply AI Rate
+                </button>
+                <button onClick={() => setShowMktRecommend(false)}
+                  style={{ padding:'4px 8px', background:'white', border:'1px solid #d1d5db', borderRadius:4, fontSize:10, color:'#6b7280', cursor:'pointer' }}>
+                  Keep Manual
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* AI multiplier active indicator */}
+          {aiMultiplier != null && !showMktRecommend && (
+            <div style={{ background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:4, padding:'5px 8px', marginBottom:6, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <span style={{ fontSize:10, color:'#166534', fontWeight:600 }}>
+                ✓ AI rate active: {aiMultiplierTier?.charAt(0).toUpperCase() + aiMultiplierTier?.slice(1)} · {aiMultiplier === 1 ? 'baseline' : aiMultiplier > 1 ? `+${Math.round((aiMultiplier-1)*100)}%` : `-${Math.round((1-aiMultiplier)*100)}%`}
+              </span>
+              <button onClick={() => { setAiMultiplier(null); setAiMultiplierTier(null); }}
+                style={{ fontSize:9, background:'none', border:'none', color:'#9ca3af', cursor:'pointer' }}>
+                ✕ remove
+              </button>
+            </div>
+          )}
+
           {marketTiers.map(t => (
-            <div key={t.id} onClick={() => setSelectedMkt(t)} style={{ padding:'5px 7px', borderRadius:4, cursor:'pointer', marginBottom:2, border:`${selectedMkt?.id===t.id?'2':'1'}px solid ${selectedMkt?.id===t.id?(mktColor[t.tier_key]||'#374151'):'#e5e7eb'}`, background:selectedMkt?.id===t.id?(mktBg[t.tier_key]||'#f3f4f6'):'white', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <div key={t.id} onClick={() => { setSelectedMkt(t); setAiMultiplier(null); setAiMultiplierTier(null); }} style={{ padding:'5px 7px', borderRadius:4, cursor:'pointer', marginBottom:2, border:`${selectedMkt?.id===t.id?'2':'1'}px solid ${selectedMkt?.id===t.id?(mktColor[t.tier_key]||'#374151'):'#e5e7eb'}`, background:selectedMkt?.id===t.id?(mktBg[t.tier_key]||'#f3f4f6'):'white', display:'flex', justifyContent:'space-between', alignItems:'center', opacity: aiMultiplier != null ? 0.55 : 1 }}>
               <span style={{ fontSize:10, fontWeight:700, color:mktColor[t.tier_key] }}>{t.name}</span>
               <span style={{ fontSize:9, color:'#6b7280', fontFamily:'DM Mono, monospace' }}>{t.labor_multiplier<1?`-${Math.round((1-t.labor_multiplier)*100)}% pricing`:'baseline'}</span>
             </div>
           ))}
+          {aiMultiplier != null && (
+            <div style={{ fontSize:9, color:'#9ca3af', marginTop:3, fontStyle:'italic' }}>
+              Manual tier dimmed — AI rate is active. Click a tier to switch back to manual.
+            </div>
+          )}
         </Sec>
 
         {/* Package */}
@@ -809,10 +860,15 @@ export default function QuotePage() {
                   <MarketRateCard
                     quoteId={existingQuote?.id}
                     clientZip={clientZip}
-                    onRatesAccepted={(rates, suggestedTier) => {
-                      if (suggestedTier && marketTiers.length) {
-                        const tier = marketTiers.find(t => t.tier_key === suggestedTier);
-                        if (tier) setSelectedMkt(tier);
+                    onRatesAccepted={(rates, suggestedTier, analysis) => {
+                      if (analysis?.pricing_multiplier != null) {
+                        setPendingMultiplier({
+                          multiplier: analysis.pricing_multiplier,
+                          tier: analysis.market_tier,
+                          city: analysis.city,
+                          state: analysis.state,
+                        });
+                        setShowMktRecommend(true);
                       }
                       if (suggestedTier) setAcceptedMktTier(suggestedTier);
                     }}

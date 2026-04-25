@@ -187,11 +187,12 @@ const COMP_M = { none: 1.0, moderate: 1.12, high: 1.22 };
 const CPLX_M = { low: 1.0, medium: 1.08, high: 1.18 };
 
 // ─── MAIN CALC ───────────────────────────────────────────────────────────────
-export function calcQuote({ inputs, pkg, marketTier, products, settings }) {
+export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMultiplierOverride }) {
   if (!pkg || !marketTier || !settings) return null;
 
   const s = settings; // shorthand — settings is a key→value map
-  const mktMult = parseFloat(marketTier.labor_multiplier) || 1;
+  // aiMultiplierOverride takes precedence when market analysis has been accepted
+  const mktMult = aiMultiplierOverride != null ? aiMultiplierOverride : (parseFloat(marketTier.labor_multiplier) || 1);
 
   // ── Managed IT base — market multiplier applied to sell rates ────────────
   const wB  = inputs.workstations * pkg.ws_rate    * mktMult;

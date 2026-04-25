@@ -99,7 +99,7 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted }) 
         setRateSheet(sheet);
       }
       setAccepted(true);
-      onRatesAccepted?.(workingRates, analysis.market_tier);
+      onRatesAccepted?.(workingRates, analysis.market_tier, analysis);
     } catch (err) {
       setError('Failed to save rates: ' + err.message);
     }

@@ -1,5 +1,28 @@
 [
   {
+    "version": "2.3.1",
+    "date": "2026-04-25",
+    "summary": "Fix market tier / AI analysis disconnect \u2014 AI multiplier now drives Managed IT pricing",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "AI Market Recommendation banner appears in the Market Tier section when analysis is accepted \u2014 shows city, market tier, and exact pricing multiplier",
+        "Apply AI Rate button applies the AI-derived pricing multiplier directly to the quote calculation",
+        "Keep Manual option dismisses the recommendation and keeps the manually selected tier",
+        "Active AI rate shown as a green indicator above the tier list with one-click removal",
+        "Clicking any manual tier removes the AI override \u2014 clear visual feedback on which is active",
+        "AI multiplier saved with the quote and restored on reload"
+      ],
+      "fixed": [
+        "Market Rate Analysis card and Market Tier selector were completely disconnected \u2014 AI returned 'standard/adjusted/secondary/premium' but DB tiers use 'major_metro/mid_market/small_market' \u2014 now bypassed entirely with a precise pricing_multiplier",
+        "Static -10% / -20% tier labels no longer conflict with AI recommendations \u2014 both systems coexist cleanly"
+      ],
+      "improved": [
+        "calcQuote now accepts aiMultiplierOverride \u2014 takes precedence over DB tier labor_multiplier when AI analysis is active"
+      ]
+    }
+  },
+  {
     "version": "2.3.0",
     "date": "2026-04-25",
     "summary": "Bundle / Unbundle \u2014 convert any IT or Voice quote to a Bundle and back",
