@@ -320,6 +320,8 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMulti
            inputs.cloudTenants >= 1 || inputs.vendors > 3)
     recommended = 'Business Plus';
 
+  const opSubtotal = itSubtotal + addonRevenue; // retained for display compatibility
+
   return {
     // Managed IT breakdown
     wB, uB, sB, lB, tB, vB, eB, covU, itSubtotal,
