@@ -1,5 +1,27 @@
 [
   {
+    "version": "2.1.2",
+    "date": "2026-04-25",
+    "summary": "Admin \u2192 Market Rates tab + fix AI analysis engine",
+    "audience": "admin",
+    "categories": {
+      "new": [
+        "Admin \u2192 Market Rates tab \u2014 full index of all analyzed markets with search, tier filter, and expand-to-edit",
+        "Analyze New Market \u2014 type any zip, city, or state and run a fresh AI analysis on demand, no quote required",
+        "Expand any market row to view all rates, edit individual rates, and save manual overrides",
+        "Re-run AI Analysis button per market \u2014 refreshes with latest market intelligence",
+        "Stale indicators on markets older than 6 months \u2014 badge in table and count in header"
+      ],
+      "improved": [
+        "AI analysis engine now always returns city and state \u2014 cleaner DB matching and zip indexing",
+        "Fixed model name in AI analysis function \u2014 was using an invalid model string causing all analyses to fail"
+      ],
+      "fixed": [
+        "Market Rate Analysis card now correctly triggers from zip code alone \u2014 was silently failing because lookupZip does not return city/state fields"
+      ]
+    }
+  },
+  {
     "version": "2.1.0",
     "date": "2026-04-25",
     "summary": "Market Rate Intelligence Engine \u2014 AI-powered, per-market labor rate analysis on every quote",

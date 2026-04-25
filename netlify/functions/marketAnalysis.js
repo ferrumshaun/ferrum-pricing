@@ -2,15 +2,6 @@
 // Uses Claude API to analyze market rates for any zip code
 // Requires ANTHROPIC_API_KEY in Netlify environment variables
 
-const BASE_RATES = {
-  remote_support:    165,
-  onsite_block_2hr:  330,
-  onsite_additional: 165,
-  dev_crm:           220,
-  design_ux:         140,
-  pc_setup:          250,
-};
-
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
@@ -27,7 +18,7 @@ exports.handler = async (event) => {
 
       // ── Analyze a market via Claude AI ───────────────────────────────────
       case 'analyze': {
-        const { zip, city, state, returnCityState } = payload;
+        const { zip, city, state } = payload;
         if (!zip && !city && !state) {
           return { statusCode: 400, body: JSON.stringify({ error: 'zip or city+state required' }) };
         }
@@ -37,56 +28,55 @@ exports.handler = async (event) => {
           return { statusCode: 500, body: JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured in Netlify environment variables' }) };
         }
 
-        const prompt = `You are a market research analyst for FerrumIT, a managed IT services provider (MSP/MSSP) based in Chicago.
+        const locationLine = city && state
+          ? 'City: ' + city + '\nState: ' + state + (zip ? '\nZIP: ' + zip : '')
+          : 'ZIP Code: ' + zip + ' (identify the primary city and state for this zip)';
 
-Analyze the IT services labor market for:
-${city ? `City: ${city}\nState: ${state}` : `ZIP Code: ${zip} (identify the city and state)`}
-
-FerrumIT's Chicago/national base rates (CoL index 100 = national average):
-- Remote support / help desk: $165/hr
-- On-site dispatch 2hr block: $330
-- On-site additional hourly: $165/hr
-- Dev / CRM / DB / Web: $220/hr
-- Graphic Design & UX: $140/hr
-- PC Setup fee: $250/ea
-
-IMPORTANT CONTEXT:
-- Remote labor rates change modestly by market (FerrumIT staff is global; rates reflect local client expectations)
-- On-site rates change more significantly (third-party dispatch costs vary heavily by market)
-- Product MSRP never changes — only labor rates
-- After-hours = 1.5× the market on-site additional rate (calculated separately, do not include)
-- Tier guide: Secondary (<90 CoL), Adjusted (90-100), Standard (100-125), Premium (125+)
-- pricing_multiplier: how to adjust FerrumIT's managed IT package rates vs Chicago standard (1.0 = no change)
-
-Respond ONLY with a valid JSON object. No markdown, no explanation, no code fences:
-{
-  "col_index": <number, national avg=100>,
-  "median_income": <annual household income as number>,
-  "unemployment_rate": <as decimal, e.g. 0.045>,
-  "market_tier": <"secondary"|"adjusted"|"standard"|"premium">,
-  "pricing_multiplier": <number, e.g. 0.88 or 1.15>,
-  "rates": {
-    "remote_support": <number>,
-    "onsite_block_2hr": <number>,
-    "onsite_additional": <number>,
-    "dev_crm": <number>,
-    "design_ux": <number>,
-    "pc_setup": <number>
-  },
-  "market_notes": "<2-3 sentences: market context, primary industries, key MSP selling points for this market>"${returnCityState ? `,
-  "city": "<primary city name for this market>",
-  "state": "<2-letter state code>"` : ''}
-}`;
+        const prompt = 'You are a market research analyst for FerrumIT, a managed IT services provider (MSP/MSSP) based in Chicago.\n\n'
+          + 'Analyze the IT services labor market for:\n'
+          + locationLine + '\n\n'
+          + 'FerrumIT base rates (Chicago/national standard, CoL index 100):\n'
+          + '- Remote support / help desk: $165/hr\n'
+          + '- On-site dispatch 2hr block: $330\n'
+          + '- On-site additional hourly: $165/hr\n'
+          + '- Dev / CRM / DB / Web: $220/hr\n'
+          + '- Graphic Design & UX: $140/hr\n'
+          + '- PC Setup fee: $250/ea\n\n'
+          + 'IMPORTANT:\n'
+          + '- Remote labor rates shift modestly (staff is global; reflects local client expectations)\n'
+          + '- On-site rates shift more significantly (third-party dispatch costs vary by market)\n'
+          + '- Product MSRP never changes\n'
+          + '- Tier guide: Secondary (<90 CoL), Adjusted (90-100), Standard (100-125), Premium (125+)\n'
+          + '- pricing_multiplier: how to adjust managed IT package rates vs Chicago standard (1.0 = no change)\n\n'
+          + 'Respond ONLY with a valid JSON object. No markdown, no explanation, no code fences:\n'
+          + '{\n'
+          + '  "city": "<primary city name>",\n'
+          + '  "state": "<2-letter state code>",\n'
+          + '  "col_index": <number, national avg=100>,\n'
+          + '  "median_income": <annual household income as number>,\n'
+          + '  "unemployment_rate": <as decimal, e.g. 0.045>,\n'
+          + '  "market_tier": <"secondary"|"adjusted"|"standard"|"premium">,\n'
+          + '  "pricing_multiplier": <number, e.g. 0.88 or 1.15>,\n'
+          + '  "rates": {\n'
+          + '    "remote_support": <number>,\n'
+          + '    "onsite_block_2hr": <number>,\n'
+          + '    "onsite_additional": <number>,\n'
+          + '    "dev_crm": <number>,\n'
+          + '    "design_ux": <number>,\n'
+          + '    "pc_setup": <number>\n'
+          + '  },\n'
+          + '  "market_notes": "<2-3 sentences: market context, primary industries, key MSP selling angles>"\n'
+          + '}';
 
         const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
-            'Content-Type':       'application/json',
-            'x-api-key':          apiKey,
-            'anthropic-version':  '2023-06-01',
+            'Content-Type':      'application/json',
+            'x-api-key':         apiKey,
+            'anthropic-version': '2023-06-01',
           },
           body: JSON.stringify({
-            model:      'claude-sonnet-4-20250514',
+            model:      'claude-haiku-4-5-20251001',
             max_tokens: 800,
             messages:   [{ role: 'user', content: prompt }],
           })
@@ -94,8 +84,11 @@ Respond ONLY with a valid JSON object. No markdown, no explanation, no code fenc
 
         if (!claudeRes.ok) {
           const err = await claudeRes.json();
-          console.error('Claude API error:', err);
-          return { statusCode: 500, body: JSON.stringify({ error: 'AI analysis failed', detail: err }) };
+          console.error('Claude API error:', JSON.stringify(err));
+          return {
+            statusCode: 500,
+            body: JSON.stringify({ error: 'AI analysis failed', detail: err, status: claudeRes.status })
+          };
         }
 
         const claudeData = await claudeRes.json();
@@ -103,7 +96,6 @@ Respond ONLY with a valid JSON object. No markdown, no explanation, no code fenc
 
         let analysis;
         try {
-          // Strip any accidental markdown fences
           const cleaned = rawText.replace(/```json\n?|\n?```/g, '').trim();
           analysis = JSON.parse(cleaned);
         } catch (e) {
@@ -111,11 +103,10 @@ Respond ONLY with a valid JSON object. No markdown, no explanation, no code fenc
           return { statusCode: 500, body: JSON.stringify({ error: 'Failed to parse AI response', raw: rawText }) };
         }
 
-        // Validate required fields
-        const required = ['col_index', 'market_tier', 'pricing_multiplier', 'rates'];
+        const required = ['col_index', 'market_tier', 'pricing_multiplier', 'rates', 'city', 'state'];
         for (const field of required) {
           if (analysis[field] === undefined) {
-            return { statusCode: 500, body: JSON.stringify({ error: `AI response missing field: ${field}` }) };
+            return { statusCode: 500, body: JSON.stringify({ error: 'AI response missing field: ' + field, raw: rawText }) };
           }
         }
 
@@ -126,24 +117,8 @@ Respond ONLY with a valid JSON object. No markdown, no explanation, no code fenc
         };
       }
 
-      // ── Get rating for a rate vs market ──────────────────────────────────
-      case 'rate_check': {
-        const { ferrumRate, marketRate } = payload;
-        const diff = (ferrumRate - marketRate) / marketRate;
-        let rating, color;
-        if (diff > 0.25)       { rating = 'HIGH';          color = '#dc2626'; }
-        else if (diff > 0.10)  { rating = 'SLIGHTLY HIGH'; color = '#d97706'; }
-        else if (diff < -0.05) { rating = 'LOW';           color = '#2563eb'; }
-        else                   { rating = 'FAIR';          color = '#166534'; }
-        return {
-          statusCode: 200,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rating, color, diff: Math.round(diff * 100) })
-        };
-      }
-
       default:
-        return { statusCode: 400, body: JSON.stringify({ error: `Unknown action: ${action}` }) };
+        return { statusCode: 400, body: JSON.stringify({ error: 'Unknown action: ' + action }) };
     }
   } catch (err) {
     console.error('marketAnalysis error:', err);
