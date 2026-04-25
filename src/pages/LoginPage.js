@@ -99,6 +99,16 @@ export default function LoginPage() {
           Contact your admin if you need access.
         </p>
 
+        {/* Legal warning banner */}
+        <div style={{ marginTop:16, padding:'10px 12px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:6 }}>
+          <div style={{ fontSize:9, fontWeight:700, color:'#991b1b', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:4 }}>
+            ⚠ System Use Notice
+          </div>
+          <p style={{ fontSize:9, color:'#7f1d1d', lineHeight:1.6, margin:0 }}>
+            Unauthorized or improper use of this system may result in disciplinary action and/or civil charges/criminal penalties and/or prosecution by law. Evidence of unauthorized use collected during monitoring may be used for administrative, criminal, or other adverse action. By continued use of this system, you indicate your awareness of and consent to these terms and conditions of use.
+          </p>
+        </div>
+
       </div>
     </div>
   );

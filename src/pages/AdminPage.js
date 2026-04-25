@@ -652,24 +652,17 @@ export function IntegrationsAdmin() {
   }, []);
 
   async function saveLogo() {
-    if (!logoUrl.trim() && !logoFile) { setLogoMsg('Enter a URL or select a file.'); return; }
+    if (!logoUrl.trim() && !logoPreview) { setLogoMsg('Enter a URL or select a file.'); return; }
     setLogoSaving(true); setLogoMsg('');
     try {
-      let finalUrl = logoUrl.trim();
-
-      // If a file was selected, upload to Supabase Storage
-      if (logoFile) {
-        const ext = logoFile.name.split('.').pop().toLowerCase();
-        const path = `logos/company-logo.${ext}`;
-        const { error: upErr } = await supabase.storage.from('assets').upload(path, logoFile, { upsert: true, contentType: logoFile.type });
-        if (upErr) throw new Error('Upload failed: ' + upErr.message);
-        const { data: urlData } = supabase.storage.from('assets').getPublicUrl(path);
-        finalUrl = urlData.publicUrl;
-        setLogoUrl(finalUrl);
-      }
-
-      await supabase.from('pricing_settings').upsert({ key: 'company_logo_url', value: finalUrl, description: 'Company logo URL — shown on login page and navigation bar' }, { onConflict: 'key' });
-      setLogoMsg('✓ Logo saved — reload the page to see it');
+      // Use base64 data URL if a file was selected, otherwise use the URL directly
+      const finalUrl = logoPreview || logoUrl.trim();
+      await supabase.from('pricing_settings').upsert(
+        { key: 'company_logo_url', value: finalUrl, description: 'Company logo — shown on login page and navigation bar' },
+        { onConflict: 'key' }
+      );
+      setLogoUrl(finalUrl);
+      setLogoMsg('✓ Logo saved — refresh the page to see it applied');
     } catch (err) {
       setLogoMsg('✗ ' + err.message);
     }
@@ -681,7 +674,10 @@ export function IntegrationsAdmin() {
     if (!file) return;
     setLogoFile(file);
     const reader = new FileReader();
-    reader.onload = ev => setLogoPreview(ev.target.result);
+    reader.onload = ev => {
+      setLogoPreview(ev.target.result); // base64 data URL stored directly in DB
+      setLogoUrl('');
+    };
     reader.readAsDataURL(file);
   }
 
@@ -768,8 +764,8 @@ export function IntegrationsAdmin() {
           </div>
 
           <div style={{ fontSize:9, color:'#9ca3af' }}>
-            Note: File uploads require an 'assets' storage bucket in Supabase with public access enabled.
-            If you don't have one set up, use a URL instead.
+            File uploads are stored as encoded data — no external storage required.
+            For best results use a PNG or SVG with a transparent or dark background.
           </div>
         </div>
       </div>
