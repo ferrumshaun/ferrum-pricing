@@ -756,8 +756,6 @@ export default function QuotePage() {
                   <MarketRateCard
                     quoteId={existingQuote?.id}
                     clientZip={clientZip}
-                    marketCity={marketCity}
-                    marketState={marketState}
                     onRatesAccepted={(rates, suggestedTier) => {
                       if (suggestedTier && marketTiers.length) {
                         const tier = marketTiers.find(t => t.tier_key === suggestedTier);

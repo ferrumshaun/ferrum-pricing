@@ -67,7 +67,7 @@ export async function runMarketAnalysis(city, state, zip) {
   const res = await fetch('/.netlify/functions/marketAnalysis', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'analyze', payload: { city, state, zip } })
+    body: JSON.stringify({ action: 'analyze', payload: { city, state, zip, returnCityState: !city } })
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Analysis failed');
@@ -100,20 +100,51 @@ export async function saveMarketAnalysis(city, state, zip, analysis, source = 'a
   return data;
 }
 
+// ── Look up by zip first ──────────────────────────────────────────────────
+export async function getMarketByZip(zip) {
+  if (!zip || zip.length < 5) return null;
+  const { data } = await supabase
+    .from('market_rate_analyses')
+    .select('*')
+    .eq('zip', zip)
+    .maybeSingle();
+  return data || null;
+}
+
 // ── Get or analyze — main entry point ─────────────────────────────────────
+// Accepts zip alone — resolves city/state via DB or AI
 // Returns { analysis, wasRefreshed }
-export async function getOrAnalyzeMarket(city, state, zip, forceRefresh = false) {
-  if (!city || !state) return null;
+export async function getOrAnalyzeMarket(zip, forceRefresh = false, cityHint, stateHint) {
+  if (!zip) return null;
 
-  // Check for existing analysis
-  const existing = await getMarketAnalysis(city, state);
-
-  if (existing && !forceRefresh && !isStale(existing.analyzed_at)) {
-    return { analysis: existing, wasRefreshed: false };
+  // 1. Try exact zip match first
+  if (!forceRefresh) {
+    const byZip = await getMarketByZip(zip);
+    if (byZip && !isStale(byZip.analyzed_at)) {
+      return { analysis: byZip, wasRefreshed: false };
+    }
+    // 2. Try city+state match if we have hints
+    if (cityHint && stateHint) {
+      const byCityState = await getMarketAnalysis(cityHint, stateHint);
+      if (byCityState && !isStale(byCityState.analyzed_at)) {
+        // Tag with zip for future lookups
+        if (!byCityState.zip) {
+          await supabase.from('market_rate_analyses')
+            .update({ zip, updated_at: new Date().toISOString() })
+            .eq('id', byCityState.id);
+        }
+        return { analysis: byCityState, wasRefreshed: false };
+      }
+    }
   }
 
-  // Run AI analysis
-  const aiResult = await runMarketAnalysis(city, state, zip);
+  // 3. Run AI analysis — pass zip + any hints
+  const aiResult = await runMarketAnalysis(cityHint || null, stateHint || null, zip);
+
+  // AI returns city/state in the result
+  const city  = aiResult.city  || cityHint  || 'Unknown';
+  const state = aiResult.state || stateHint || 'XX';
+
   const saved = await saveMarketAnalysis(city, state, zip, aiResult, 'ai_generated');
   return { analysis: saved, wasRefreshed: true };
 }

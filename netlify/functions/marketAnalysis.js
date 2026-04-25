@@ -27,9 +27,9 @@ exports.handler = async (event) => {
 
       // ── Analyze a market via Claude AI ───────────────────────────────────
       case 'analyze': {
-        const { zip, city, state } = payload;
-        if (!city || !state) {
-          return { statusCode: 400, body: JSON.stringify({ error: 'city and state required' }) };
+        const { zip, city, state, returnCityState } = payload;
+        if (!zip && !city && !state) {
+          return { statusCode: 400, body: JSON.stringify({ error: 'zip or city+state required' }) };
         }
 
         const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -40,8 +40,7 @@ exports.handler = async (event) => {
         const prompt = `You are a market research analyst for FerrumIT, a managed IT services provider (MSP/MSSP) based in Chicago.
 
 Analyze the IT services labor market for:
-City: ${city}
-State: ${state}${zip ? `\nZIP: ${zip}` : ''}
+${city ? `City: ${city}\nState: ${state}` : `ZIP Code: ${zip} (identify the city and state)`}
 
 FerrumIT's Chicago/national base rates (CoL index 100 = national average):
 - Remote support / help desk: $165/hr
@@ -74,7 +73,9 @@ Respond ONLY with a valid JSON object. No markdown, no explanation, no code fenc
     "design_ux": <number>,
     "pc_setup": <number>
   },
-  "market_notes": "<2-3 sentences: market context, primary industries, key MSP selling points for this market>"
+  "market_notes": "<2-3 sentences: market context, primary industries, key MSP selling points for this market>"${returnCityState ? `,
+  "city": "<primary city name for this market>",
+  "state": "<2-letter state code>"` : ''}
 }`;
 
         const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {

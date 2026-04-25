@@ -10,7 +10,7 @@ import {
 const fmt$ = n => n != null ? `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '—';
 const fmtPct = n => n != null ? `${n > 0 ? '+' : ''}${Math.round(n * 100)}%` : '';
 
-export default function MarketRateCard({ quoteId, clientZip, marketCity, marketState, onRatesAccepted }) {
+export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted }) {
   const { profile } = useAuth();
 
   const [analysis,    setAnalysis]    = useState(null);
@@ -25,10 +25,10 @@ export default function MarketRateCard({ quoteId, clientZip, marketCity, marketS
 
   // Load market analysis when city/state available
   const loadAnalysis = useCallback(async (force = false) => {
-    if (!marketCity || !marketState) return;
+    if (!clientZip || clientZip.length < 5) return;
     setLoading(true); setError('');
     try {
-      const { analysis: result, wasRefreshed } = await getOrAnalyzeMarket(marketCity, marketState, clientZip, force);
+      const { analysis: result, wasRefreshed } = await getOrAnalyzeMarket(clientZip, force);
       setAnalysis(result);
       // Only reset working rates if no accepted rate sheet exists
       if (!rateSheet) {
@@ -36,12 +36,12 @@ export default function MarketRateCard({ quoteId, clientZip, marketCity, marketS
         setOverrides({});
         setAccepted(false);
       }
-      if (wasRefreshed) console.log('[MarketRates] Analysis refreshed for', marketCity, marketState);
+      if (wasRefreshed) console.log('[MarketRates] Analysis refreshed for', result.city, result.state);
     } catch (err) {
       setError('Market analysis unavailable: ' + err.message);
     }
     setLoading(false);
-  }, [marketCity, marketState, clientZip, rateSheet]);
+  }, [clientZip, rateSheet]);
 
   // Load existing rate sheet if quote is saved
   useEffect(() => {
@@ -57,17 +57,17 @@ export default function MarketRateCard({ quoteId, clientZip, marketCity, marketS
     });
   }, [quoteId]);
 
-  // Trigger analysis when market city/state comes in
+  // Trigger analysis when zip is ready
   useEffect(() => {
-    if (marketCity && marketState && !rateSheet) {
+    if (clientZip && clientZip.length >= 5 && !rateSheet) {
       loadAnalysis(false);
     }
-  }, [marketCity, marketState]);
+  }, [clientZip]);
 
   async function handleRefresh() {
     setRefreshing(true);
     try {
-      const { analysis: result } = await getOrAnalyzeMarket(marketCity, marketState, clientZip, true);
+      const { analysis: result } = await getOrAnalyzeMarket(clientZip, true);
       setAnalysis(result);
       setWorkingRates({ ...result.rates });
       setOverrides({});
@@ -116,7 +116,7 @@ export default function MarketRateCard({ quoteId, clientZip, marketCity, marketS
   }
 
   // ── Nothing to show yet ──────────────────────────────────────────────────
-  if (!marketCity || !marketState) return null;
+  if (!clientZip || clientZip.length < 5) return null;
 
   // ── Loading state ────────────────────────────────────────────────────────
   if (loading) {
@@ -125,7 +125,7 @@ export default function MarketRateCard({ quoteId, clientZip, marketCity, marketS
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 14, height: 14, border: '2px solid #2563eb', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
           <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 600 }}>
-            Analyzing {marketCity}, {marketState} market rates...
+            Analyzing market rates for {clientZip}...
           </span>
         </div>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -169,7 +169,7 @@ export default function MarketRateCard({ quoteId, clientZip, marketCity, marketS
               {hasOverrides && !accepted && <span style={{ marginLeft: 6, fontSize: 9, background: '#fef3c7', color: '#92400e', padding: '1px 6px', borderRadius: 3, fontWeight: 700 }}>{overrideCount} OVERRIDE{overrideCount > 1 ? 'S' : ''}</span>}
             </div>
             <div style={{ fontSize: 9, color: '#6b7280', marginTop: 1 }}>
-              {marketCity}, {marketState}
+              {analysis.city}, {analysis.state}
               <span style={{ margin: '0 4px', color: '#d1d5db' }}>·</span>
               <span style={{ color: tierColor(analysis.market_tier), fontWeight: 600 }}>{tierLabel(analysis.market_tier)}</span>
               <span style={{ margin: '0 4px', color: '#d1d5db' }}>·</span>
