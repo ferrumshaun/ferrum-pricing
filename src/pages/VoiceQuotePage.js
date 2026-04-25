@@ -209,7 +209,7 @@ export default function VoiceQuotePage() {
               {hubDealId ? 'Change' : 'Connect Deal'}
             </button>
           </div>
-          {hubMsg && <div style={{ marginTop:4, fontSize:10, color:hubMsg.startsWith('✓')?'#166534':'#dc2626' }}>{hubMsg}</div>}
+          {hubMsg && <div style={{ marginTop:4, fontSize:10, color:hubMsg.startsWith('✓')?'#166534':hubMsg.startsWith('⚠')||hubMsg.startsWith('Pulling')||hubMsg.startsWith('Fetching')?'#92400e':'#dc2626' }}>{hubMsg}</div>}
         </div>
 
         {/* Client fields */}
@@ -697,7 +697,7 @@ export default function VoiceQuotePage() {
                 {hubLoading ? '...' : 'Search'}
               </button>
             </div>
-            {hubMsg && <div style={{ padding:'5px 8px', borderRadius:4, fontSize:11, marginBottom:6, background:hubMsg.startsWith('✓')?'#dcfce7':'#fef2f2', color:hubMsg.startsWith('✓')?'#166534':'#dc2626' }}>{hubMsg}</div>}
+            {hubMsg && <div style={{ padding:'5px 8px', borderRadius:4, fontSize:11, marginBottom:6, background:hubMsg.startsWith('✓')?'#dcfce7':'#fef2f2', color:hubMsg.startsWith('✓')?'#166534':hubMsg.startsWith('⚠')||hubMsg.startsWith('Pulling')||hubMsg.startsWith('Fetching')?'#92400e':'#dc2626' }}>{hubMsg}</div>}
             <div style={{ flex:1, overflowY:'auto' }}>
               {hubResults.length === 0 && !hubMsg && <div style={{ textAlign:'center', padding:20, color:'#9ca3af', fontSize:11 }}>Search for an open deal above</div>}
               {hubResults.map(d=>(

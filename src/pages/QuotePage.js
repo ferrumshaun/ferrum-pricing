@@ -137,7 +137,6 @@ export default function QuotePage() {
     setHubLoading(true); setHubMsg('Pulling deal details...');
     try {
       const full = await getDealFull(deal.id);
-      console.log('[HubSpot Debug] full response:', JSON.stringify(full, null, 2));
 
       // Link the deal
       setHubDealId(full.dealId);
@@ -353,7 +352,9 @@ export default function QuotePage() {
               </button>
             </div>
           </div>
-          {hubMsg && <div style={{ marginTop:4, fontSize:10, color: hubMsg.startsWith('✓')?'#166534':'#dc2626', fontWeight:500 }}>{hubMsg}</div>}
+          {hubMsg && <div style={{ marginTop:4, fontSize:10, fontWeight:500,
+            color: hubMsg.startsWith('✓') ? '#166534' : hubMsg.startsWith('⚠') ? '#92400e' : hubMsg.startsWith('Pulling') || hubMsg.startsWith('Fetching') ? '#1e40af' : '#dc2626'
+          }}>{hubMsg}</div>}
         </div>
 
         {/* ── Client / Proposal fields ── */}
@@ -705,7 +706,7 @@ export default function QuotePage() {
                     {[
                       ['Quote #', existingQuote?.quote_number||'Unsaved'],
                       proposalName&&['Proposal', proposalName],
-                      ['Client', recipientBiz],
+                      ['Business Name', recipientBiz],
                       recipientContact&&['Contact', recipientContact],
                       ['Package', selectedPkg?.name],
                       ['Market', selectedMkt?.name],

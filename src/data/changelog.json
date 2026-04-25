@@ -1,5 +1,19 @@
 [
   {
+    "version": "2.0.4",
+    "date": "2026-04-25",
+    "summary": "HubSpot deal connect UX improvements and Deal Summary label fix",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [
+        "Deal connect status messages now show in context-appropriate colors \u2014 blue for loading/fetching, amber for warnings, green for success, red for errors (was always red)",
+        "Deal Summary panel now shows 'Business Name' instead of 'Client' \u2014 more accurate before a deal is won"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "2.0.3",
     "date": "2026-04-25",
     "summary": "Fix HubSpot deal URL and handle deals with no company association",
