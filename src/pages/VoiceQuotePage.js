@@ -10,6 +10,7 @@ import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import HubSpotConnect from '../components/HubSpotConnect';
 import MarketRateCard from '../components/MarketRateCard';
 
 const DEF = {
@@ -70,11 +71,7 @@ export default function VoiceQuotePage() {
   const [existingQuote, setExistingQuote] = useState(null);
 
   // HubSpot
-  const [hubModal, setHubModal]     = useState(false);
-  const [hubSearch, setHubSearch]   = useState('');
-  const [hubResults, setHubResults] = useState([]);
-  const [hubLoading, setHubLoading] = useState(false);
-  const [hubMsg, setHubMsg]         = useState('');
+
   const [hubDealId, setHubDealId]   = useState('');
   const [hubDealName, setHubDealName] = useState('');
   const [hubDealUrl, setHubDealUrl] = useState('');
@@ -108,50 +105,6 @@ export default function VoiceQuotePage() {
   }
 
   // HubSpot
-  async function searchHubspot() {
-    setHubLoading(true); setHubMsg(''); setHubResults([]);
-    try { const r = await searchDeals(hubSearch); setHubResults(r); if (!r.length) setHubMsg('No open deals found.'); }
-    catch (e) { setHubMsg('✗ ' + e.message); }
-    setHubLoading(false);
-  }
-
-  async function connectDeal(deal) {
-    setHubLoading(true); setHubMsg('Pulling details...');
-    try {
-      const full = await getDealFull(deal.id);
-      setHubDealId(full.dealId); setHubDealUrl(full.dealUrl); setHubDealName(full.deal.dealname);
-      if (full.company) {
-        if (full.company.name) setRecipientBiz(full.company.name);
-        const addr = [full.company.address, full.company.city, full.company.state, full.company.zip].filter(Boolean).join(', ');
-        if (addr) setRecipientAddress(addr);
-        if (full.company.zip) {
-          setClientZip(full.company.zip);
-          const zr = lookupZip(full.company.zip);
-          setZipResult(zr);
-          if (zr) {
-            const tier = marketTiers.find(t => t.tier_key === zr.tier);
-            if (tier) { setSelectedMkt(tier); setZipApplied(true); }
-            if (zr.city)  setMarketCity(zr.city);
-            if (zr.state) setMarketState(zr.state);
-          }
-        }
-      } else {
-        const extracted = full.deal.dealname?.split(/\s[-–—]\s/)?.[0]?.trim();
-        if (extracted) setRecipientBiz(extracted);
-        setHubMsg('⚠ No company linked to this deal in HubSpot — business name extracted from deal name. Add address manually or link a company in HubSpot.');
-      }
-      if (full.contact) {
-        const name = [full.contact.firstname, full.contact.lastname].filter(Boolean).join(' ');
-        if (name) setRecipientContact(name);
-        if (full.contact.email) setRecipientEmail(full.contact.email);
-      }
-      if (!proposalName && full.deal.dealname) setProposalName(`FerrumIT Hosted Voice — ${full.company?.name || full.deal.dealname}`);
-      setHubMsg(`✓ Connected: ${full.deal.dealname}`);
-      setHubResults([]);
-    } catch (e) { setHubMsg('✗ ' + e.message); }
-    setHubLoading(false);
-  }
-
   async function saveQuote() {
     if (!recipientBiz.trim()) { setSaveMsg('Please enter a client name.'); return; }
     setSaving(true); setSaveMsg('');
@@ -218,22 +171,38 @@ export default function VoiceQuotePage() {
           </div>
         )}
 
-        {/* HubSpot bar */}
-        <div style={{ marginBottom:10, padding:'8px 10px', background:hubDealId?'#fff7ed':'#f8fafc', border:`1px solid ${hubDealId?'#fed7aa':'#e5e7eb'}`, borderRadius:6 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <div style={{ width:16, height:16, background:'#ff7a59', borderRadius:3, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <span style={{ color:'white', fontSize:9, fontWeight:700 }}>H</span>
-              </div>
-              <span style={{ fontSize:11, color:hubDealId?'#c2410c':'#6b7280' }}>{hubDealId ? hubDealName || `Deal #${hubDealId}` : 'Not connected'}</span>
-            </div>
-            <button onClick={() => { setHubModal(true); setHubSearch(recipientBiz||''); setHubMsg(''); setHubResults([]); }}
-              style={{ fontSize:10, padding:'3px 8px', background:'#0f1e3c', color:'white', border:'none', borderRadius:3, cursor:'pointer', fontWeight:600 }}>
-              {hubDealId ? 'Change' : 'Connect Deal'}
-            </button>
-          </div>
-          {hubMsg && <div style={{ marginTop:4, fontSize:10, color:hubMsg.startsWith('✓')?'#166534':hubMsg.startsWith('⚠')||hubMsg.startsWith('Pulling')||hubMsg.startsWith('Fetching')?'#92400e':'#dc2626' }}>{hubMsg}</div>}
-        </div>
+        {/* HubSpot */}
+        <HubSpotConnect
+          dealId={hubDealId}
+          dealUrl={hubDealUrl}
+          dealName={hubDealName}
+          description={dealDescription}
+          onDescriptionChange={setDealDescription}
+          quoteNumber={existingQuote?.quote_number}
+          mrr={result?.finalMRR}
+          contractValue={result ? result.finalMRR * v.contractTerm + result.nrc : 0}
+          packageName={`Voice — ${v.quoteType}`}
+          contractTerm={v.contractTerm}
+          existingQuoteId={existingQuote?.id}
+          clientName={recipientBiz}
+          onConnect={full => {
+            setHubDealId(full.dealId); setHubDealUrl(full.dealUrl); setHubDealName(full.deal.dealname);
+            if (full.company) {
+              if (full.company.name) setRecipientBiz(full.company.name);
+              const addr = [full.company.address, full.company.city, full.company.state, full.company.zip].filter(Boolean).join(', ');
+              if (addr) setRecipientAddress(addr);
+              if (full.company.zip) {
+                setClientZip(full.company.zip);
+                const zr = lookupZip(full.company.zip);
+                setZipResult(zr);
+                if (zr) { const tier = marketTiers.find(t => t.tier_key === zr.tier); if (tier) { setSelectedMkt(tier); setZipApplied(true); } if (zr.city) setMarketCity(zr.city); if (zr.state) setMarketState(zr.state); }
+              }
+            } else { const x = full.deal.dealname?.split(/\s[-–—]\s/)?.[0]?.trim(); if (x) setRecipientBiz(x); }
+            if (full.contact) { const n=[full.contact.firstname,full.contact.lastname].filter(Boolean).join(' '); if(n) setRecipientContact(n); if(full.contact.email) setRecipientEmail(full.contact.email); }
+            if (!proposalName && full.deal.dealname) setProposalName(`FerrumIT Hosted Voice — ${full.company?.name||full.deal.dealname}`);
+          }}
+          onDisconnect={() => { setHubDealId(''); setHubDealUrl(''); setHubDealName(''); }}
+        />
 
         {/* Client fields */}
         <Sec t="Proposal Details" c="#0f1e3c">
@@ -725,37 +694,6 @@ export default function VoiceQuotePage() {
         </div>{/* end inner scroll */}
       </div>
 
-      {/* ── HUBSPOT MODAL ── */}
-      {hubModal && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:300 }}>
-          <div style={{ background:'white', borderRadius:10, padding:24, width:500, maxHeight:'75vh', display:'flex', flexDirection:'column', boxShadow:'0 8px 32px rgba(0,0,0,0.18)' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-              <div style={{ fontSize:14, fontWeight:700, color:'#0f1e3c' }}>Connect HubSpot Deal</div>
-              <button onClick={()=>setHubModal(false)} style={{ background:'none', border:'none', fontSize:20, color:'#6b7280', cursor:'pointer' }}>×</button>
-            </div>
-            <div style={{ display:'flex', gap:5, marginBottom:8 }}>
-              <input value={hubSearch} onChange={e=>setHubSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&searchHubspot()}
-                placeholder="Search by client or deal name..." autoFocus
-                style={{ flex:1, padding:'7px 9px', border:'1px solid #d1d5db', borderRadius:5, fontSize:12, outline:'none' }}/>
-              <button onClick={searchHubspot} disabled={hubLoading}
-                style={{ padding:'7px 12px', background:'#ff7a59', color:'white', border:'none', borderRadius:5, fontSize:11, fontWeight:700, cursor:'pointer' }}>
-                {hubLoading ? '...' : 'Search'}
-              </button>
-            </div>
-            {hubMsg && <div style={{ padding:'5px 8px', borderRadius:4, fontSize:11, marginBottom:6, background:hubMsg.startsWith('✓')?'#dcfce7':'#fef2f2', color:hubMsg.startsWith('✓')?'#166534':hubMsg.startsWith('⚠')||hubMsg.startsWith('Pulling')||hubMsg.startsWith('Fetching')?'#92400e':'#dc2626' }}>{hubMsg}</div>}
-            <div style={{ flex:1, overflowY:'auto' }}>
-              {hubResults.length === 0 && !hubMsg && <div style={{ textAlign:'center', padding:20, color:'#9ca3af', fontSize:11 }}>Search for an open deal above</div>}
-              {hubResults.map(d=>(
-                <div key={d.id} onClick={()=>{connectDeal(d);setHubModal(false);}} style={{ padding:'9px 11px', border:'1px solid #e5e7eb', borderRadius:5, marginBottom:5, cursor:'pointer' }}
-                  onMouseEnter={e=>e.currentTarget.style.background='#f0f7ff'} onMouseLeave={e=>e.currentTarget.style.background='white'}>
-                  <div style={{ fontSize:12, fontWeight:600, color:'#0f1e3c' }}>{d.properties.dealname}</div>
-                  <div style={{ fontSize:10, color:'#6b7280', marginTop:1 }}>{d.properties.dealstage_label || d.properties.dealstage}{d.properties.amount?` · $${parseFloat(d.properties.amount).toLocaleString()}`:''}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
