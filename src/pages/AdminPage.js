@@ -152,7 +152,7 @@ function ProductsAdmin() {
 
   function startNew() {
     setSaveError('');
-    setEditing({ name:'', category:'', sub_category:'', description:'', sell_price:'', cost_price:'', qty_driver:'user', exclusive_group:'', sort_order:0, active:true, notes:'', no_discount:false, no_commission:false });
+    setEditing({ name:'', category:'', sub_category:'', description:'', sell_price:'', cost_price:'', qty_driver:'user', exclusive_group:'', sort_order:0, active:true, notes:'', no_discount:false, no_commission:false, compliance_tags:[], recommendation_reason:'' });
   }
 
   async function save() {
@@ -171,9 +171,11 @@ function ProductsAdmin() {
       active:          editing.active !== false,
       notes:           editing.notes || null,
       cost_qty_driver: editing.cost_qty_driver || null,
-      no_discount:     editing.no_discount  || false,
-      no_commission:   editing.no_commission || false,
-      updated_by:      profile?.id
+      no_discount:          editing.no_discount  || false,
+      no_commission:        editing.no_commission || false,
+      compliance_tags:      editing.compliance_tags || [],
+      recommendation_reason: editing.recommendation_reason || null,
+      updated_by:           profile?.id
     };
 
     // Validate
@@ -282,6 +284,24 @@ function ProductsAdmin() {
                   </div>
                 </label>
               </div>
+            </div>
+            <div style={{ gridColumn:'1/-1', marginTop:8 }}>
+              <div style={{ fontSize:10, fontWeight:700, color:'#374151', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.05em' }}>Compliance Recommendations</div>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:6 }}>
+                {[['hipaa','HIPAA','#0891b2'],['soc2','SOC 2','#7c3aed'],['pci','PCI DSS','#dc2626'],['cmmc','CMMC','#d97706']].map(([key, label, color]) => {
+                  const tags = editing.compliance_tags || [];
+                  const active = tags.includes(key);
+                  return (
+                    <button key={key} onClick={() => setEditing(e => ({...e, compliance_tags: active ? tags.filter(t=>t!==key) : [...tags, key]}))}
+                      style={{ padding:'3px 10px', border:`2px solid ${active ? color : '#e5e7eb'}`, borderRadius:4, background: active ? color+'18' : 'white', color: active ? color : '#6b7280', fontSize:10, fontWeight:700, cursor:'pointer' }}>
+                      {active ? '✓ ' : ''}{label}
+                    </button>
+                  );
+                })}
+              </div>
+              <Field label="Recommendation reason (shown to rep when compliance matches)">
+                <Input value={editing.recommendation_reason || ''} onChange={v => setEditing(e => ({...e, recommendation_reason: v}))} placeholder="e.g. Required for HIPAA — PHI email encryption..." />
+              </Field>
             </div>
             <div style={{ gridColumn: '1/-1' }}>
               <Field label="Description"><Input value={editing.description || ''} onChange={v => setEditing(e => ({...e, description: v}))} /></Field>

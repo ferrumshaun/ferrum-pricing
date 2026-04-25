@@ -40,3 +40,46 @@ ON CONFLICT (key) DO NOTHING;
 SELECT 'Products flagged' as check, count(*) as count FROM products WHERE no_discount = true;
 SELECT 'Global commission rate' as check, value FROM pricing_settings WHERE key = 'commission_rate';
 SELECT 'Quotes with rep_id' as check, count(*) as count FROM quotes WHERE rep_id IS NOT NULL;
+
+-- ── v2.4.0 additions: compliance tags + payment surcharge settings ────────────
+
+-- 8. Add compliance_tags and recommendation_reason to products
+ALTER TABLE products
+  ADD COLUMN IF NOT EXISTS compliance_tags      text[]  DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS recommendation_reason text;
+
+-- 9. Pre-tag known compliance products
+-- Security Awareness Training → HIPAA, SOC2, PCI, CMMC
+UPDATE products SET
+  compliance_tags = ARRAY['hipaa','soc2','pci','cmmc'],
+  recommendation_reason = 'Required for most compliance frameworks — employee security training is mandated under HIPAA, SOC 2, PCI DSS, and CMMC'
+WHERE name ILIKE '%Security Awareness%' OR name ILIKE '%KnowBe4%' OR name ILIKE '%Proofpoint%';
+
+-- INKY Advanced / DLP → HIPAA (email encryption required)
+UPDATE products SET
+  compliance_tags = ARRAY['hipaa'],
+  recommendation_reason = 'HIPAA requires email encryption for PHI — INKY Advanced includes DLP and encryption enforcement'
+WHERE name ILIKE '%INKY%' AND (name ILIKE '%Advanced%' OR name ILIKE '%DLP%' OR name ILIKE '%Enterprise%');
+
+-- ThreatLocker → PCI, CMMC (application whitelisting required)
+UPDATE products SET
+  compliance_tags = ARRAY['pci','cmmc'],
+  recommendation_reason = 'PCI DSS and CMMC require application control — ThreatLocker provides zero-trust application whitelisting'
+WHERE name ILIKE '%ThreatLocker%';
+
+-- SentinelOne Complete → HIPAA, PCI, CMMC (EDR required)
+UPDATE products SET
+  compliance_tags = ARRAY['hipaa','pci','cmmc'],
+  recommendation_reason = 'Advanced EDR with rollback required for HIPAA, PCI DSS, and CMMC Level 2+ — SentinelOne Complete meets these requirements'
+WHERE name ILIKE '%SentinelOne%' AND (name ILIKE '%Complete%' OR name ILIKE '%Enterprise%');
+
+-- 10. Payment surcharge settings
+INSERT INTO pricing_settings (key, value, description) VALUES
+  ('payment_cc_surcharge', '0.02',  'Credit card payment surcharge as a decimal (e.g. 0.02 = 2%)'),
+  ('payment_ach_fee',      '0',     'ACH/EFT payment fee in dollars (0 = free)'),
+  ('payment_check_fee',    '10',    'Check payment administrative fee in dollars')
+ON CONFLICT (key) DO NOTHING;
+
+-- 11. Verify
+SELECT name, compliance_tags, recommendation_reason FROM products WHERE array_length(compliance_tags, 1) > 0;
+SELECT key, value FROM pricing_settings WHERE key LIKE 'payment_%';

@@ -374,6 +374,25 @@ export default function QuotePage() {
         repCommissionRate: repProfile?.commission_rate ?? null,
       });
 
+  // Multi-term preview — calc all 3 terms silently
+  const multiTermResults = (result && selectedPkg && selectedMkt) ? [12, 24, 36].map(term => ({
+    term,
+    result: calcQuote({ inputs: { ...inputs, contractTerm: term }, pkg: selectedPkg, marketTier: selectedMkt,
+      products, settings, aiMultiplierOverride: aiMultiplier, repCommissionRate: repProfile?.commission_rate ?? null })
+  })) : null;
+
+  // Compliance recommendations
+  const complianceKey = inputs.compliance === 'moderate' ? ['hipaa','soc2'] : inputs.compliance === 'high' ? ['pci','cmmc'] : [];
+  const recommendedProducts = complianceKey.length > 0
+    ? products.filter(p => p.compliance_tags?.some(t => complianceKey.includes(t)) && p.active)
+    : [];
+  const unselectedRecommended = recommendedProducts.filter(p => !(inputs.selectedProducts || []).includes(p.id));
+
+  // Payment surcharge settings
+  const ccSurcharge   = parseFloat(settings.payment_cc_surcharge) || 0.02;
+  const achFee        = parseFloat(settings.payment_ach_fee)      || 0;
+  const checkFee      = parseFloat(settings.payment_check_fee)    || 10;
+
   if (configLoading) return <div style={{ padding: 24, color: '#6b7280', fontSize: 12 }}>Loading pricing data...</div>;
 
   const mktColor = { major_metro:'#1e40af', mid_market:'#065f46', small_market:'#6d28d9' };
@@ -590,9 +609,13 @@ export default function QuotePage() {
               const gm = p.sell_price > 0 ? (1-p.cost_price/p.sell_price) : 0;
               const isExclusive = !!p.exclusive_group;
               const sel = isSelected(p.id);
+              const isRecommended = recommendedProducts.some(r => r.id === p.id);
+              const compColor = isRecommended && !sel ? '#92400e' : null;
               return (
                 <div key={p.id} onClick={() => toggleProduct(p.id)}
-                  style={{ display:'flex', alignItems:'center', gap:7, padding:'5px 7px', borderRadius:4, cursor:'pointer', marginBottom:2, border:`1px solid ${sel?'#93c5fd':'#e5e7eb'}`, background:sel?'#eff6ff':'white' }}>
+                  style={{ display:'flex', alignItems:'center', gap:7, padding:'5px 7px', borderRadius:4, cursor:'pointer', marginBottom:2,
+                    border:`1px solid ${sel?'#93c5fd': isRecommended ? '#fde68a' :'#e5e7eb'}`,
+                    background:sel?'#eff6ff': isRecommended ? '#fffbeb' :'white' }}>
                   {isExclusive
                     ? <div style={{ width:13, height:13, borderRadius:'50%', border:`2px solid ${sel?'#2563eb':'#d1d5db'}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                         {sel && <div style={{ width:5, height:5, borderRadius:'50%', background:'#2563eb' }}/>}
@@ -602,8 +625,23 @@ export default function QuotePage() {
                       </div>
                   }
                   <div style={{ flex:1 }}>
-                    <div style={{ fontSize:10, fontWeight:600, color:sel?'#1e40af':'#374151' }}>{p.name}</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:4, flexWrap:'wrap' }}>
+                      <div style={{ fontSize:10, fontWeight:600, color:sel?'#1e40af':'#374151' }}>{p.name}</div>
+                      {isRecommended && !sel && (
+                        <span style={{ fontSize:7, fontWeight:700, padding:'1px 4px', borderRadius:2, background:'#fde68a', color:'#92400e' }}>
+                          ⚠ {inputs.compliance === 'moderate' ? 'HIPAA/SOC2' : 'PCI/CMMC'}
+                        </span>
+                      )}
+                      {isRecommended && sel && (
+                        <span style={{ fontSize:7, fontWeight:700, padding:'1px 4px', borderRadius:2, background:'#dcfce7', color:'#166534' }}>
+                          ✓ Compliance
+                        </span>
+                      )}
+                    </div>
                     {p.description && <div style={{ fontSize:8, color:'#9ca3af' }}>{p.description}</div>}
+                    {isRecommended && !sel && p.recommendation_reason && (
+                      <div style={{ fontSize:8, color:'#92400e', fontStyle:'italic', marginTop:1 }}>{p.recommendation_reason.substring(0,80)}{p.recommendation_reason.length>80?'…':''}</div>
+                    )}
                   </div>
                   <div style={{ textAlign:'right', flexShrink:0 }}>
                     <div style={{ fontSize:10, fontFamily:'DM Mono, monospace', fontWeight:600, color:'#374151' }}>${p.sell_price}/{p.qty_driver}</div>
@@ -697,6 +735,62 @@ export default function QuotePage() {
 
               {/* KPI cards */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:7, marginBottom:10 }}>
+                {/* ── Multi-term pricing preview ─────────────────────────────────── */}
+                {multiTermResults && (
+                  <div style={{ background:'#f0f4ff', border:'1px solid #bfdbfe', borderRadius:6, padding:'10px 12px', marginBottom:10 }}>
+                    <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'#1e40af', marginBottom:8 }}>
+                      📋 Term Comparison — click to switch
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6 }}>
+                      {multiTermResults.map(({ term, result: r }) => {
+                        const isCurrent = term === inputs.contractTerm;
+                        const savings = multiTermResults[0].result ? r.finalMRR - multiTermResults[0].result.finalMRR : 0;
+                        return (
+                          <div key={term} onClick={() => set('contractTerm', term)} style={{ cursor:'pointer', borderRadius:5, padding:'8px 10px',
+                            border: `${isCurrent ? 2 : 1}px solid ${isCurrent ? '#2563eb' : '#dbeafe'}`,
+                            background: isCurrent ? '#2563eb' : 'white', transition:'all 0.1s' }}>
+                            <div style={{ fontSize:9, fontWeight:700, color: isCurrent ? '#bfdbfe' : '#6b7280' }}>{term}-MONTH</div>
+                            <div style={{ fontSize:16, fontWeight:700, fontFamily:'DM Mono, monospace', color: isCurrent ? 'white' : '#0f1e3c', lineHeight:1.2 }}>
+                              {fmt$0(r.finalMRR)}
+                            </div>
+                            <div style={{ fontSize:9, color: isCurrent ? '#bfdbfe' : '#6b7280' }}>/mo</div>
+                            {term !== 12 && savings !== 0 && (
+                              <div style={{ fontSize:8, fontWeight:700, color: isCurrent ? '#bfdbfe' : savings < 0 ? '#166534' : '#dc2626', marginTop:2 }}>
+                                {savings < 0 ? `${fmt$0(Math.abs(savings))}/mo savings` : `+${fmt$0(savings)}/mo`}
+                              </div>
+                            )}
+                            {term === 12 && <div style={{ fontSize:8, color: isCurrent ? '#bfdbfe' : '#9ca3af', marginTop:2 }}>base rate</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ fontSize:8, color:'#93c5fd', marginTop:6 }}>
+                      TCV: {multiTermResults.map(({term: t, result: r}) => `${t}mo = ${fmt$0(r.finalMRR*t+r.onboarding)}`).join(' · ')}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Compliance recommendations ──────────────────────────────── */}
+                {unselectedRecommended.length > 0 && (
+                  <div style={{ background:'#fef3c7', border:'1px solid #fde68a', borderRadius:6, padding:'9px 12px', marginBottom:10 }}>
+                    <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'#92400e', marginBottom:6 }}>
+                      ⚠ Compliance Recommendations — {inputs.compliance === 'moderate' ? 'HIPAA/SOC 2' : 'PCI/CMMC'}
+                    </div>
+                    {unselectedRecommended.map(p => (
+                      <div key={p.id} style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:5, padding:'6px 8px', background:'white', borderRadius:4, border:'1px solid #fde68a' }}>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontSize:10, fontWeight:700, color:'#0f1e3c' }}>{p.name}</div>
+                          {p.recommendation_reason && <div style={{ fontSize:9, color:'#78350f', marginTop:1 }}>{p.recommendation_reason}</div>}
+                        </div>
+                        <button onClick={() => setInputs(prev => ({ ...prev, selectedProducts: [...(prev.selectedProducts||[]), p.id] }))}
+                          style={{ padding:'3px 8px', background:'#d97706', color:'white', border:'none', borderRadius:3, fontSize:9, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
+                          + Add
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {[['Monthly MRR',fmt$0(result.finalMRR),'#0f1e3c','#f0f4ff'],['Onboarding',fmt$0(obIncentive?.effectiveFee ?? result.onboarding),'#0f766e','#f0fdf4'],['Implied GM',fmtPct(result.impliedGM),gc,gb],['Contract TCV',fmt$0(result.finalMRR*inputs.contractTerm+result.onboarding),'#6d28d9','#faf5ff']].map(([l,v,co,bg])=>(
                   <div key={l} style={{ background:bg, borderRadius:5, padding:'7px 6px', textAlign:'center' }}>
                     <div style={{ fontSize:7, fontWeight:600, color:'#6b7280', letterSpacing:'.05em', textTransform:'uppercase', marginBottom:2 }}>{l}</div>
@@ -864,6 +958,30 @@ export default function QuotePage() {
                       </div>
                     )}
                     {result.impliedGM<0.40&&<div style={{ marginTop:4, fontSize:9, color:'#92400e', background:'#fef3c7', padding:'3px 5px', borderRadius:3 }}>⚠ Below 40% — review scope or package.</div>}
+                  </div>
+
+                  {/* Payment surcharge notice */}
+                  <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:6, padding:'8px 11px' }}>
+                    <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.06em', color:'#6b7280', marginBottom:5 }}>💳 Payment Methods</div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', fontSize:10 }}>
+                        <span style={{ color:'#374151' }}>ACH / EFT</span>
+                        <span style={{ fontWeight:700, color:'#166534' }}>{achFee === 0 ? 'Free' : `+$${achFee}`}</span>
+                      </div>
+                      <div style={{ display:'flex', justifyContent:'space-between', fontSize:10 }}>
+                        <span style={{ color:'#374151' }}>Check</span>
+                        <span style={{ fontWeight:700, color:checkFee > 0 ? '#92400e' : '#166534' }}>{checkFee > 0 ? `+$${checkFee} admin fee` : 'Free'}</span>
+                      </div>
+                      <div style={{ display:'flex', justifyContent:'space-between', fontSize:10 }}>
+                        <span style={{ color:'#374151' }}>Credit Card</span>
+                        <span style={{ fontWeight:700, color:'#dc2626' }}>+{(ccSurcharge*100).toFixed(0)}% surcharge</span>
+                      </div>
+                    </div>
+                    {ccSurcharge > 0 && (
+                      <div style={{ fontSize:8, color:'#9ca3af', marginTop:5, borderTop:'1px solid #f1f5f9', paddingTop:4 }}>
+                        CC surcharge on this quote: ~{fmt$0(result.finalMRR * ccSurcharge)}/mo · ACH/EFT recommended
+                      </div>
+                    )}
                   </div>
 
                   {/* Deal summary */}

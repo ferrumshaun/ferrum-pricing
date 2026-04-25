@@ -15,7 +15,14 @@
         "Commission line in cost model shows rep name, rate, and commissionable base \u2014 fully transparent",
         "Net MRR after commission and GM after commission shown in cost model",
         "Protected product revenue shown as separate line \u2014 clear audit trail of what's protected",
-        "Flags visible in Admin \u2192 Products table \u2014 \ud83d\udd12 No Discount \u00b7 \ud83d\udcbc No Comm badges"
+        "Flags visible in Admin \u2192 Products table \u2014 \ud83d\udd12 No Discount \u00b7 \ud83d\udcbc No Comm badges",
+        "Compliance-based product recommendations \u2014 HIPAA/SOC 2 and PCI/CMMC products highlighted in amber on the product list with reason text",
+        "Compliance badges on each product: \u26a0 HIPAA/SOC2 or \u26a0 PCI/CMMC when unselected, \u2713 Compliance when added",
+        "Recommendation panel above the summary strip shows all unselected compliance products with one-click Add",
+        "Multi-term pricing preview \u2014 12/24/36 month comparison cards above the quote summary, clickable to switch term",
+        "TCV shown for all three terms at a glance \u2014 no need to manually toggle to see other options",
+        "Payment method surcharge panel in cost model \u2014 ACH free, check +$10 admin, CC +2% surcharge with live dollar estimate",
+        "Payment fees stored in Admin \u2192 Pricing Settings \u2014 fully configurable as rates change"
       ],
       "improved": [
         "Contract term discounts now only apply to labor + discountable add-ons \u2014 MSRP products added after discount calculation",
