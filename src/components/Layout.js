@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import changelog from '../data/changelog.json';
 
 const STORAGE_KEY = 'ferrum_changelog_last_seen';
@@ -17,6 +18,13 @@ export default function Layout() {
   const { profile, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [menuOpen,    setMenuOpen]    = useState(false);
+  const [logoUrl,     setLogoUrl]     = useState(null);
+
+  // Load logo from settings
+  useEffect(() => {
+    supabase.from('pricing_settings').select('value').eq('key', 'company_logo_url').single()
+      .then(({ data }) => { if (data?.value) setLogoUrl(data.value); });
+  }, []);
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -47,11 +55,18 @@ export default function Layout() {
       <div style={{ background: '#0f1e3c', padding: '0 16px', display: 'flex', alignItems: 'center', gap: 8, height: 48, flexShrink: 0 }}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 8 }}>
-          <div style={{ width: 22, height: 22, background: '#2563eb', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ color: 'white', fontSize: 12, fontWeight: 700 }}>F</span>
-          </div>
-          <span style={{ color: 'white', fontSize: 13, fontWeight: 700 }}>FerrumIT</span>
-          <span style={{ color: '#475569', fontSize: 10 }}>Pricing</span>
+          {logoUrl ? (
+            <img src={logoUrl} alt="Company Logo"
+              style={{ height: 28, maxWidth: 120, objectFit: 'contain', display: 'block' }} />
+          ) : (
+            <>
+              <div style={{ width: 22, height: 22, background: '#2563eb', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ color: 'white', fontSize: 12, fontWeight: 700 }}>F</span>
+              </div>
+              <span style={{ color: 'white', fontSize: 13, fontWeight: 700 }}>FerrumIT</span>
+              <span style={{ color: '#475569', fontSize: 10 }}>Pricing</span>
+            </>
+          )}
         </div>
 
         {/* New Quote dropdown */}

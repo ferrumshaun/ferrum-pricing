@@ -1,5 +1,25 @@
 [
   {
+    "version": "2.4.1",
+    "date": "2026-04-25",
+    "summary": "Company logo branding + KPI strip layout fix + opSubtotal crash fix",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Company logo on login page \u2014 shown on a dark background to match logo styling",
+        "Company logo in the top-left navigation bar replacing the placeholder F icon",
+        "Logo upload in Admin \u2192 Integrations \u2014 upload a PNG/SVG/JPG file or paste a public URL",
+        "Logo stored in pricing_settings and loaded dynamically \u2014 update without redeploying"
+      ],
+      "improved": [
+        "Term Comparison and Compliance Recommendation panels moved above the KPI cards \u2014 no longer inside the 4-column grid, so Contract TCV stays inline with Monthly MRR, Onboarding, and Implied GM"
+      ],
+      "fixed": [
+        "opSubtotal ReferenceError \u2014 variable was referenced in calcQuote return but not declared after discount logic rewrite \u2014 caused white screen on all pages"
+      ]
+    }
+  },
+  {
     "version": "2.4.0",
     "date": "2026-04-25",
     "summary": "Product discount/commission protection + per-rep commission rates + assigned rep on quotes",

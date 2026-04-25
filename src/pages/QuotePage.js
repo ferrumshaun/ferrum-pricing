@@ -733,64 +733,64 @@ export default function QuotePage() {
                 </div>
               </div>
 
-              {/* KPI cards */}
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:7, marginBottom:10 }}>
-                {/* ── Multi-term pricing preview ─────────────────────────────────── */}
-                {multiTermResults && (
-                  <div style={{ background:'#f0f4ff', border:'1px solid #bfdbfe', borderRadius:6, padding:'10px 12px', marginBottom:10 }}>
-                    <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'#1e40af', marginBottom:8 }}>
-                      📋 Term Comparison — click to switch
-                    </div>
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6 }}>
-                      {multiTermResults.map(({ term, result: r }) => {
-                        const isCurrent = term === inputs.contractTerm;
-                        const savings = multiTermResults[0].result ? r.finalMRR - multiTermResults[0].result.finalMRR : 0;
-                        return (
-                          <div key={term} onClick={() => set('contractTerm', term)} style={{ cursor:'pointer', borderRadius:5, padding:'8px 10px',
-                            border: `${isCurrent ? 2 : 1}px solid ${isCurrent ? '#2563eb' : '#dbeafe'}`,
-                            background: isCurrent ? '#2563eb' : 'white', transition:'all 0.1s' }}>
-                            <div style={{ fontSize:9, fontWeight:700, color: isCurrent ? '#bfdbfe' : '#6b7280' }}>{term}-MONTH</div>
-                            <div style={{ fontSize:16, fontWeight:700, fontFamily:'DM Mono, monospace', color: isCurrent ? 'white' : '#0f1e3c', lineHeight:1.2 }}>
-                              {fmt$0(r.finalMRR)}
-                            </div>
-                            <div style={{ fontSize:9, color: isCurrent ? '#bfdbfe' : '#6b7280' }}>/mo</div>
-                            {term !== 12 && savings !== 0 && (
-                              <div style={{ fontSize:8, fontWeight:700, color: isCurrent ? '#bfdbfe' : savings < 0 ? '#166534' : '#dc2626', marginTop:2 }}>
-                                {savings < 0 ? `${fmt$0(Math.abs(savings))}/mo savings` : `+${fmt$0(savings)}/mo`}
-                              </div>
-                            )}
-                            {term === 12 && <div style={{ fontSize:8, color: isCurrent ? '#bfdbfe' : '#9ca3af', marginTop:2 }}>base rate</div>}
+              {/* ── Multi-term pricing preview — full width above KPI cards ── */}
+              {multiTermResults && (
+                <div style={{ background:'#f0f4ff', border:'1px solid #bfdbfe', borderRadius:6, padding:'10px 12px', marginBottom:8 }}>
+                  <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'#1e40af', marginBottom:8 }}>
+                    📋 Term Comparison — click to switch
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6 }}>
+                    {multiTermResults.map(({ term, result: r }) => {
+                      const isCurrent = term === inputs.contractTerm;
+                      const savings = multiTermResults[0].result ? r.finalMRR - multiTermResults[0].result.finalMRR : 0;
+                      return (
+                        <div key={term} onClick={() => set('contractTerm', term)} style={{ cursor:'pointer', borderRadius:5, padding:'8px 10px',
+                          border: `${isCurrent ? 2 : 1}px solid ${isCurrent ? '#2563eb' : '#dbeafe'}`,
+                          background: isCurrent ? '#2563eb' : 'white', transition:'all 0.1s' }}>
+                          <div style={{ fontSize:9, fontWeight:700, color: isCurrent ? '#bfdbfe' : '#6b7280' }}>{term}-MONTH</div>
+                          <div style={{ fontSize:16, fontWeight:700, fontFamily:'DM Mono, monospace', color: isCurrent ? 'white' : '#0f1e3c', lineHeight:1.2 }}>
+                            {fmt$0(r.finalMRR)}
                           </div>
-                        );
-                      })}
-                    </div>
-                    <div style={{ fontSize:8, color:'#93c5fd', marginTop:6 }}>
-                      TCV: {multiTermResults.map(({term: t, result: r}) => `${t}mo = ${fmt$0(r.finalMRR*t+r.onboarding)}`).join(' · ')}
-                    </div>
-                  </div>
-                )}
-
-                {/* ── Compliance recommendations ──────────────────────────────── */}
-                {unselectedRecommended.length > 0 && (
-                  <div style={{ background:'#fef3c7', border:'1px solid #fde68a', borderRadius:6, padding:'9px 12px', marginBottom:10 }}>
-                    <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'#92400e', marginBottom:6 }}>
-                      ⚠ Compliance Recommendations — {inputs.compliance === 'moderate' ? 'HIPAA/SOC 2' : 'PCI/CMMC'}
-                    </div>
-                    {unselectedRecommended.map(p => (
-                      <div key={p.id} style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:5, padding:'6px 8px', background:'white', borderRadius:4, border:'1px solid #fde68a' }}>
-                        <div style={{ flex:1 }}>
-                          <div style={{ fontSize:10, fontWeight:700, color:'#0f1e3c' }}>{p.name}</div>
-                          {p.recommendation_reason && <div style={{ fontSize:9, color:'#78350f', marginTop:1 }}>{p.recommendation_reason}</div>}
+                          <div style={{ fontSize:9, color: isCurrent ? '#bfdbfe' : '#6b7280' }}>/mo</div>
+                          {term !== 12 && savings !== 0 && (
+                            <div style={{ fontSize:8, fontWeight:700, color: isCurrent ? '#bfdbfe' : savings < 0 ? '#166534' : '#dc2626', marginTop:2 }}>
+                              {savings < 0 ? `${fmt$0(Math.abs(savings))}/mo savings` : `+${fmt$0(savings)}/mo`}
+                            </div>
+                          )}
+                          {term === 12 && <div style={{ fontSize:8, color: isCurrent ? '#bfdbfe' : '#9ca3af', marginTop:2 }}>base rate</div>}
                         </div>
-                        <button onClick={() => setInputs(prev => ({ ...prev, selectedProducts: [...(prev.selectedProducts||[]), p.id] }))}
-                          style={{ padding:'3px 8px', background:'#d97706', color:'white', border:'none', borderRadius:3, fontSize:9, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
-                          + Add
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
-                )}
+                  <div style={{ fontSize:8, color:'#93c5fd', marginTop:6 }}>
+                    TCV: {multiTermResults.map(({term: t, result: r}) => `${t}mo = ${fmt$0(r.finalMRR*t+r.onboarding)}`).join(' · ')}
+                  </div>
+                </div>
+              )}
 
+              {/* ── Compliance recommendations — full width above KPI cards ── */}
+              {unselectedRecommended.length > 0 && (
+                <div style={{ background:'#fef3c7', border:'1px solid #fde68a', borderRadius:6, padding:'9px 12px', marginBottom:8 }}>
+                  <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'#92400e', marginBottom:6 }}>
+                    ⚠ Compliance Recommendations — {inputs.compliance === 'moderate' ? 'HIPAA/SOC 2' : 'PCI/CMMC'}
+                  </div>
+                  {unselectedRecommended.map(p => (
+                    <div key={p.id} style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:5, padding:'6px 8px', background:'white', borderRadius:4, border:'1px solid #fde68a' }}>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:10, fontWeight:700, color:'#0f1e3c' }}>{p.name}</div>
+                        {p.recommendation_reason && <div style={{ fontSize:9, color:'#78350f', marginTop:1 }}>{p.recommendation_reason}</div>}
+                      </div>
+                      <button onClick={() => setInputs(prev => ({ ...prev, selectedProducts: [...(prev.selectedProducts||[]), p.id] }))}
+                        style={{ padding:'3px 8px', background:'#d97706', color:'white', border:'none', borderRadius:3, fontSize:9, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
+                        + Add
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* KPI cards — 4 inline */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:7, marginBottom:10 }}>
                 {[['Monthly MRR',fmt$0(result.finalMRR),'#0f1e3c','#f0f4ff'],['Onboarding',fmt$0(obIncentive?.effectiveFee ?? result.onboarding),'#0f766e','#f0fdf4'],['Implied GM',fmtPct(result.impliedGM),gc,gb],['Contract TCV',fmt$0(result.finalMRR*inputs.contractTerm+result.onboarding),'#6d28d9','#faf5ff']].map(([l,v,co,bg])=>(
                   <div key={l} style={{ background:bg, borderRadius:5, padding:'7px 6px', textAlign:'center' }}>
                     <div style={{ fontSize:7, fontWeight:600, color:'#6b7280', letterSpacing:'.05em', textTransform:'uppercase', marginBottom:2 }}>{l}</div>

@@ -6,6 +6,12 @@ import { supabase } from '../lib/supabase';
 export default function LoginPage() {
   const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
+  const [logoUrl, setLogoUrl] = useState(null);
+
+  useEffect(() => {
+    supabase.from('pricing_settings').select('value').eq('key', 'company_logo_url').single()
+      .then(({ data }) => { if (data?.value) setLogoUrl(data.value); });
+  }, []);
   const { user }  = useAuth();
   const navigate  = useNavigate();
 
@@ -42,14 +48,23 @@ export default function LoginPage() {
       <div style={{ width:400, padding:36, background:'white', borderRadius:12, border:'1px solid #e5e7eb', boxShadow:'0 4px 24px rgba(0,0,0,0.07)' }}>
 
         {/* Logo */}
-        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:32, justifyContent:'center' }}>
-          <div style={{ width:40, height:40, background:'#0f1e3c', borderRadius:9, display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <span style={{ color:'white', fontSize:20, fontWeight:700 }}>F</span>
-          </div>
-          <div>
-            <div style={{ fontSize:17, fontWeight:700, color:'#0f1e3c' }}>FerrumIT</div>
-            <div style={{ fontSize:11, color:'#6b7280' }}>Pricing Platform</div>
-          </div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', marginBottom:28 }}>
+          {logoUrl ? (
+            <div style={{ background:'#0f1e3c', borderRadius:10, padding:'12px 20px', display:'inline-block' }}>
+              <img src={logoUrl} alt="Company Logo"
+                style={{ height: 48, maxWidth: 220, objectFit: 'contain', display: 'block' }} />
+            </div>
+          ) : (
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{ width:40, height:40, background:'#0f1e3c', borderRadius:9, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <span style={{ color:'white', fontSize:20, fontWeight:700 }}>F</span>
+              </div>
+              <div>
+                <div style={{ fontSize:17, fontWeight:700, color:'#0f1e3c' }}>FerrumIT</div>
+                <div style={{ fontSize:11, color:'#6b7280' }}>Pricing Platform</div>
+              </div>
+            </div>
+          )}
         </div>
 
         <h2 style={{ fontSize:16, fontWeight:700, color:'#111827', marginBottom:6, textAlign:'center' }}>Welcome back</h2>

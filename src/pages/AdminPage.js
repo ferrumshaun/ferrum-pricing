@@ -631,18 +631,59 @@ function diffObjects(oldObj, newObj) {
 
 // ─── INTEGRATIONS ADMIN ───────────────────────────────────────────────────────
 export function IntegrationsAdmin() {
-  const [token,    setToken]    = useState('');
-  const [saved,    setSaved]    = useState(false);
-  const [loading,  setLoading]  = useState(true);
-  const [saving,   setSaving]   = useState(false);
-  const [testing,  setTesting]  = useState(false);
-  const [testMsg,  setTestMsg]  = useState('');
+  const [token,      setToken]      = useState('');
+  const [saved,      setSaved]      = useState(false);
+  const [loading,    setLoading]    = useState(true);
+  const [saving,     setSaving]     = useState(false);
+  const [testing,    setTesting]    = useState(false);
+  const [testMsg,    setTestMsg]    = useState('');
+  const [logoUrl,    setLogoUrl]    = useState('');
+  const [logoSaving, setLogoSaving] = useState(false);
+  const [logoMsg,    setLogoMsg]    = useState('');
+  const [logoFile,   setLogoFile]   = useState(null);
+  const [logoPreview,setLogoPreview]= useState(null);
   const { profile } = useAuth();
 
   useEffect(() => {
     supabase.from('pricing_settings').select('value').eq('key','hubspot_token').single()
       .then(({ data }) => { if (data?.value) setToken(data.value); setLoading(false); });
+    supabase.from('pricing_settings').select('value').eq('key','company_logo_url').single()
+      .then(({ data }) => { if (data?.value) setLogoUrl(data.value); });
   }, []);
+
+  async function saveLogo() {
+    if (!logoUrl.trim() && !logoFile) { setLogoMsg('Enter a URL or select a file.'); return; }
+    setLogoSaving(true); setLogoMsg('');
+    try {
+      let finalUrl = logoUrl.trim();
+
+      // If a file was selected, upload to Supabase Storage
+      if (logoFile) {
+        const ext = logoFile.name.split('.').pop().toLowerCase();
+        const path = `logos/company-logo.${ext}`;
+        const { error: upErr } = await supabase.storage.from('assets').upload(path, logoFile, { upsert: true, contentType: logoFile.type });
+        if (upErr) throw new Error('Upload failed: ' + upErr.message);
+        const { data: urlData } = supabase.storage.from('assets').getPublicUrl(path);
+        finalUrl = urlData.publicUrl;
+        setLogoUrl(finalUrl);
+      }
+
+      await supabase.from('pricing_settings').upsert({ key: 'company_logo_url', value: finalUrl, description: 'Company logo URL — shown on login page and navigation bar' }, { onConflict: 'key' });
+      setLogoMsg('✓ Logo saved — reload the page to see it');
+    } catch (err) {
+      setLogoMsg('✗ ' + err.message);
+    }
+    setLogoSaving(false);
+  }
+
+  function handleLogoFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onload = ev => setLogoPreview(ev.target.result);
+    reader.readAsDataURL(file);
+  }
 
   async function saveToken() {
     setSaving(true); setSaved(false);
@@ -686,6 +727,51 @@ export function IntegrationsAdmin() {
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ fontSize: 14, fontWeight: 700, color: '#0f1e3c' }}>Integrations</h2>
         <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Connect FerrumIT Pricing to your external tools</p>
+      </div>
+
+      {/* Company Logo */}
+      <div style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:8, padding:20, marginBottom:20 }}>
+        <div style={{ fontSize:13, fontWeight:700, color:'#0f1e3c', marginBottom:4 }}>Company Logo</div>
+        <p style={{ fontSize:11, color:'#6b7280', marginBottom:14 }}>Shown on the login page and navigation bar. Upload a file or paste a public URL.</p>
+
+        {/* Preview */}
+        {(logoPreview || logoUrl) && (
+          <div style={{ background:'#0f1e3c', borderRadius:8, padding:'12px 20px', display:'inline-block', marginBottom:14 }}>
+            <img src={logoPreview || logoUrl} alt="Logo preview"
+              style={{ height:40, maxWidth:200, objectFit:'contain', display:'block' }} />
+          </div>
+        )}
+
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          {/* File upload */}
+          <div>
+            <label style={{ display:'block', fontSize:11, fontWeight:600, color:'#374151', marginBottom:4 }}>Upload image file (PNG, SVG, JPG)</label>
+            <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp"
+              onChange={handleLogoFile}
+              style={{ fontSize:11, color:'#374151' }} />
+          </div>
+
+          {/* URL input */}
+          <div>
+            <label style={{ display:'block', fontSize:11, fontWeight:600, color:'#374151', marginBottom:4 }}>Or paste a public image URL</label>
+            <input value={logoUrl} onChange={e => { setLogoUrl(e.target.value); setLogoFile(null); setLogoPreview(null); }}
+              placeholder="https://your-cdn.com/logo.png"
+              style={{ width:'100%', padding:'7px 9px', border:'1px solid #d1d5db', borderRadius:5, fontSize:12, outline:'none' }} />
+          </div>
+
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <button onClick={saveLogo} disabled={logoSaving}
+              style={{ padding:'7px 18px', background:'#0f1e3c', color:'white', border:'none', borderRadius:5, fontSize:12, fontWeight:600, cursor:'pointer', opacity: logoSaving ? 0.6 : 1 }}>
+              {logoSaving ? 'Saving...' : 'Save Logo'}
+            </button>
+            {logoMsg && <span style={{ fontSize:11, fontWeight:600, color: logoMsg.startsWith('✓') ? '#166534' : '#dc2626' }}>{logoMsg}</span>}
+          </div>
+
+          <div style={{ fontSize:9, color:'#9ca3af' }}>
+            Note: File uploads require an 'assets' storage bucket in Supabase with public access enabled.
+            If you don't have one set up, use a URL instead.
+          </div>
+        </div>
       </div>
 
       {/* HubSpot */}
