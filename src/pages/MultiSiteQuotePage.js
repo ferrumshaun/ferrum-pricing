@@ -13,6 +13,7 @@ import { getOrAnalyzeMarket } from '../lib/marketRates';
 import QuoteNotes from '../components/QuoteNotes';
 import QuoteHistory from '../components/QuoteHistory';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import HubSpotConnect from '../components/HubSpotConnect';
 
 const LOCATION_TYPES = { standard: 'Standard', restricted: 'Restricted' };
 const TYPE_COLOR     = { standard: '#2563eb', restricted: '#d97706' };
@@ -59,11 +60,6 @@ export default function MultiSiteQuotePage() {
   const [hubDealId,   setHubDealId]   = useState('');
   const [hubDealUrl,  setHubDealUrl]  = useState('');
   const [hubDealName, setHubDealName] = useState('');
-  const [hubModal,    setHubModal]    = useState(false);
-  const [hubSearch,   setHubSearch]   = useState('');
-  const [hubResults,  setHubResults]  = useState([]);
-  const [hubMsg,      setHubMsg]      = useState('');
-  const [hubLoading,  setHubLoading]  = useState(false);
 
   // ── Rep ───────────────────────────────────────────────────────────────────
   const [repId,       setRepId]       = useState(null);
@@ -249,39 +245,7 @@ export default function MultiSiteQuotePage() {
   }
 
   // ── HubSpot ───────────────────────────────────────────────────────────────
-  async function searchHubspot() {
-    setHubLoading(true); setHubMsg('Searching...');
-    try {
-      const res = await searchDeals(hubSearch);
-      setHubResults(res);
-      setHubMsg(res.length ? '' : 'No open deals found.');
-    } catch (e) { setHubMsg('✗ ' + e.message); }
-    setHubLoading(false);
-  }
 
-  async function connectDeal(deal) {
-    setHubLoading(true); setHubMsg('Fetching deal info...');
-    try {
-      const full = await getDealFull(deal.id);
-      setHubDealId(full.dealId); setHubDealUrl(full.dealUrl); setHubDealName(full.deal.dealname);
-      if (full.company) {
-        if (full.company.name) setRecipientBiz(full.company.name);
-        const addr = [full.company.address, full.company.city, full.company.state, full.company.zip].filter(Boolean).join(', ');
-        if (addr) setRecipientAddress(addr);
-      } else {
-        const extracted = full.deal.dealname?.split(/\s[-–—]\s/)?.[0]?.trim();
-        if (extracted) setRecipientBiz(extracted);
-      }
-      if (full.contact) {
-        const name = [full.contact.firstname, full.contact.lastname].filter(Boolean).join(' ');
-        if (name) setRecipientContact(name);
-        if (full.contact.email) setRecipientEmail(full.contact.email);
-      }
-      setHubMsg(`✓ Connected: ${full.deal.dealname}`);
-      setHubResults([]);
-    } catch (e) { setHubMsg('✗ ' + e.message); }
-    setHubLoading(false);
-  }
 
   // ── Save ──────────────────────────────────────────────────────────────────
   async function saveQuote() {
@@ -540,18 +504,40 @@ export default function MultiSiteQuotePage() {
           <div style={{ flex:1, overflowY:'auto', padding:'12px 14px' }}>
 
             {/* HubSpot */}
-            <div style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:6, padding:'8px 10px', marginBottom:10 }}>
-              <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'#6b7280', marginBottom:6 }}>HubSpot Deal</div>
-              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                <div style={{ flex:1, fontSize:11, color: hubDealId ? '#166534' : '#9ca3af', fontWeight: hubDealId ? 600 : 400, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                  {hubDealId ? `✓ ${hubDealName}` : 'Not connected'}
-                </div>
-                <button onClick={() => setHubModal(true)} style={{ fontSize:10, padding:'3px 8px', background:'#0f1e3c', color:'white', border:'none', borderRadius:3, cursor:'pointer', fontWeight:600 }}>
-                  {hubDealId ? 'Change' : 'Connect Deal'}
-                </button>
-              </div>
-              {hubMsg && <div style={{ marginTop:4, fontSize:10, color: hubMsg.startsWith('✓') ? '#166534' : '#2563eb', fontWeight:500 }}>{hubMsg}</div>}
-            </div>
+            <HubSpotConnect
+              dealId={hubDealId}
+              dealUrl={hubDealUrl}
+              dealName={hubDealName}
+              description={dealDescription}
+              onDescriptionChange={setDealDescription}
+              quoteNumber={existingQuote?.quote_number}
+              mrr={finalMRR}
+              contractValue={contractValue}
+              packageName={selectedPkg?.name}
+              contractTerm={contractTerm}
+              existingQuoteId={existingQuote?.id}
+              clientName={recipientBiz}
+              onConnect={full => {
+                setHubDealId(full.dealId);
+                setHubDealUrl(full.dealUrl);
+                setHubDealName(full.deal.dealname);
+                if (full.company) {
+                  if (full.company.name) setRecipientBiz(full.company.name);
+                  const addr = [full.company.address, full.company.city, full.company.state, full.company.zip].filter(Boolean).join(', ');
+                  if (addr) setRecipientAddress(addr);
+                } else {
+                  const extracted = full.deal.dealname?.split(/\s[-–—]\s/)?.[0]?.trim();
+                  if (extracted) setRecipientBiz(extracted);
+                }
+                if (full.contact) {
+                  const name = [full.contact.firstname, full.contact.lastname].filter(Boolean).join(' ');
+                  if (name) setRecipientContact(name);
+                  if (full.contact.email) setRecipientEmail(full.contact.email);
+                }
+                if (!proposalName && full.deal.dealname) setProposalName(`FerrumIT Multi-Site IT — ${full.company?.name || full.deal.dealname}`);
+              }}
+              onDisconnect={() => { setHubDealId(''); setHubDealUrl(''); setHubDealName(''); }}
+            />
 
             {/* Proposal */}
             <Sec t="Proposal Details" c="#0f1e3c">
@@ -917,80 +903,15 @@ export default function MultiSiteQuotePage() {
         </div>
       </div>
 
-      {/* ── HubSpot modal ── */}
-      {hubModal && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:300 }}>
-          <div style={{ background:'white', borderRadius:10, padding:24, width:500, maxHeight:'75vh', display:'flex', flexDirection:'column', boxShadow:'0 8px 32px rgba(0,0,0,0.18)' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-              <div style={{ fontSize:14, fontWeight:700, color:'#0f1e3c' }}>Connect HubSpot Deal</div>
-              <button onClick={() => setHubModal(false)} style={{ background:'none', border:'none', fontSize:20, color:'#6b7280', cursor:'pointer' }}>×</button>
-            </div>
-            <div style={{ display:'flex', gap:5, marginBottom:8 }}>
-              <input value={hubSearch} onChange={e => setHubSearch(e.target.value)} onKeyDown={e => e.key==='Enter' && searchHubspot()}
-                placeholder="Search by client or deal name..." autoFocus
-                style={{ flex:1, padding:'7px 9px', border:'1px solid #d1d5db', borderRadius:5, fontSize:12, outline:'none' }} />
-              <button onClick={searchHubspot} disabled={hubLoading}
-                style={{ padding:'7px 12px', background:'#ff7a59', color:'white', border:'none', borderRadius:5, fontSize:11, fontWeight:700, cursor:'pointer' }}>
-                {hubLoading ? '...' : 'Search'}
-              </button>
-            </div>
-            {hubMsg && <div style={{ fontSize:11, marginBottom:6, color: hubMsg.startsWith('✓') ? '#166534' : '#6b7280' }}>{hubMsg}</div>}
-            <div style={{ overflowY:'auto', flex:1 }}>
-              {hubResults.map(d => (
-                <div key={d.id} onClick={() => { connectDeal(d); setHubModal(false); }}
-                  style={{ padding:'8px 10px', borderRadius:5, cursor:'pointer', borderBottom:'1px solid #f3f4f6', background:'white' }}
-                  onMouseEnter={e => e.currentTarget.style.background='#f0f7ff'}
-                  onMouseLeave={e => e.currentTarget.style.background='white'}>
-                  <div style={{ fontSize:12, fontWeight:600, color:'#0f1e3c' }}>{d.properties.dealname}</div>
-                  <div style={{ fontSize:10, color:'#6b7280', marginTop:1 }}>{d.properties.dealstage_label || d.properties.dealstage}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+
     </>
   );
 }
 
-// ─── UI helpers ───────────────────────────────────────────────────────────────
-function Sec({ t, c, children, s }) {
-  return (
-    <div style={{ marginBottom:8, ...s }}>
-      <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:4, paddingBottom:2, borderBottom:'1px solid #f1f5f9' }}>
-        <div style={{ width:2, height:10, background:c||'#2563eb', borderRadius:2 }} />
-        <span style={{ fontSize:8, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:'#6b7280' }}>{t}</span>
-      </div>
-      {children}
-    </div>
-  );
-}
-function Grid2({ children }) { return <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:4 }}>{children}</div>; }
-function Fld({ lbl, children, s }) {
-  return (
-    <div style={{ marginBottom:4, ...s }}>
-      <label style={{ display:'block', fontSize:8, fontWeight:600, color:'#374151', marginBottom:1 }}>{lbl}</label>
-      {children}
-    </div>
-  );
-}
-function TI({ value, onChange, placeholder }) {
-  return <input value={value||''} onChange={e => onChange(e.target.value)} placeholder={placeholder||''}
-    style={{ width:'100%', padding:'4px 7px', border:'1px solid #d1d5db', borderRadius:4, fontSize:10, outline:'none' }} />;
-}
-function SI({ v, s, opts }) {
-  return (
-    <select value={v} onChange={e => s(e.target.value)}
-      style={{ width:'100%', padding:'3px 5px', border:'1px solid #d1d5db', borderRadius:4, fontSize:10, background:'white', outline:'none' }}>
-      {opts.map(([val, lbl]) => <option key={val} value={val}>{lbl}</option>)}
-    </select>
-  );
-}
-function LI({ lbl, v, bold, hi, ind, muted }) {
-  return (
-    <div style={{ display:'flex', justifyContent:'space-between', padding:`${hi?'5':'2'}px ${hi?'6':'2'}px`, background: hi?'#f0f4ff':'transparent', borderRadius: hi?4:0, marginBottom:1 }}>
-      <span style={{ fontSize: hi?10:9, fontWeight: bold||hi?700:400, color: muted?'#9ca3af':hi?'#0f1e3c':'#374151', paddingLeft: ind?8:0 }}>{lbl}</span>
-      <span style={{ fontSize: hi?12:10, fontWeight: bold||hi?700:400, fontFamily:'DM Mono, monospace', color: hi?'#0f1e3c': v<0?'#dc2626':'#374151' }}>{fmt$0(v)}</span>
-    </div>
-  );
-}
+// ─── UI helpers — match QuotePage exactly ────────────────────────────────────
+function Sec({t,c,children,s}){return(<div style={{marginBottom:10,...s}}><div style={{display:'flex',alignItems:'center',gap:4,marginBottom:5,paddingBottom:3,borderBottom:'1px solid #f1f5f9'}}><div style={{width:2,height:11,background:c||'#2563eb',borderRadius:2}}/><span style={{fontSize:9,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'#6b7280'}}>{t}</span></div>{children}</div>);}
+function Grid2({children}){return <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4}}>{children}</div>;}
+function Fld({lbl,sub,children,s}){return(<div style={{marginBottom:4,...s}}><label style={{display:'block',fontSize:9,fontWeight:600,color:'#374151',marginBottom:1}}>{lbl}{sub&&<span style={{fontWeight:400,color:'#9ca3af',marginLeft:3,fontSize:9}}>{sub}</span>}</label>{children}</div>);}
+function TI({value,onChange,placeholder}){return <input value={value||''} onChange={e=>onChange(e.target.value)} placeholder={placeholder||''} style={{width:'100%',padding:'4px 6px',border:'1px solid #d1d5db',borderRadius:4,fontSize:11,outline:'none'}}/>;}
+function SI({v,s,opts}){return <select value={v} onChange={e=>s(e.target.value)} style={{width:'100%',padding:'4px 6px',border:'1px solid #d1d5db',borderRadius:4,fontSize:11,background:'white',outline:'none',color:'#374151'}}>{opts.map(([a,b])=><option key={a} value={a}>{b}</option>)}</select>;}
+function LI({lbl,v,ind,bold,hi,muted}){if(v===0&&!bold&&!hi)return null;return(<div style={{display:'flex',justifyContent:'space-between',padding:hi?'5px 7px':'1px 2px',marginLeft:ind?7:0,borderRadius:hi?4:0,background:hi?'#dcfce7':'transparent',borderTop:bold&&!hi?'1px solid #f3f4f6':'none',marginTop:bold&&!hi?2:0}}><span style={{fontSize:hi?9:8,fontWeight:bold||hi?700:400,color:hi?'#166534':muted?'#9ca3af':bold?'#374151':'#6b7280'}}>{lbl}</span><span style={{fontSize:hi?11:9,fontWeight:bold||hi?700:500,fontFamily:'DM Mono, monospace',color:hi?'#166534':v<0?'#dc2626':bold?'#111827':'#374151'}}>{v<0?`(${fmt$(-v)})`:fmt$(v)}</span></div>);}

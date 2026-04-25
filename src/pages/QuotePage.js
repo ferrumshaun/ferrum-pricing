@@ -9,6 +9,7 @@ import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import HubSpotConnect from '../components/HubSpotConnect';
 import MarketRateCard from '../components/MarketRateCard';
 import OnboardingIncentive, { formatIncentiveForExport } from '../components/OnboardingIncentive';
 
@@ -414,37 +415,43 @@ export default function QuotePage() {
           </div>
         )}
 
-        {/* ── HubSpot connection bar ── */}
-        <div style={{ marginBottom:10, padding:'8px 10px', background: hubDealId?'#fff7ed':'#f8fafc', border:`1px solid ${hubDealId?'#fed7aa':'#e5e7eb'}`, borderRadius:6 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <div style={{ width:18, height:18, background:'#ff7a59', borderRadius:3, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <span style={{ color:'white', fontSize:10, fontWeight:700 }}>H</span>
-              </div>
-              {hubDealId
-                ? <span style={{ fontSize:11, fontWeight:600, color:'#c2410c' }}>{hubDealName || `Deal #${hubDealId}`}</span>
-                : <span style={{ fontSize:11, color:'#6b7280' }}>Not connected to HubSpot</span>}
-            </div>
-            <div style={{ display:'flex', gap:4 }}>
-              {hubDealId && (
-                <>
-                  <a href={hubDealUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:'#c2410c', fontWeight:600 }}>View →</a>
-                  <button onClick={syncToDeal} disabled={hubSyncing} style={{ fontSize:10, padding:'2px 7px', background:'#dcfce7', color:'#166534', border:'none', borderRadius:3, cursor:'pointer', fontWeight:600 }}>
-                    {hubSyncing ? '...' : 'Sync'}
-                  </button>
-                  <button onClick={() => { setHubDealId(''); setHubDealUrl(''); setHubDealName(''); setHubMsg(''); }} style={{ fontSize:10, color:'#dc2626', background:'none', border:'none', cursor:'pointer' }}>✕</button>
-                </>
-              )}
-              <button onClick={() => { setHubModal(true); setHubMsg(''); setHubResults([]); setHubSearch(recipientBiz||''); }}
-                style={{ fontSize:10, padding:'3px 8px', background:'#0f1e3c', color:'white', border:'none', borderRadius:3, cursor:'pointer', fontWeight:600 }}>
-                {hubDealId ? 'Change' : 'Connect Deal'}
-              </button>
-            </div>
-          </div>
-          {hubMsg && <div style={{ marginTop:4, fontSize:10, fontWeight:500,
-            color: hubMsg.startsWith('✓') ? '#166534' : hubMsg.startsWith('⚠') ? '#92400e' : hubMsg.startsWith('Pulling') || hubMsg.startsWith('Fetching') ? '#1e40af' : '#dc2626'
-          }}>{hubMsg}</div>}
-        </div>
+        {/* ── HubSpot connection ── */}
+        <HubSpotConnect
+          dealId={hubDealId}
+          dealUrl={hubDealUrl}
+          dealName={hubDealName}
+          description={dealDescription}
+          onDescriptionChange={setDealDescription}
+          quoteNumber={existingQuote?.quote_number}
+          mrr={result?.finalMRR}
+          contractValue={result ? result.finalMRR * inputs.contractTerm + result.onboarding : 0}
+          packageName={selectedPkg?.name}
+          contractTerm={inputs.contractTerm}
+          existingQuoteId={existingQuote?.id}
+          clientName={recipientBiz}
+          onConnect={full => {
+            setHubDealId(full.dealId);
+            setHubDealUrl(full.dealUrl);
+            setHubDealName(full.deal.dealname);
+            if (full.company) {
+              if (full.company.name) setRecipientBiz(full.company.name);
+              const addr = [full.company.address, full.company.address2, full.company.city, full.company.state, full.company.zip].filter(Boolean).join(', ');
+              if (addr) setRecipientAddress(addr);
+              if (full.company.zip) { setClientZip(full.company.zip); const zr = lookupZip(full.company.zip); setZipResult(zr); if (zr) applyZip(zr); }
+            } else {
+              const extracted = full.deal.dealname?.split(/\s[-–—]\s/)?.[0]?.trim();
+              if (extracted) setRecipientBiz(extracted);
+            }
+            if (full.contact) {
+              const name = [full.contact.firstname, full.contact.lastname].filter(Boolean).join(' ');
+              if (name) setRecipientContact(name);
+              if (full.contact.email) setRecipientEmail(full.contact.email);
+            }
+            if (!proposalName && full.deal.dealname) setProposalName(`FerrumIT Managed IT Services — ${full.company?.name || full.deal.dealname}`);
+          }}
+          onDisconnect={() => { setHubDealId(''); setHubDealUrl(''); setHubDealName(''); }}
+          onSync={syncToDeal}
+        />
 
         {/* ── Client / Proposal fields ── */}
         <Sec t="Proposal Details" c="#0f1e3c">
@@ -569,6 +576,7 @@ export default function QuotePage() {
               ⚡ Recommended: <strong>{result.recommended}</strong>
             </div>
           )}
+          <Fld lbl="Contract Term" s={{ marginTop:8 }}><SI v={inputs.contractTerm} s={v=>set('contractTerm',+v)} opts={[['12','12 mo (5%)'],['24','24 mo (10%)'],['36','36 mo (20%)']]}/></Fld>
         </Sec>
 
         {/* People & Devices */}
@@ -655,10 +663,7 @@ export default function QuotePage() {
 
         {/* Deal Terms */}
         <Sec t="Deal Terms" c="#374151">
-          <Grid2>
-            <Fld lbl="Contract Term"><SI v={inputs.contractTerm} s={v=>set('contractTerm',+v)} opts={[['12','12 mo (5%)'],['24','24 mo (10%)'],['36','36 mo (20%)']]}/></Fld>
-            <Fld lbl="Status"><SI v={quoteStatus} s={setQuoteStatus} opts={[['draft','Draft'],['in_review','In Review'],['approved','Approved'],['sent','Sent'],['won','Won'],['lost','Lost'],['expired','Expired']]}/></Fld>
-          </Grid2>
+          <Fld lbl="Status"><SI v={quoteStatus} s={setQuoteStatus} opts={[['draft','Draft'],['in_review','In Review'],['approved','Approved'],['sent','Sent'],['won','Won'],['lost','Lost'],['expired','Expired']]}/></Fld>
           <div style={{ marginTop:4 }}>
             <Tog on={inputs.execReporting} set={v=>set('execReporting',v)} lbl="Executive Reporting Required" sub="Triggers Enterprise recommendation"/>
           </div>
@@ -1065,76 +1070,6 @@ export default function QuotePage() {
       </div>
 
       {/* ── HUBSPOT MODAL ── */}
-      {hubModal && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:300 }}>
-          <div style={{ background:'white', borderRadius:10, padding:24, width:520, maxHeight:'80vh', display:'flex', flexDirection:'column', boxShadow:'0 8px 32px rgba(0,0,0,0.18)' }}>
-            {/* Header */}
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <div style={{ width:28, height:28, background:'#ff7a59', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <span style={{ color:'white', fontSize:14, fontWeight:700 }}>H</span>
-                </div>
-                <div>
-                  <div style={{ fontSize:14, fontWeight:700, color:'#0f1e3c' }}>Connect HubSpot Deal</div>
-                  <div style={{ fontSize:11, color:'#6b7280' }}>Search open deals — client details will auto-populate</div>
-                </div>
-              </div>
-              <button onClick={() => setHubModal(false)} style={{ background:'none', border:'none', fontSize:20, color:'#6b7280', cursor:'pointer', lineHeight:1 }}>×</button>
-            </div>
-
-            {/* Search */}
-            <div style={{ display:'flex', gap:6, marginBottom:10 }}>
-              <input value={hubSearch} onChange={e=>setHubSearch(e.target.value)}
-                onKeyDown={e=>e.key==='Enter'&&searchHubspot()}
-                placeholder="Search by client or deal name..."
-                autoFocus
-                style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:5, fontSize:13, outline:'none' }}/>
-              <button onClick={searchHubspot} disabled={hubLoading}
-                style={{ padding:'8px 14px', background:'#ff7a59', color:'white', border:'none', borderRadius:5, fontSize:12, fontWeight:700, cursor:'pointer', opacity:hubLoading?0.7:1 }}>
-                {hubLoading ? '...' : 'Search'}
-              </button>
-            </div>
-
-            {/* Message */}
-            {hubMsg && (
-              <div style={{ padding:'6px 10px', borderRadius:5, fontSize:12, marginBottom:8, fontWeight:500,
-                background:hubMsg.startsWith('✓')?'#dcfce7':'#fef2f2',
-                color:hubMsg.startsWith('✓')?'#166534':'#dc2626',
-                border:`1px solid ${hubMsg.startsWith('✓')?'#bbf7d0':'#fecaca'}` }}>
-                {hubMsg}
-              </div>
-            )}
-
-            {/* Results */}
-            <div style={{ flex:1, overflowY:'auto' }}>
-              {hubResults.length===0 && !hubMsg && (
-                <div style={{ textAlign:'center', padding:24, color:'#9ca3af', fontSize:12 }}>
-                  Search for a deal above — showing open deals only.<br/>
-                  <span style={{ fontSize:11 }}>Client name, address, and contact will auto-populate.</span>
-                </div>
-              )}
-              {hubResults.map(d => (
-                <div key={d.id} onClick={() => { connectDeal(d); setHubModal(false); }}
-                  style={{ padding:'10px 12px', border:'1px solid #e5e7eb', borderRadius:6, marginBottom:6, cursor:'pointer', transition:'background 0.1s' }}
-                  onMouseEnter={e=>e.currentTarget.style.background='#f0f7ff'}
-                  onMouseLeave={e=>e.currentTarget.style.background='white'}>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                    <div>
-                      <div style={{ fontSize:13, fontWeight:600, color:'#0f1e3c' }}>{d.properties.dealname}</div>
-                      <div style={{ fontSize:11, color:'#6b7280', marginTop:2 }}>
-                        Stage: {d.properties.dealstage_label || d.properties.dealstage}
-                        {d.properties.amount && ` · $${parseFloat(d.properties.amount).toLocaleString()}`}
-                        {d.properties.closedate && ` · Close: ${new Date(d.properties.closedate).toLocaleDateString()}`}
-                      </div>
-                    </div>
-                    <span style={{ fontSize:11, color:'#2563eb', fontWeight:600, flexShrink:0, marginLeft:8 }}>Select →</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
