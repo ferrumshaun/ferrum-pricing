@@ -803,6 +803,9 @@ export function IntegrationsAdmin() {
         </div>
       </div>
 
+      {/* Smart Pricing Table */}
+      <SPTIntegration />
+
       {/* HubSpot */}
       <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
@@ -874,3 +877,57 @@ export function IntegrationsAdmin() {
   );
 }
 
+
+// ─── SPT Integration ─────────────────────────────────────────────────────────
+function SPTIntegration() {
+  const [key,     setKey]     = useState('');
+  const [saved,   setSaved]   = useState(false);
+  const [saving,  setSaving]  = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { profile } = useAuth();
+
+  useEffect(() => {
+    supabase.from('pricing_settings').select('value').eq('key', 'spt_api_key').single()
+      .then(({ data }) => { if (data?.value) setKey(data.value); setLoading(false); });
+  }, []);
+
+  async function save() {
+    setSaving(true); setSaved(false);
+    await supabase.from('pricing_settings').upsert({ key: 'spt_api_key', value: key, description: 'Smart Pricing Table API key' }, { onConflict: 'key' });
+    await logActivity({ action: 'UPDATE', entityType: 'setting', entityId: null, entityName: 'spt_api_key', changes: { updated: true } });
+    setSaved(true); setSaving(false);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  return (
+    <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20, marginBottom: 20 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: '#0f1e3c', marginBottom: 4 }}>Smart Pricing Table</div>
+      <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 14 }}>
+        Connect to Smart Pricing Table to export rate sheets and proposals directly from Ferrum IQ.
+        Get your API key from <a href="https://web.smartpricingtable.com/settings/profile" target="_blank" rel="noopener noreferrer" style={{ color: '#f97316' }}>SPT Profile Settings</a>.
+      </p>
+      {loading ? <div style={{ fontSize: 11, color: '#9ca3af' }}>Loading...</div> : (
+        <>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>API Key</label>
+          <input
+            type="password"
+            value={key}
+            onChange={e => setKey(e.target.value)}
+            placeholder="spt_live_..."
+            style={{ width: '100%', padding: '7px 9px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, outline: 'none', fontFamily: 'DM Mono, monospace', marginBottom: 10 }}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button onClick={save} disabled={saving}
+              style={{ padding: '7px 18px', background: '#f97316', color: 'white', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+              {saving ? 'Saving...' : 'Save API Key'}
+            </button>
+            {saved && <span style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>✓ Saved</span>}
+          </div>
+          <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 8 }}>
+            The key is stored securely and only used server-side. You can also set SPT_API_KEY in your Netlify environment variables.
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

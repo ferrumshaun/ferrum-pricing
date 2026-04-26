@@ -11,6 +11,7 @@ import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
 import HubSpotConnect from '../components/HubSpotConnect';
 import MarketRateCard from '../components/MarketRateCard';
+import { DocumentsPanel } from '../components/RateSheetModal';
 import OnboardingIncentive, { formatIncentiveForExport } from '../components/OnboardingIncentive';
 
 const DEF_INPUTS = {
@@ -60,7 +61,8 @@ export default function QuotePage() {
   const [marketCity,      setMarketCity]      = useState('');
   const [marketState,     setMarketState]     = useState('');
   const [repId,              setRepId]              = useState(null);
-  const [pricingSnapshot,    setPricingSnapshot]    = useState(null);  // frozen rates when locked
+  const [pricingSnapshot,    setPricingSnapshot]    = useState(null);
+  const [sptProposalId,      setSptProposalId]      = useState(null);  // frozen rates when locked
   const [priceLockDate,      setPriceLockDate]      = useState(null);
   const [showUnlockModal,    setShowUnlockModal]    = useState(false);
   const [repProfile,         setRepProfile]         = useState(null);
@@ -127,6 +129,7 @@ export default function QuotePage() {
       if (data.onboarding_incentive?.mode) setObIncentive(data.onboarding_incentive);
       if (data.rep_id) setRepId(data.rep_id);
       if (data.pricing_snapshot) { setPricingSnapshot(data.pricing_snapshot); setPriceLockDate(data.price_locked_at); }
+      if (data.spt_proposal_id) setSptProposalId(data.spt_proposal_id);
       setQuoteStatus(data.status || 'draft');
       setDealDescription(data.notes || '');
       setHubDealId(data.hubspot_deal_id || '');
@@ -1119,6 +1122,18 @@ export default function QuotePage() {
                       }
                       if (suggestedTier) setAcceptedMktTier(suggestedTier);
                     }}
+                  />
+
+                  {/* Documents panel */}
+                  <DocumentsPanel
+                    analysis={selectedMkt ? { city: marketCity, state: marketState, market_tier: selectedMkt.tier_key, pricing_multiplier: aiMultiplier || selectedMkt?.pricing_multiplier || 1, rates: selectedMkt?.rates || {} } : null}
+                    settings={settings}
+                    clientName={recipientBiz}
+                    recipientContact={recipientContact}
+                    quoteId={existingQuote?.id}
+                    quoteNumber={existingQuote?.quote_number}
+                    sptProposalId={sptProposalId}
+                    onSPTLinked={(pid) => setSptProposalId(pid)}
                   />
 
                   {/* Quote Notes Log */}
