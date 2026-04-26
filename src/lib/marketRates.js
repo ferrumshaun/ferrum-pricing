@@ -76,8 +76,25 @@ export async function runMarketAnalysis(city, state, zip) {
 
 // ── Save analysis to DB (upsert) ──────────────────────────────────────────
 export async function saveMarketAnalysis(city, state, zip, analysis, source = 'ai_generated') {
+  const cleanZip = zip ? String(zip).replace(/\D/g, '').slice(0, 5) : null;
+
+  // First check if an existing record exists so we can merge zip_codes
+  const { data: existing } = await supabase
+    .from('market_rate_analyses')
+    .select('id, zip_codes')
+    .eq('city', city).eq('state', state)
+    .maybeSingle();
+
+  // Accumulate zip codes — merge existing array with new zip, no duplicates
+  const existingZips = existing?.zip_codes || [];
+  const mergedZips = cleanZip
+    ? [...new Set([...existingZips, cleanZip])]
+    : existingZips;
+
   const record = {
-    city, state, zip: zip || null,
+    city, state,
+    zip: cleanZip || null,
+    zip_codes: mergedZips,
     col_index:          analysis.col_index,
     median_income:      analysis.median_income || null,
     unemployment_rate:  analysis.unemployment_rate || null,
@@ -135,6 +152,14 @@ export async function getOrAnalyzeMarket(zip, forceRefresh = false, cityHint, st
         await supabase.from('market_rate_analyses')
           .update({ zip, updated_at: new Date().toISOString() })
           .eq('id', byCityState.id);
+      }
+      // Add this zip to the city's known zip_codes if not already there
+      if (zip && !(byCityState.zip_codes || []).includes(zip)) {
+        const updatedZips = [...new Set([...(byCityState.zip_codes || []), zip])];
+        await supabase.from('market_rate_analyses')
+          .update({ zip_codes: updatedZips, zip: byCityState.zip || zip, updated_at: new Date().toISOString() })
+          .eq('id', byCityState.id);
+        byCityState.zip_codes = updatedZips;
       }
       return { analysis: byCityState, wasRefreshed: false };
     }

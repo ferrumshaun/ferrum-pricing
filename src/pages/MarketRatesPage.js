@@ -56,6 +56,13 @@ function MarketRatesContent({ isAdmin }) {
     setAnalyzing(null);
   }
 
+  async function deleteMarket(market) {
+    if (!window.confirm(`Delete ${market.city}, ${market.state}? This will remove all stored rate data. The market will be re-analyzed fresh next time a quote uses this location.`)) return;
+    const { error } = await supabase.from('market_rate_analyses').delete().eq('id', market.id);
+    if (error) { alert('Delete failed: ' + error.message); return; }
+    await loadMarkets();
+  }
+
   async function analyzeNew() {
     if (!newMarket.zip && (!newMarket.city || !newMarket.state)) {
       setNewMsg('Enter a zip code, or city + state.');
@@ -93,10 +100,11 @@ function MarketRatesContent({ isAdmin }) {
   const filtered = markets.filter(m => {
     const q = search.toLowerCase();
     const zipQ = q.replace(/\D/g, '');
+    const allZips = m.zip_codes?.length > 0 ? m.zip_codes : (zip5(m.zip) ? [zip5(m.zip)] : []);
     const matchSearch = !q
       || (m.city?.toLowerCase() ?? '').includes(q)
       || (m.state?.toLowerCase() ?? '').includes(q)
-      || (zipQ.length >= 2 && zip5(m.zip).includes(zipQ));
+      || (zipQ.length >= 2 && allZips.some(z => z.includes(zipQ)));
     const matchTier = filterTier === 'all' || m.market_tier === filterTier;
     return matchSearch && matchTier;
   });
@@ -213,7 +221,14 @@ function MarketRatesContent({ isAdmin }) {
                       onClick={() => { setExpanded(isExpanded ? null : m.id); setEditRates(isExpanded ? null : { ...rates }); }}>
                       <td style={{ padding: '9px 10px' }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: '#0f1e3c' }}>{m.city}, {m.state}</div>
-                        {zip5(m.zip) && <div style={{ fontSize: 10, color: '#9ca3af' }}>{zip5(m.zip)}</div>}
+                        {/* All known zip codes as tags */}
+                        {(m.zip_codes?.length > 0 || m.zip) && (
+                          <div style={{ display:'flex', gap:3, flexWrap:'wrap', marginTop:2 }}>
+                            {(m.zip_codes?.length > 0 ? m.zip_codes : [zip5(m.zip)]).filter(Boolean).map(z => (
+                              <span key={z} style={{ fontSize:9, fontFamily:'DM Mono, monospace', background:'#f1f5f9', color:'#475569', padding:'1px 4px', borderRadius:3, border:'1px solid #e2e8f0' }}>{z}</span>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: '9px 10px' }}>
                         <span style={{ fontSize: 10, fontWeight: 700, color: tierColor(m.market_tier), background: tierColor(m.market_tier) + '18', padding: '2px 7px', borderRadius: 3 }}>
@@ -234,6 +249,13 @@ function MarketRatesContent({ isAdmin }) {
                         <span style={{ fontSize: 9, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{m.analysis_source}</span>
                       </td>
                       <td style={{ padding: '9px 10px' }}>
+                        {isAdmin && (
+                          <button
+                            onClick={e => { e.stopPropagation(); deleteMarket(m); }}
+                            style={{ fontSize: 10, padding: '3px 8px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer', color: '#dc2626', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                            🗑 Delete
+                          </button>
+                        )}
                         <button
                           onClick={e => { e.stopPropagation(); refreshMarket(m); }}
                           disabled={analyzing === m.id}
@@ -283,6 +305,19 @@ function MarketRatesContent({ isAdmin }) {
                                   </div>
                                 );
                               })}
+                            </div>
+
+                            {/* ZIP Codes */}
+                            <div style={{ marginBottom:10 }}>
+                              <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.05em', color:'#6b7280', marginBottom:4 }}>ZIP Codes Mapped to This Market</div>
+                              <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+                                {(m.zip_codes?.length > 0 ? m.zip_codes : zip5(m.zip) ? [zip5(m.zip)] : []).map(z => (
+                                  <span key={z} style={{ fontSize:11, fontFamily:'DM Mono, monospace', background:'#f1f5f9', color:'#374151', padding:'3px 8px', borderRadius:4, border:'1px solid #e2e8f0', fontWeight:600 }}>{z}</span>
+                                ))}
+                                {!m.zip_codes?.length && !m.zip && (
+                                  <span style={{ fontSize:10, color:'#9ca3af', fontStyle:'italic' }}>No zips on file — analyzed by city/state only</span>
+                                )}
+                              </div>
                             </div>
 
                             {/* Pricing multiplier & market notes */}
