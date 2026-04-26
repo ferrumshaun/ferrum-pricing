@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { getOrAnalyzeMarket, isStale, getRating } from '../lib/marketRates';
+import { getOrAnalyzeMarket, isStale, getRating, tierColor, tierLabel, BASE_RATES, RATE_LABELS, RATE_UNITS } from '../lib/marketRates';
 
 export default function MarketRatesPage() {
   const { isAdmin } = useAuth();
