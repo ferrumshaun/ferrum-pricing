@@ -1,5 +1,80 @@
 [
   {
+    "version": "2.7.2",
+    "date": "2026-04-26",
+    "summary": "Assumptions & Payment Schedule match actual SPT document structure",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [
+        "Assumptions now includes: supported user list (names/roles), mobile/field technician section with pricing exclusion explanation, core infrastructure inventory (servers, network, telephony), cloud services narrative, infrastructure modernization opportunities, editable deliverables section, and all 10 standard exclusions from the actual SPT template",
+        "Payment Schedule restructured to match SPT exactly: Payment #1 (onboarding, due at signing, non-refundable), monthly billing commencement trigger (onboarding complete OR 30 days), out-of-scope language, automatic payment requirement with billing portal URL, NET 20 terms, $50 declined/returned payment fee, hardware/software all sales final language, purchase orders section"
+      ],
+      "fixed": [
+        "NET 30 terms corrected to NET 20 to match Ferrum billing policy"
+      ]
+    }
+  },
+  {
+    "version": "2.7.1",
+    "date": "2026-04-26",
+    "summary": "SPT link existing proposals + search modal",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "\ud83d\udd0d Link Existing button in Rate Sheet drawer \u2014 searches your Smart Pricing Table account and links any existing proposal to the Ferrum IQ quote",
+        "SPT search modal shows proposal name, client, status (DRAFT/SENT/WON), last updated date, and creator \u2014 click any row to link",
+        "Unlink option in the Rate Sheet drawer \u2014 removes the association (proposal stays in SPT)",
+        "Documents panel shows green SPT \u2713 badge when a proposal is linked"
+      ],
+      "improved": [
+        "SPT export bar replaced with full connect experience: Link Existing + Create New buttons, status indicator, and Open in SPT link"
+      ],
+      "fixed": [
+        "Duplicate supabase import in RateSheetModal causing build failure"
+      ]
+    }
+  },
+  {
+    "version": "2.7.0",
+    "date": "2026-04-26",
+    "summary": "Documents panel \u2014 Out-of-Scope Rate Sheet, Assumptions & Exclusions, Payment Schedule with Smart Pricing Table integration",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "\ud83d\udcc4 Documents panel on every IT quote \u2014 three document cards: Out-of-Scope Rate Sheet, Assumptions & Exclusions, Payment Schedule",
+        "Out-of-Scope Rate Sheet: market-adjusted rates for all four sections (Remote Labor, Dev/App, On-Site, After Hours) pulled directly from market analysis data. Area 2 surcharge (+30%) auto-applied for NYC, SF, Seattle, Chicago metro, Hawaii, Alaska, Las Vegas, Canada",
+        "Smart Pricing Table integration \u2014 export any document to SPT via API. API key stored in Admin \u2192 Integrations \u2192 Smart Pricing Table",
+        "SPT proxy Netlify function keeps API key server-side \u2014 never exposed to browser",
+        "Assumptions & Exclusions form saves discovery notes, user list, field tech details, infrastructure inventory, M365/cloud services, modernization opportunities, deliverables, and exclusions back to the quote",
+        "Payment Schedule shows term header, Payment #1 onboarding at signing, monthly billing commencement trigger, incentive adjustments, and all billing terms",
+        "spt_proposal_id and spt_synced_at added to quotes table to track SPT linkage"
+      ],
+      "improved": [
+        "All fixed OOS fees (same-day, next-day, cancellation, abort, after-hours dispatch, Area 2 surcharge) stored in pricing_settings \u2014 admin-editable without a deploy"
+      ],
+      "fixed": []
+    }
+  },
+  {
+    "version": "2.6.5",
+    "date": "2026-04-26",
+    "summary": "Market Intelligence zip_codes array + admin delete + improved multi-zip search",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "zip_codes array on each market record \u2014 every ZIP that resolves to a city is accumulated over time (e.g., Elgin accumulates 60120, 60123, 60124)",
+        "ZIP codes shown as tag pills in both the market table row and the expanded detail panel",
+        "Admin delete button on each market row (admin only) \u2014 removes the record with confirmation. Next analysis re-creates it fresh from USPS + AI. No more SQL needed for cleanup"
+      ],
+      "improved": [
+        "Search now checks the full zip_codes array \u2014 searching 60120 returns Elgin even if only 60124 is the primary stored zip",
+        "saveMarketAnalysis now merges new zips into the zip_codes array on every lookup \u2014 builds the mapping automatically over time"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "2.6.4",
     "date": "2026-04-26",
     "summary": "Price lock \u2014 approved quotes freeze rates to prevent unexpected pricing changes",

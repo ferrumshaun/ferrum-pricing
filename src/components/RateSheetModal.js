@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { buildRateSheet, fmtRate } from '../lib/rateSheet';
 import { supabase } from '../lib/supabase';
 import { createSPTProposal } from '../lib/smartPricingTable';
-import { supabase } from '../lib/supabase';
 
 // ── Section colors ────────────────────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -185,8 +184,53 @@ export default function RateSheetModal({
 export function DocumentsPanel({
   analysis, settings, clientName, recipientContact,
   quoteId, quoteNumber, sptProposalId, onSPTLinked,
+  // Assumptions props
+  inputs, pkg, products, complianceKey,
+  // Payment schedule props
+  result, obIncentive,
 }) {
-  const [showRateSheet, setShowRateSheet] = useState(false);
+  const [showRateSheet,    setShowRateSheet]    = useState(false);
+  const [showAssumptions,  setShowAssumptions]  = useState(false);
+  const [showPaymentSched, setShowPaymentSched] = useState(false);
+  const [assumptionsSaved, setAssumptionsSaved] = useState(false);
+
+  // Check if assumptions have been saved
+  useState(() => {
+    if (inputs?.assumptions?.savedAt) setAssumptionsSaved(true);
+  }, [inputs?.assumptions]);
+
+  const docs = [
+    {
+      id: 'rate_sheet',
+      icon: '💲',
+      title: 'Out-of-Scope Rate Schedule',
+      sub: sptProposalId ? 'Linked to Smart Pricing Table' : 'Market-adjusted rates · link or create in SPT',
+      badge: sptProposalId ? 'SPT ✓' : null,
+      badgeColor: '#166534', badgeBg: '#dcfce7',
+      onClick: () => setShowRateSheet(true),
+      label: sptProposalId ? 'View / Update' : 'View / Export',
+    },
+    {
+      id: 'assumptions',
+      icon: '📋',
+      title: 'Assumptions & Exclusions',
+      sub: assumptionsSaved || inputs?.assumptions?.savedAt ? 'Discovery notes saved · ready to export' : 'Capture discovery notes and scope boundaries',
+      badge: inputs?.assumptions?.savedAt ? 'Saved ✓' : null,
+      badgeColor: '#0f766e', badgeBg: '#ccfbf1',
+      onClick: () => setShowAssumptions(true),
+      label: 'Open',
+    },
+    {
+      id: 'payment',
+      icon: '💳',
+      title: 'Payment Schedule',
+      sub: result ? `${inputs?.contractTerm || 24}-month schedule · ${obIncentive?.mode && obIncentive.mode !== 'none' ? 'incentive applied' : 'standard billing'}` : 'Save quote first',
+      badge: null,
+      onClick: () => result && setShowPaymentSched(true),
+      label: 'View',
+      disabled: !result,
+    },
+  ];
 
   return (
     <>
@@ -194,34 +238,27 @@ export function DocumentsPanel({
         <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'#6b7280', marginBottom:8 }}>
           📄 Documents
         </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-          {/* Rate Sheet */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#f8fafc', borderRadius:4, border:`1px solid ${sptProposalId ? '#bbf7d0' : '#e5e7eb'}` }}>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                <span style={{ fontSize:11, fontWeight:600, color:'#0f1e3c' }}>Out-of-Scope Rate Schedule</span>
-                {sptProposalId && <span style={{ fontSize:9, fontWeight:700, color:'#166534', background:'#dcfce7', padding:'1px 5px', borderRadius:3 }}>SPT ✓</span>}
+        <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+          {docs.map(doc => (
+            <div key={doc.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#f8fafc', borderRadius:4, border:`1px solid ${doc.badge ? '#e0fdf4' : '#e5e7eb'}`, opacity: doc.disabled ? 0.5 : 1 }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                  <span style={{ fontSize:11 }}>{doc.icon}</span>
+                  <span style={{ fontSize:11, fontWeight:600, color:'#0f1e3c' }}>{doc.title}</span>
+                  {doc.badge && (
+                    <span style={{ fontSize:8, fontWeight:700, color:doc.badgeColor, background:doc.badgeBg, padding:'1px 5px', borderRadius:3 }}>
+                      {doc.badge}
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize:9, color:'#9ca3af', marginTop:1, paddingLeft:16 }}>{doc.sub}</div>
               </div>
-              <div style={{ fontSize:9, color:'#9ca3af', marginTop:1 }}>
-                {sptProposalId ? 'Linked to Smart Pricing Table — click to view or update' : 'Market-adjusted rates · link or create in SPT'}
-              </div>
+              <button onClick={doc.onClick} disabled={doc.disabled}
+                style={{ padding:'4px 10px', background: doc.disabled ? '#f3f4f6' : '#0f1e3c', color: doc.disabled ? '#9ca3af' : 'white', border:'none', borderRadius:4, fontSize:10, fontWeight:600, cursor: doc.disabled ? 'not-allowed' : 'pointer', flexShrink:0 }}>
+                {doc.label}
+              </button>
             </div>
-            <button onClick={() => setShowRateSheet(true)}
-              style={{ padding:'4px 10px', background:'#0f1e3c', color:'white', border:'none', borderRadius:4, fontSize:10, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
-              {sptProposalId ? 'View / Update' : 'View / Export'}
-            </button>
-          </div>
-
-          {/* Placeholder for future documents */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#f8fafc', borderRadius:4, border:'1px dashed #d1d5db' }}>
-            <div>
-              <div style={{ fontSize:11, fontWeight:600, color:'#9ca3af' }}>Assumptions & Scope</div>
-              <div style={{ fontSize:9, color:'#d1d5db' }}>Coming soon</div>
-            </div>
-            <button disabled style={{ padding:'4px 10px', background:'#f3f4f6', color:'#d1d5db', border:'none', borderRadius:4, fontSize:10, fontWeight:600, cursor:'not-allowed' }}>
-              View / Export
-            </button>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -237,13 +274,47 @@ export function DocumentsPanel({
           sptProposalId={sptProposalId}
           onSPTLinked={(pid, url) => {
             onSPTLinked?.(pid, url);
-            // Persist unlink to DB when pid is null
             if (!pid && quoteId) supabase.from('quotes').update({ spt_proposal_id: null, spt_synced_at: null }).eq('id', quoteId);
           }}
         />
       )}
+
+      {showAssumptions && (
+        <AssumptionsModalLazy
+          onClose={() => setShowAssumptions(false)}
+          quoteId={quoteId} quoteNumber={quoteNumber}
+          clientName={clientName} recipientContact={recipientContact}
+          inputs={inputs} pkg={pkg} products={products}
+          complianceKey={complianceKey}
+          onSave={() => setAssumptionsSaved(true)}
+        />
+      )}
+
+      {showPaymentSched && result && (
+        <PaymentScheduleModalLazy
+          onClose={() => setShowPaymentSched(false)}
+          quoteId={quoteId} quoteNumber={quoteNumber}
+          clientName={clientName}
+          result={result} obIncentive={obIncentive}
+          inputs={inputs} settings={settings}
+        />
+      )}
     </>
   );
+}
+
+// Lazy load the modals to keep initial bundle size down
+function AssumptionsModalLazy(props) {
+  const [Comp, setComp] = useState(null);
+  useState(() => { import('./AssumptionsModal').then(m => setComp(() => m.default)); }, []);
+  if (!Comp) return null;
+  return <Comp {...props} />;
+}
+function PaymentScheduleModalLazy(props) {
+  const [Comp, setComp] = useState(null);
+  useState(() => { import('./PaymentScheduleModal').then(m => setComp(() => m.default)); }, []);
+  if (!Comp) return null;
+  return <Comp {...props} />;
 }
 
 
