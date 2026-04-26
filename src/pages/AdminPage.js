@@ -329,10 +329,11 @@ function ProductsAdmin() {
 
 // ─── PACKAGES ADMIN ───────────────────────────────────────────────────────────
 function PackagesAdmin() {
-  const [packages, setPackages] = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [editing,  setEditing]  = useState(null);
-  const [saving,   setSaving]   = useState(false);
+  const [packages,  setPackages]  = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [editing,   setEditing]   = useState(null);
+  const [saving,    setSaving]    = useState(false);
+  const [saveError, setSaveError] = useState('');
   const { profile } = useAuth();
 
   async function load() {
@@ -344,27 +345,39 @@ function PackagesAdmin() {
   useEffect(() => { load(); }, []);
 
   async function save() {
-    setSaving(true);
-    const payload = { ...editing,
-      ws_rate: parseFloat(editing.ws_rate), user_rate: parseFloat(editing.user_rate),
-      server_rate: parseFloat(editing.server_rate), location_rate: parseFloat(editing.location_rate),
-      tenant_rate: parseFloat(editing.tenant_rate) || 0, vendor_rate: parseFloat(editing.vendor_rate),
-      included_vendors: parseInt(editing.included_vendors) || 2,
-      hrs_user: parseFloat(editing.hrs_user), hrs_ws: parseFloat(editing.hrs_ws),
-      hrs_server: parseFloat(editing.hrs_server), hrs_location: parseFloat(editing.hrs_location),
-      flex_minutes_per_ws: parseInt(editing.flex_minutes_per_ws) ?? 0,
-      flex_label: editing.flex_label || 'Flex Time (Onsite / Tier 2 Support)',
-      updated_by: profile?.id
-    };
-    const old = packages.find(p => p.id === editing.id);
-    const isNew = !editing.id;
-    const { error } = isNew
-      ? await supabase.from('packages').insert(payload)
-      : await supabase.from('packages').update(payload).eq('id', editing.id);
-    if (!error) {
-      await logActivity({ action: isNew ? 'CREATE' : 'UPDATE', entityType: 'package', entityId: editing.id, entityName: editing.name,
-        changes: isNew ? payload : diffObjects(old, editing) });
+    setSaving(true); setSaveError('');
+    try {
+      const payload = { ...editing,
+        ws_rate:        parseFloat(editing.ws_rate)        || 0,
+        user_rate:      parseFloat(editing.user_rate)      || 0,
+        server_rate:    parseFloat(editing.server_rate)    || 0,
+        location_rate:  parseFloat(editing.location_rate)  || 0,
+        tenant_rate:    parseFloat(editing.tenant_rate)    || 0,
+        vendor_rate:    parseFloat(editing.vendor_rate)    || 0,
+        included_vendors: parseInt(editing.included_vendors) || 2,
+        hrs_user:       parseFloat(editing.hrs_user)       || 0,
+        hrs_ws:         parseFloat(editing.hrs_ws)         || 0,
+        hrs_server:     parseFloat(editing.hrs_server)     || 0,
+        hrs_location:   parseFloat(editing.hrs_location)   || 0,
+        flex_minutes_per_ws: parseInt(editing.flex_minutes_per_ws) || 0,
+        flex_label:     editing.flex_label || 'Flex Time (Onsite / Tier 2 Support)',
+        updated_by:     profile?.id
+      };
+      // Remove id from insert payload
+      if (!editing.id) delete payload.id;
+      const old = packages.find(p => p.id === editing.id);
+      const isNew = !editing.id;
+      const { error } = isNew
+        ? await supabase.from('packages').insert(payload)
+        : await supabase.from('packages').update(payload).eq('id', editing.id);
+      if (error) throw new Error(error.message);
+      await logActivity({ action: isNew ? 'CREATE' : 'UPDATE', entityType: 'package',
+        entityId: editing.id, entityName: editing.name,
+        changes: isNew ? payload : diffObjects(old, payload) });
       setEditing(null); load();
+    } catch (e) {
+      console.error('Package save error:', e);
+      setSaveError(e.message || 'Save failed — check console for details.');
     }
     setSaving(false);
   }
@@ -401,7 +414,8 @@ function PackagesAdmin() {
       </div>
       <AdminTable cols={['name','$ws','$user','$server','$location','coverage']} rows={rows} onEdit={setEditing} onToggle={toggle} loading={loading} />
       {editing && (
-        <Modal title={editing.id ? `Edit Package: ${editing.name}` : 'New Package'} onClose={() => setEditing(null)} onSave={save} saving={saving}>
+        <Modal title={editing.id ? `Edit Package: ${editing.name}` : 'New Package'} onClose={() => { setEditing(null); setSaveError(''); }} onSave={save} saving={saving}>
+          {saveError && <div style={{ padding:'7px 10px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:4, fontSize:11, color:'#dc2626', fontWeight:600, marginBottom:10 }}>✗ {saveError}</div>}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
             <div style={{ gridColumn: '1/-1' }}><Field label="Package Name"><Input value={editing.name} onChange={v => setEditing(e => ({...e, name: v}))} /></Field></div>
             <Field label="Workstation Rate ($)"><Input type="number" value={editing.ws_rate} onChange={v => setEditing(e => ({...e, ws_rate: v}))} /></Field>
