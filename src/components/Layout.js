@@ -8,7 +8,7 @@ const STORAGE_KEY = 'ferrum_changelog_last_seen';
 
 const NAV = [
   { to: '/quotes',       label: 'Saved Quotes',          icon: '📋' },
-  { to: '/market-rates', label: 'Market Rates',           icon: '🌎' },
+  { to: '/market-rates', label: 'Market Intelligence',    icon: '🌎' },
 ];
 const ADMIN_NAV = [
   { to: '/admin',    label: 'Admin',        icon: '⚙' },

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { getOrAnalyzeMarket, isStale, getRating, tierColor, tierLabel, BASE_RATES, RATE_LABELS, RATE_UNITS } from '../lib/marketRates';
+import { fmt$ } from '../lib/pricing';
 
 export default function MarketRatesPage() {
   const { isAdmin } = useAuth();
@@ -100,7 +101,7 @@ function MarketRatesContent({ isAdmin }) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
-          <h2 style={{ fontSize: 14, fontWeight: 700, color: '#0f1e3c', margin: 0 }}>Market Rate Intelligence</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 700, color: '#0f1e3c', margin: 0 }}>Market Intelligence</h2>
           <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
             {markets.length} markets · {staleCount > 0 && <span style={{ color: '#d97706', fontWeight: 600 }}>{staleCount} stale (6+ months)</span>}
             {staleCount === 0 && markets.length > 0 && <span style={{ color: '#166534' }}>All analyses current</span>}
