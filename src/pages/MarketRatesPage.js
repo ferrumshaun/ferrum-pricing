@@ -92,7 +92,11 @@ function MarketRatesContent({ isAdmin }) {
 
   const filtered = markets.filter(m => {
     const q = search.toLowerCase();
-    const matchSearch = !q || m.city?.toLowerCase().includes(q) || m.state?.toLowerCase().includes(q) || zip5(m.zip).includes(q.replace(/\D/g,''));
+    const zipQ = q.replace(/\D/g, '');
+    const matchSearch = !q
+      || (m.city?.toLowerCase() ?? '').includes(q)
+      || (m.state?.toLowerCase() ?? '').includes(q)
+      || (zipQ.length >= 2 && zip5(m.zip).includes(zipQ));
     const matchTier = filterTier === 'all' || m.market_tier === filterTier;
     return matchSearch && matchTier;
   });
