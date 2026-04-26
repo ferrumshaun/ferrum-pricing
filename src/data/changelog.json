@@ -1,5 +1,134 @@
 [
   {
+    "version": "2.6.4",
+    "date": "2026-04-26",
+    "summary": "Price lock \u2014 approved quotes freeze rates to prevent unexpected pricing changes",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Price lock triggers automatically when a quote is saved with Approved status \u2014 rates, package pricing, and settings are frozen at that moment",
+        "\ud83d\udd12 Prices locked banner appears at the top of any locked quote showing the lock date and package name",
+        "Unlock Pricing button visible to the assigned rep (their own quotes) or any admin user",
+        "Unlock confirmation modal warns about price discrepancy risk if quote has already been sent or exported to Smart Pricing Table",
+        "Unlocking writes an entry to quote revision history for a full audit trail",
+        "Price lock applies across all quote types: Managed IT, Hosted Voice, Bundle, Multi-Site"
+      ],
+      "improved": [
+        "calcQuote now accepts a pricing snapshot \u2014 uses frozen rates when locked, live rates for draft/in-review quotes"
+      ],
+      "fixed": []
+    }
+  },
+  {
+    "version": "2.6.3",
+    "date": "2026-04-26",
+    "summary": "Onboarding incentive fixes + ZIP city accuracy + Bundle/MultiSite onboarding",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Onboarding Incentive added to Bundle and Multi-Site quotes \u2014 applies to combined onboarding/NRC fee",
+        "Onboarding incentive selections now write to quote revision history \u2014 rep can see when and what incentive was applied or changed"
+      ],
+      "improved": [
+        "Market intelligence ZIP lookup now uses USPS data before calling AI \u2014 fixes cities like Elgin (60124) being returned as Aurora",
+        "Onboarding incentive card no longer disappears after selecting an option \u2014 stays visible so rep can change selection at any time",
+        "No Incentive option keeps the card visible and marks it selected rather than dismissing",
+        "Modify button returns to the selection screen without resetting",
+        "Contract TCV KPI card now correctly reflects the applied onboarding discount"
+      ],
+      "fixed": [
+        "Onboarding incentive selection was not updating the Contract TCV pricing card \u2014 TCV now uses effectiveFee"
+      ]
+    }
+  },
+  {
+    "version": "2.6.2",
+    "date": "2026-04-26",
+    "summary": "Bundle quote layout \u2014 Combined Deal Summary on right column, consistent with other quote types",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [
+        "Combined Deal Summary moved to the right column \u2014 matches IT and Voice quote layout",
+        "Voice card now stacks under Managed IT card in the left column",
+        "Quote Notes and Quote History moved under Combined Deal Summary in the right column",
+        "Cost Model card in left column below Voice breakdown"
+      ],
+      "fixed": [
+        "Stray closing div that caused JSX fragment build error"
+      ]
+    }
+  },
+  {
+    "version": "2.6.1",
+    "date": "2026-04-26",
+    "summary": "Market Intelligence search fix, packages save fix, layout and consistency updates",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [
+        "Market Intelligence search now correctly matches city, state, and zip \u2014 null city/state values no longer break the entire search",
+        "Packages tab in Admin now shows a clear error message when save fails instead of silently doing nothing",
+        "Market Intelligence refresh now works for markets without a zip code \u2014 uses city+state for analysis",
+        "Market Intelligence refresh shows a blue spinning status indicator while AI analysis is running"
+      ],
+      "fixed": [
+        "Packages save was failing silently \u2014 $location and other display-only fields were being sent to Supabase which rejected them",
+        "Market Intelligence search was throwing a TypeError on null city/state fields, returning no results",
+        "Market Intelligence refresh button was broken for markets with bad/non-numeric zip codes (like MOBIL)"
+      ]
+    }
+  },
+  {
+    "version": "2.6.0",
+    "date": "2026-04-26",
+    "summary": "Market Intelligence as standalone nav page + layout consistency across all quote types",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Market Intelligence moved from Admin tab to main navigation \u2014 accessible to all team members",
+        "All users can view market data, search, filter, and analyze new markets \u2014 admin-only for editing rates and refreshing",
+        "Quote Notes now present on Voice and Multi-Site quote pages \u2014 matches IT quote behavior",
+        "Assigned Sales Rep added to Voice and Bundle Proposal Details sections \u2014 consistent across all four quote types",
+        "Proposal Details section renamed from Client Details on Bundle \u2014 uniform naming across all pages"
+      ],
+      "improved": [
+        "Bundle page Quote Status moved to Package section \u2014 consistent with IT and Voice pages",
+        "Bundle helper functions (Sec, Fld, TI, NI, SI, Tog, LI) updated to match IT page font sizes and spacing",
+        "Voice and Bundle Proposal Details now include rep selector with commission rate display",
+        "Contract term and status now appear at the top of the left column on Voice quotes"
+      ],
+      "fixed": [
+        "QuoteNotes was wrapped in existingQuote conditional on Voice and MultiSite \u2014 matched IT page pattern (unconditional with optional chaining)",
+        "Market Intelligence tab renamed to Market Intelligence throughout",
+        "ZIP codes with non-numeric values (city abbreviations from seed data) now display blank instead of the raw text",
+        "Market Intelligence zip search now normalizes both query and stored value to 5 digits"
+      ]
+    }
+  },
+  {
+    "version": "2.5.1",
+    "date": "2026-04-26",
+    "summary": "HubSpot shared component across all quote types + UI consistency fixes",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "HubSpotConnect shared component \u2014 consistent connect/search/sync/disconnect across all four quote types",
+        "Deal Description / Information field in HubSpot panel \u2014 syncs to HubSpot on save",
+        "View Deal link and Sync button in HubSpot panel \u2014 available on all quote types"
+      ],
+      "improved": [
+        "Duplicate Deal Description fields removed from IT, Voice, and Bundle right columns \u2014 now lives exclusively in the HubSpot panel",
+        "Voice quote Deal Summary moved up to match IT quote position",
+        "Multi-Site left column width matched to IT quote (345px)",
+        "Rate abbreviations standardized to WS/US/LOC across all pages and Admin"
+      ],
+      "fixed": [
+        "Voice and Bundle pages were missing Sync, View link, deal description, and disconnect \u2014 all now present via shared component"
+      ]
+    }
+  },
+  {
     "version": "2.5.0",
     "date": "2026-04-25",
     "summary": "Multi-Site IT Quotes \u2014 fair market pricing across multiple locations with volume discount",
