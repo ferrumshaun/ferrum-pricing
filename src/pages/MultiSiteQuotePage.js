@@ -971,7 +971,7 @@ export default function MultiSiteQuotePage() {
               quoteNumber={existingQuote?.quote_number}
               sptProposalId={sptProposalId}
               onSPTLinked={(pid) => setSptProposalId(pid)}
-              inputs={{ ...inputs, users: locations.reduce((s,l) => s+(parseInt(l.users)||0),0), workstations: locations.reduce((s,l) => s+(parseInt(l.workstations)||0),0), locations: locations.length }}
+              inputs={{ users: locations.reduce((s,l) => s+(parseInt(l.users)||0),0), workstations: locations.reduce((s,l) => s+(parseInt(l.workstations)||0),0), locations: locations.length, contractTerm, compliance, selectedProducts: [] }}
               pkg={selectedPkg}
               products={products}
               complianceKey={complianceKey}
