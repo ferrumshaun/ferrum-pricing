@@ -10,7 +10,9 @@ import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
-import FlexTimeMeter from '../components/FlexTimeMeter';
+import FlexTimeMeter   from '../components/FlexTimeMeter';
+import FlexTimeSelector from '../components/FlexTimeSelector';
+import { calcFlexBlock } from '../lib/flexTime';
 import { DocumentsPanel } from '../components/RateSheetModal';
 import OnboardingIncentive from '../components/OnboardingIncentive';
 import HubSpotConnect from '../components/HubSpotConnect';
@@ -57,6 +59,7 @@ export default function BundleQuotePage() {
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [repId,          setRepId]          = useState(null);
   const [obIncentive,    setObIncentive]    = useState(null);
+  const [flexHours,      setFlexHours]      = useState(null);
   const [repProfile,     setRepProfile]     = useState(null);
   const [teamMembers,    setTeamMembers]    = useState([]);
   const [recipientBiz,     setRecipientBiz]     = useState('');
@@ -135,6 +138,7 @@ export default function BundleQuotePage() {
       if (data.rep_id) setRepId(data.rep_id);
       if (data.pricing_snapshot) { setPricingSnapshot(data.pricing_snapshot); setPriceLockDate(data.price_locked_at); }
       if (data.spt_proposal_id) setSptProposalId(data.spt_proposal_id);
+      if (data.inputs?.flexHours) setFlexHours(data.inputs.flexHours);
       if (data.inputs?.it)    setItInputs({ ...DEF_IT, ...data.inputs.it });
       if (data.inputs?.voice) setV({ ...DEF_V, isManagedIT: true, ...data.inputs.voice });
       if (data.inputs?.package_name && packages.length) setSelectedPkg(packages.find(p => p.name === data.inputs.package_name));
@@ -312,7 +316,7 @@ export default function BundleQuotePage() {
     setSaving(true); setSaveMsg('');
     const allInputs = {
       proposalName, recipientContact, recipientEmail, recipientAddress,
-      hubspotDealName: hubDealName, package_name: selectedPkg?.name,
+      hubspotDealName: hubDealName, package_name: selectedPkg?.name, flexHours: flexHours || null,
       it: itInputs, voice: v
     };
     const totals = {
@@ -889,7 +893,8 @@ export default function BundleQuotePage() {
               {/* Cost model */}
               <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
                 <div style={{ fontSize:10, fontWeight:700, color:'#374151', marginBottom:6 }}>Combined Cost Model</div>
-                <LI lbl="IT tooling + labor" v={itResult?.totalCost||0} ind/>
+                <LI lbl="IT tooling + labor" v={(itResult?.totalCost||0) + flexLaborCost} ind/>
+                {flexBlock && <LI lbl={`  Flex Time labor (${flexBlock.hours}hrs × $${settings?.burdened_hourly_rate||125}/hr)`} v={flexLaborCost} ind/>}
                 <LI lbl="Voice delivery cost" v={voiceResultFinal?.totalCost||0} ind/>
                 <LI lbl="Total Estimated Cost" v={combinedCost} bold/>
                 <div style={{ display:'flex', justifyContent:'space-between', padding:'5px 6px', background:gb, borderRadius:4, marginTop:4 }}>

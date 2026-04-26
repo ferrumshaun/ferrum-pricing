@@ -13,7 +13,9 @@ import { getOrAnalyzeMarket } from '../lib/marketRates';
 import QuoteNotes from '../components/QuoteNotes';
 import QuoteHistory from '../components/QuoteHistory';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
-import FlexTimeMeter from '../components/FlexTimeMeter';
+import FlexTimeMeter   from '../components/FlexTimeMeter';
+import FlexTimeSelector from '../components/FlexTimeSelector';
+import { calcFlexBlock } from '../lib/flexTime';
 import { DocumentsPanel } from '../components/RateSheetModal';
 import OnboardingIncentive from '../components/OnboardingIncentive';
 import HubSpotConnect from '../components/HubSpotConnect';
@@ -118,6 +120,7 @@ export default function MultiSiteQuotePage() {
       if (data.rep_id) setRepId(data.rep_id);
       if (data.pricing_snapshot) { setPricingSnapshot(data.pricing_snapshot); setPriceLockDate(data.price_locked_at); }
       if (data.spt_proposal_id) setSptProposalId(data.spt_proposal_id);
+      if (data.inputs?.flexHours) setFlexHours(data.inputs.flexHours);
       if (data.inputs?.locations?.length) setLocations(data.inputs.locations);
       if (data.package_name && packages.length) setSelectedPkg(packages.find(p => p.name === data.package_name));
     });
@@ -210,8 +213,10 @@ export default function MultiSiteQuotePage() {
   const onboarding = Math.max(obCalc, obMin);
   const contractValue = finalMRR * contractTerm + onboarding;
 
-  const gc = gmColor(finalMRR > 0 ? 1 - addonCost / finalMRR : 0);
-  const gb = gmBg(finalMRR > 0 ? 1 - addonCost / finalMRR : 0);
+  const effectiveMRR  = finalMRR + flexBlockMRR;
+  const effectiveCost = addonCost + flexLaborCost;
+  const gc = gmColor(effectiveMRR > 0 ? 1 - effectiveCost / effectiveMRR : 0);
+  const gb = gmBg(effectiveMRR > 0 ? 1 - effectiveCost / effectiveMRR : 0);
 
   // ── Location modal helpers ────────────────────────────────────────────────
   function openAddLoc() {
@@ -267,7 +272,7 @@ export default function MultiSiteQuotePage() {
     const allInputs = {
       proposalName, recipientContact, recipientEmail, recipientAddress,
       hubspotDealName: hubDealName, contractTerm, compliance, industryRisk,
-      selectedProducts, locations,
+      selectedProducts, locations, flexHours: flexHours || null,
       repId: repId || null, repName: repProfile?.full_name || repProfile?.email || null,
     };
     const totals = { finalMRR, onboarding, contractValue, locationCount: locations.length, multiDiscRate };
@@ -370,7 +375,12 @@ export default function MultiSiteQuotePage() {
     a.click();
   }
 
-  const complianceKey = compliance === 'moderate' ? ['hipaa','soc2'] : compliance === 'high' ? ['pci','cmmc'] : [];
+  const complianceKey  = compliance === 'moderate' ? ['hipaa','soc2'] : compliance === 'high' ? ['pci','cmmc'] : [];
+  const flexBlock      = (selectedPkg && flexHours && locationResults.length > 0)
+    ? calcFlexBlock(flexHours, locationResults[0]?.analysis?.rates?.remote_support || 165, settings) : null;
+  const flexBlockMRR   = flexBlock?.blockPrice || 0;
+  const burdenedRate   = parseFloat(settings?.burdened_hourly_rate || 125);
+  const flexLaborCost  = flexBlock ? flexBlock.hours * burdenedRate : 0;
 
   if (configLoading) return <div style={{ padding:24, color:'#6b7280', fontSize:12 }}>Loading...</div>;
 

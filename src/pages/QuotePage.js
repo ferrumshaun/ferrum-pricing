@@ -849,19 +849,33 @@ export default function QuotePage() {
                   <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'#1e40af', marginBottom:8 }}>
                     📋 Term Comparison — click to switch
                   </div>
+                  {flexBlockMRR > 0 && (
+                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8, padding:'4px 8px', background:'#fff7ed', borderRadius:4, border:'1px solid #fed7aa' }}>
+                      <span style={{ fontSize:9, color:'#c2410c', fontWeight:600 }}>⏱ Includes {flexBlock?.hours}hr Flex Time block (+{fmt$0(flexBlockMRR)}/mo)</span>
+                      <span style={{ fontSize:8, color:'#9ca3af' }}>— added to all term totals below</span>
+                    </div>
+                  )}
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6 }}>
                     {multiTermResults.map(({ term, result: r }) => {
                       const isCurrent = term === inputs.contractTerm;
-                      const savings = multiTermResults[0].result ? r.finalMRR - multiTermResults[0].result.finalMRR : 0;
+                      const termMRR = r.finalMRR + flexBlockMRR;
+                      const savings = multiTermResults[0].result
+                        ? (r.finalMRR + flexBlockMRR) - (multiTermResults[0].result.finalMRR + flexBlockMRR)
+                        : 0;
                       return (
                         <div key={term} onClick={() => set('contractTerm', term)} style={{ cursor:'pointer', borderRadius:5, padding:'8px 10px',
                           border: `${isCurrent ? 2 : 1}px solid ${isCurrent ? '#2563eb' : '#dbeafe'}`,
                           background: isCurrent ? '#2563eb' : 'white', transition:'all 0.1s' }}>
                           <div style={{ fontSize:9, fontWeight:700, color: isCurrent ? '#bfdbfe' : '#6b7280' }}>{term}-MONTH</div>
                           <div style={{ fontSize:16, fontWeight:700, fontFamily:'DM Mono, monospace', color: isCurrent ? 'white' : '#0f1e3c', lineHeight:1.2 }}>
-                            {fmt$0(r.finalMRR)}
+                            {fmt$0(termMRR)}
                           </div>
                           <div style={{ fontSize:9, color: isCurrent ? '#bfdbfe' : '#6b7280' }}>/mo</div>
+                          {flexBlockMRR > 0 && (
+                            <div style={{ fontSize:7, color: isCurrent ? 'rgba(255,255,255,0.6)' : '#f97316', marginTop:1 }}>
+                              incl. {flexBlock?.hours}hr flex block
+                            </div>
+                          )}
                           {term !== 12 && savings !== 0 && (
                             <div style={{ fontSize:8, fontWeight:700, color: isCurrent ? '#bfdbfe' : savings < 0 ? '#166534' : '#dc2626', marginTop:2 }}>
                               {savings < 0 ? `${fmt$0(Math.abs(savings))}/mo savings` : `+${fmt$0(savings)}/mo`}
@@ -873,7 +887,7 @@ export default function QuotePage() {
                     })}
                   </div>
                   <div style={{ fontSize:8, color:'#93c5fd', marginTop:6 }}>
-                    TCV: {multiTermResults.map(({term: t, result: r}) => `${t}mo = ${fmt$0(r.finalMRR*t+r.onboarding)}`).join(' · ')}
+                    TCV: {multiTermResults.map(({term: t, result: r}) => `${t}mo = ${fmt$0((r.finalMRR + flexBlockMRR)*t + r.onboarding)}`).join(' · ')}
                   </div>
                 </div>
               )}
@@ -901,7 +915,7 @@ export default function QuotePage() {
 
               {/* KPI cards — 4 inline */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:7, marginBottom:10 }}>
-                {[['Monthly MRR',fmt$0(effectiveFinalMRR),'#0f1e3c','#f0f4ff'],['Onboarding',fmt$0(obIncentive?.effectiveFee ?? result.onboarding),'#0f766e','#f0fdf4'],['Implied GM',fmtPct(result.impliedGM),gc,gb],['Contract TCV',fmt$0(effectiveFinalMRR*inputs.contractTerm+(obIncentive?.effectiveFee??result.onboarding)),'#6d28d9','#faf5ff']].map(([l,v,co,bg])=>(
+                {[['Monthly MRR',fmt$0(effectiveFinalMRR),'#0f1e3c','#f0f4ff'],['Onboarding',fmt$0(obIncentive?.effectiveFee ?? result.onboarding),'#0f766e','#f0fdf4'],['Implied GM',flexBlock ? fmtPct(1 - (result.totalCost + (flexBlock.hours * parseFloat(settings?.burdened_hourly_rate||125))) / effectiveFinalMRR) : fmtPct(result.impliedGM), flexBlock ? gmColor(1-(result.totalCost+(flexBlock.hours*parseFloat(settings?.burdened_hourly_rate||125)))/effectiveFinalMRR) : gc, flexBlock ? gmBg(1-(result.totalCost+(flexBlock.hours*parseFloat(settings?.burdened_hourly_rate||125)))/effectiveFinalMRR) : gb],['Contract TCV',fmt$0(effectiveFinalMRR*inputs.contractTerm+(obIncentive?.effectiveFee??result.onboarding)),'#6d28d9','#faf5ff']].map(([l,v,co,bg])=>(
                   <div key={l} style={{ background:bg, borderRadius:5, padding:'7px 6px', textAlign:'center' }}>
                     <div style={{ fontSize:7, fontWeight:600, color:'#6b7280', letterSpacing:'.05em', textTransform:'uppercase', marginBottom:2 }}>{l}</div>
                     <div style={{ fontSize:13, fontWeight:700, fontFamily:'DM Mono, monospace', color:co }}>{v}</div>
@@ -993,36 +1007,61 @@ export default function QuotePage() {
                   />
 
                   {/* Cost model */}
-                  <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:'#374151', marginBottom:6 }}>Cost Model</div>
-                    <LI lbl="Tooling / stack" v={result.toolingCost} ind/>
-                    <LI lbl={`Labor (${result.svcHrs.toFixed(1)} hrs × $${settings.burdened_hourly_rate || 125}/hr)`} v={result.svcCost} ind/>
-                    <LI lbl="Add-on delivery cost" v={result.addonCost} ind/>
-                    <LI lbl="Estimated Total Cost" v={result.totalCost} bold/>
-                    <div style={{ borderTop:'1px dashed #e5e7eb', margin:'5px 0' }}/>
-                    {result.protectedAddonRevenue > 0 && (
-                      <LI lbl="Protected product revenue (MSRP — no discount)" v={result.protectedAddonRevenue} ind muted/>
-                    )}
-                    {result.commission > 0 && (
-                      <LI lbl={`Commission — ${repProfile?.full_name || repProfile?.email?.split('@')[0] || 'Rep'} (${fmtPct(result.commissionRate)} on ${fmt$0(result.commissionBase)} commissionable MRR)`} v={-result.commission} ind/>
-                    )}
-                    {result.commission > 0 && (
-                      <LI lbl="Net MRR after commission" v={result.netAfterCommission} bold/>
-                    )}
-                    <div style={{ display:'flex', justifyContent:'space-between', padding:'5px 6px', background:gb, borderRadius:4, marginTop:4 }}>
-                      <span style={{ fontSize:10, fontWeight:700, color:gc }}>Implied Gross Margin</span>
-                      <span style={{ fontSize:13, fontWeight:700, fontFamily:'DM Mono, monospace', color:gc }}>{fmtPct(result.impliedGM)}</span>
-                    </div>
-                    {result.commission > 0 && (
-                      <div style={{ display:'flex', justifyContent:'space-between', padding:'4px 6px', background:'#f8fafc', borderRadius:4, marginTop:3 }}>
-                        <span style={{ fontSize:9, color:'#6b7280' }}>GM after commission</span>
-                        <span style={{ fontSize:11, fontWeight:700, fontFamily:'DM Mono, monospace', color: result.netAfterCommission - result.totalCost > 0 ? '#166534' : '#dc2626' }}>
-                          {fmtPct((result.netAfterCommission - result.totalCost) / result.finalMRR)}
-                        </span>
+                  {(() => {
+                    // Flex block delivery cost: burdened rate × block hours
+                    const burdenedRate   = parseFloat(settings?.burdened_hourly_rate || 125);
+                    const flexLaborCost  = flexBlock ? flexBlock.hours * burdenedRate : 0;
+                    const flexCommission = flexBlock && repProfile?.commission_rate
+                      ? flexBlock.blockPrice * repProfile.commission_rate : 0;
+                    const totalCostWithFlex  = result.totalCost + flexLaborCost;
+                    const effectiveGM = effectiveFinalMRR > 0 ? 1 - totalCostWithFlex / effectiveFinalMRR : 0;
+                    const effectiveCommission = result.commission + flexCommission;
+                    const netAfterCommissionFlex = effectiveFinalMRR - effectiveCommission;
+                    const gmAfterCommission = effectiveFinalMRR > 0 ? (netAfterCommissionFlex - totalCostWithFlex) / effectiveFinalMRR : 0;
+                    const gcFlex = gmColor(effectiveGM);
+                    const gbFlex = gmBg(effectiveGM);
+
+                    return (
+                      <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
+                        <div style={{ fontSize:10, fontWeight:700, color:'#374151', marginBottom:6 }}>Cost Model</div>
+                        <LI lbl="Tooling / stack" v={result.toolingCost} ind/>
+                        <LI lbl={`Labor (${result.svcHrs.toFixed(1)} hrs × $${settings?.burdened_hourly_rate || 125}/hr)`} v={result.svcCost} ind/>
+                        <LI lbl="Add-on delivery cost" v={result.addonCost} ind/>
+                        {flexBlock && (
+                          <LI lbl={`Flex Time labor (${flexBlock.hours} hrs × $${settings?.burdened_hourly_rate || 125}/hr)`} v={flexLaborCost} ind/>
+                        )}
+                        <LI lbl="Estimated Total Cost" v={totalCostWithFlex} bold/>
+                        <div style={{ borderTop:'1px dashed #e5e7eb', margin:'5px 0' }}/>
+                        {result.protectedAddonRevenue > 0 && (
+                          <LI lbl="Protected product revenue (MSRP)" v={result.protectedAddonRevenue} ind muted/>
+                        )}
+                        {effectiveCommission > 0 && (
+                          <LI lbl={`Commission — ${repProfile?.full_name || repProfile?.email?.split('@')[0] || 'Rep'} (${fmtPct(result.commissionRate)} on ${fmt$0(result.commissionBase + (flexBlock?.blockPrice||0))} commissionable MRR)`} v={-effectiveCommission} ind/>
+                        )}
+                        {effectiveCommission > 0 && (
+                          <LI lbl="Net MRR after commission" v={netAfterCommissionFlex} bold/>
+                        )}
+                        <div style={{ display:'flex', justifyContent:'space-between', padding:'5px 6px', background:gbFlex, borderRadius:4, marginTop:4 }}>
+                          <span style={{ fontSize:10, fontWeight:700, color:gcFlex }}>Implied Gross Margin</span>
+                          <span style={{ fontSize:13, fontWeight:700, fontFamily:'DM Mono, monospace', color:gcFlex }}>{fmtPct(effectiveGM)}</span>
+                        </div>
+                        {effectiveCommission > 0 && (
+                          <div style={{ display:'flex', justifyContent:'space-between', padding:'4px 6px', background:'#f8fafc', borderRadius:4, marginTop:3 }}>
+                            <span style={{ fontSize:9, color:'#6b7280' }}>GM after commission</span>
+                            <span style={{ fontSize:11, fontWeight:700, fontFamily:'DM Mono, monospace', color: gmAfterCommission > 0 ? '#166534' : '#dc2626' }}>
+                              {fmtPct(gmAfterCommission)}
+                            </span>
+                          </div>
+                        )}
+                        {effectiveGM < 0.40 && <div style={{ marginTop:4, fontSize:9, color:'#92400e', background:'#fef3c7', padding:'3px 5px', borderRadius:3 }}>⚠ Below 40% — review scope or package.</div>}
+                        {flexBlock && (
+                          <div style={{ marginTop:4, fontSize:9, color:'#6b7280', fontStyle:'italic' }}>
+                            * Includes {flexBlock.hours}hr flex block at {fmt$0(flexBlock.blockPrice)}/mo revenue and {fmt$0(flexLaborCost)}/mo burdened cost
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {result.impliedGM<0.40&&<div style={{ marginTop:4, fontSize:9, color:'#92400e', background:'#fef3c7', padding:'3px 5px', borderRadius:3 }}>⚠ Below 40% — review scope or package.</div>}
-                  </div>
+                    );
+                  })()}
 
                   {/* Payment surcharge notice */}
                   <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:6, padding:'8px 11px' }}>
