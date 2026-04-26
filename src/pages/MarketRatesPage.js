@@ -16,7 +16,7 @@ export default function MarketRatesPage() {
 // ─── Market Rates Admin ───────────────────────────────────────────────────────
 function MarketRatesContent({ isAdmin }) {
   // Clean zip to 5 digits for display and search
-  const zip5 = z => z ? String(z).replace(/\D/g, '').slice(0, 5) : '';
+  const zip5 = z => { const d = z ? String(z).replace(/\D/g, '').slice(0, 5) : ''; return d; };
   const [markets,      setMarkets]      = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [search,       setSearch]       = useState('');
@@ -47,7 +47,8 @@ function MarketRatesContent({ isAdmin }) {
   async function refreshMarket(market) {
     setAnalyzing(market.id);
     try {
-      await getOrAnalyzeMarket(market.zip || null, true, market.city, market.state);
+      const cleanZip = zip5(market.zip) || null;
+      await getOrAnalyzeMarket(cleanZip, true, market.city, market.state);
       await loadMarkets();
     } catch (e) {
       alert('Refresh failed: ' + e.message);
@@ -195,7 +196,7 @@ function MarketRatesContent({ isAdmin }) {
                       onClick={() => { setExpanded(isExpanded ? null : m.id); setEditRates(isExpanded ? null : { ...rates }); }}>
                       <td style={{ padding: '9px 10px' }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: '#0f1e3c' }}>{m.city}, {m.state}</div>
-                        {m.zip && <div style={{ fontSize: 10, color: '#9ca3af' }}>{zip5(m.zip)}</div>}
+                        {zip5(m.zip) && <div style={{ fontSize: 10, color: '#9ca3af' }}>{zip5(m.zip)}</div>}
                       </td>
                       <td style={{ padding: '9px 10px' }}>
                         <span style={{ fontSize: 10, fontWeight: 700, color: tierColor(m.market_tier), background: tierColor(m.market_tier) + '18', padding: '2px 7px', borderRadius: 3 }}>
