@@ -10,6 +10,7 @@ import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
 import HubSpotConnect from '../components/HubSpotConnect';
+import SPTConnect    from '../components/SPTConnect';
 import MarketRateCard from '../components/MarketRateCard';
 import { DocumentsPanel } from '../components/RateSheetModal';
 import OnboardingIncentive, { formatIncentiveForExport } from '../components/OnboardingIncentive';
@@ -485,6 +486,16 @@ export default function QuotePage() {
           }}
           onDisconnect={() => { setHubDealId(''); setHubDealUrl(''); setHubDealName(''); }}
           onSync={syncToDeal}
+
+        <SPTConnect
+          proposalId={sptProposalId}
+          quoteId={existingQuote?.id}
+          clientName={recipientBiz}
+          quoteNumber={existingQuote?.quote_number}
+          settings={settings}
+          onConnect={(pid, pname) => {setSptProposalId(pid)}}
+          onDisconnect={() => {setSptProposalId(null)}}
+/>
         />
 
         {/* ── Client / Proposal fields ── */}
@@ -1134,6 +1145,12 @@ export default function QuotePage() {
                     quoteNumber={existingQuote?.quote_number}
                     sptProposalId={sptProposalId}
                     onSPTLinked={(pid) => setSptProposalId(pid)}
+                    inputs={inputs}
+                    pkg={selectedPkg}
+                    products={products}
+                    complianceKey={complianceKey}
+                    result={result}
+                    obIncentive={obIncentive}
                   />
 
                   {/* Quote Notes Log */}
