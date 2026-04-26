@@ -455,10 +455,13 @@ export default function BundleQuotePage() {
               <div key={p.id} onClick={() => setSelectedPkg(p)} style={{ padding:'5px 7px', borderRadius:4, cursor:'pointer', marginBottom:2, border:`${selectedPkg?.id===p.id?'2':'1'}px solid ${selectedPkg?.id===p.id?'#2563eb':'#e5e7eb'}`, background:selectedPkg?.id===p.id?'#eff6ff':'white' }}>
                 <div style={{ display:'flex', justifyContent:'space-between' }}>
                   <span style={{ fontSize:9, fontWeight:700, color:selectedPkg?.id===p.id?'#1e40af':'#374151' }}>{p.name}</span>
-                  <span style={{ fontSize:8, fontFamily:'DM Mono, monospace', color:'#6b7280' }}>${p.ws_rate}/WS · ${p.user_rate}/user</span>
+                  <span style={{ fontSize:8, fontFamily:'DM Mono, monospace', color:'#6b7280' }}>${p.ws_rate}/WS · ${p.user_rate}/US</span>
                 </div>
               </div>
             ))}
+            <Fld lbl="Quote Status" s={{ marginTop:8 }}>
+              <SI v={quoteStatus} s={setQuoteStatus} opts={[['draft','Draft'],['in_review','In Review'],['approved','Approved'],['sent','Sent'],['won','Won'],['lost','Lost'],['expired','Expired']]}/>
+            </Fld>
           </Sec>
 
           {/* People & devices */}
@@ -640,11 +643,6 @@ export default function BundleQuotePage() {
             <Fld lbl="Programming Fee" sub="$25/seat"><NI v={v.programmingFee} s={val=>setVoice('programmingFee',val)}/></Fld>
           </Sec>
         </CollapsibleSec>
-
-        {/* Status */}
-        <Sec t="Quote Status" c="#374151">
-          <SI v={quoteStatus} s={setQuoteStatus} opts={[['draft','Draft'],['sent','Sent'],['won','Won'],['lost','Lost'],['expired','Expired']]}/>
-        </Sec>
 
         {/* Save */}
         <div style={{ padding:8, background:'#f8fafc', borderRadius:5, border:'1px solid #e5e7eb', marginTop:4 }}>
@@ -883,12 +881,12 @@ function CollapsibleSec({ title, open, onToggle, badge, color, children }) {
 }
 
 // ─── UI helpers ───────────────────────────────────────────────────────────────
-function Sec({t,c,children}){return(<div style={{marginBottom:8}}><div style={{display:'flex',alignItems:'center',gap:4,marginBottom:4,paddingBottom:2,borderBottom:'1px solid #f1f5f9'}}><div style={{width:2,height:10,background:c||'#2563eb',borderRadius:2}}/><span style={{fontSize:8,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'#6b7280'}}>{t}</span></div>{children}</div>);}
+function Sec({t,c,children}){return(<div style={{marginBottom:10}}><div style={{display:'flex',alignItems:'center',gap:4,marginBottom:5,paddingBottom:3,borderBottom:'1px solid #f1f5f9'}}><div style={{width:2,height:11,background:c||'#2563eb',borderRadius:2}}/><span style={{fontSize:9,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'#6b7280'}}>{t}</span></div>{children}</div>);}
 function Grid2({children}){return<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4}}>{children}</div>;}
-function Fld({lbl,sub,children}){return(<div style={{marginBottom:3}}><label style={{display:'block',fontSize:8,fontWeight:600,color:'#374151',marginBottom:1}}>{lbl}{sub&&<span style={{fontWeight:400,color:'#9ca3af',marginLeft:2,fontSize:8}}>{sub}</span>}</label>{children}</div>);}
-function TI({value,onChange,placeholder}){return<input value={value||''} onChange={e=>onChange(e.target.value)} placeholder={placeholder||''} style={{width:'100%',padding:'4px 7px',border:'1px solid #d1d5db',borderRadius:4,fontSize:10,outline:'none'}}/>;}
-function NI({v,s}){return<input type="number" value={v} min={0} onChange={e=>s(+e.target.value)} style={{width:'100%',padding:'3px 5px',border:'1px solid #d1d5db',borderRadius:4,fontSize:10,fontFamily:'DM Mono, monospace',color:'#1e3a5f',background:'#eff6ff',fontWeight:600,outline:'none'}}/>;}
-function SI({v,s,opts}){return<select value={v} onChange={e=>s(e.target.value)} style={{width:'100%',padding:'4px 6px',border:'1px solid #d1d5db',borderRadius:4,fontSize:10,background:'white',outline:'none'}}>{opts.map(([a,b])=><option key={a} value={a}>{b}</option>)}</select>;}
-function Tog({on,set,lbl,sub}){return(<div onClick={()=>set(!on)} style={{display:'flex',alignItems:'center',gap:6,padding:'4px 6px',borderRadius:3,cursor:'pointer',border:`1px solid ${on?'#93c5fd':'#e5e7eb'}`,background:on?'#eff6ff':'white',marginBottom:2}}><div style={{width:20,height:12,borderRadius:6,flexShrink:0,background:on?'#2563eb':'#d1d5db',position:'relative'}}><div style={{position:'absolute',top:2,left:on?10:2,width:8,height:8,borderRadius:'50%',background:'white',transition:'left .1s'}}/></div><span style={{fontSize:9,fontWeight:600,color:on?'#1e40af':'#374151'}}>{lbl}</span>{sub&&<span style={{fontSize:8,color:'#9ca3af',marginLeft:3}}>{sub}</span>}</div>);}
-function LI({lbl,v,ind,bold,hi,muted}){if(v===0&&!bold&&!hi)return null;return(<div style={{display:'flex',justifyContent:'space-between',padding:hi?'4px 6px':'1px 2px',marginLeft:ind?7:0,borderRadius:hi?4:0,background:hi?'#dcfce7':'transparent',borderTop:bold&&!hi?'1px solid #f3f4f6':'none',marginTop:bold&&!hi?2:0}}><span style={{fontSize:hi?9:8,fontWeight:bold||hi?700:400,color:hi?'#166534':muted?'#9ca3af':bold?'#374151':'#6b7280'}}>{lbl}</span><span style={{fontSize:hi?10:8,fontWeight:bold||hi?700:500,fontFamily:'DM Mono, monospace',color:hi?'#166534':v<0?'#dc2626':bold?'#111827':'#374151'}}>{v<0?`(${fmt$(-v)})`:fmt$(v)}</span></div>);}
+function Fld({lbl,sub,children,s}){return(<div style={{marginBottom:4,...s}}><label style={{display:'block',fontSize:9,fontWeight:600,color:'#374151',marginBottom:1}}>{lbl}{sub&&<span style={{fontWeight:400,color:'#9ca3af',marginLeft:3,fontSize:9}}>{sub}</span>}</label>{children}</div>);}
+function TI({value,onChange,placeholder}){return<input value={value||''} onChange={e=>onChange(e.target.value)} placeholder={placeholder||''} style={{width:'100%',padding:'4px 6px',border:'1px solid #d1d5db',borderRadius:4,fontSize:11,outline:'none'}}/>;}
+function NI({v,s}){return<input type="number" value={v} min={0} onChange={e=>s(+e.target.value)} style={{width:'100%',padding:'4px 6px',border:'1px solid #d1d5db',borderRadius:4,fontSize:11,fontFamily:'DM Mono, monospace',color:'#1e3a5f',background:'#eff6ff',fontWeight:600,outline:'none'}}/>;}
+function SI({v,s,opts}){return<select value={v} onChange={e=>s(e.target.value)} style={{width:'100%',padding:'4px 6px',border:'1px solid #d1d5db',borderRadius:4,fontSize:11,background:'white',outline:'none',color:'#374151'}}>{opts.map(([a,b])=><option key={a} value={a}>{b}</option>)}</select>;}
+function Tog({on,set,lbl,sub}){return(<div onClick={()=>set(!on)} style={{display:'flex',alignItems:'center',gap:7,padding:'5px 7px',borderRadius:4,cursor:'pointer',border:`1px solid ${on?'#93c5fd':'#e5e7eb'}`,background:on?'#eff6ff':'white',marginBottom:2}}><div style={{width:24,height:14,borderRadius:7,flexShrink:0,background:on?'#2563eb':'#d1d5db',position:'relative'}}><div style={{position:'absolute',top:2,left:on?12:2,width:10,height:10,borderRadius:'50%',background:'white',transition:'left .12s'}}/></div><div><span style={{fontSize:10,fontWeight:600,color:on?'#1e40af':'#374151'}}>{lbl}</span>{sub&&<span style={{fontSize:9,color:'#9ca3af',marginLeft:4}}>{sub}</span>}</div></div>);}
+function LI({lbl,v,ind,bold,hi,muted}){if(v===0&&!bold&&!hi)return null;return(<div style={{display:'flex',justifyContent:'space-between',padding:hi?'5px 7px':'1px 2px',marginLeft:ind?7:0,borderRadius:hi?4:0,background:hi?'#dcfce7':'transparent',borderTop:bold&&!hi?'1px solid #f3f4f6':'none',marginTop:bold&&!hi?2:0}}><span style={{fontSize:hi?9:8,fontWeight:bold||hi?700:400,color:hi?'#166534':muted?'#9ca3af':bold?'#374151':'#6b7280'}}>{lbl}</span><span style={{fontSize:hi?11:9,fontWeight:bold||hi?700:500,fontFamily:'DM Mono, monospace',color:hi?'#166534':v<0?'#dc2626':bold?'#111827':'#374151'}}>{v<0?`(${fmt$(-v)})`:fmt$(v)}</span></div>);}
 function SH({l}){return<div style={{fontSize:7,fontWeight:700,letterSpacing:'.07em',textTransform:'uppercase',color:'#9ca3af',padding:'3px 2px 1px',marginTop:2}}>{l}</div>;}
