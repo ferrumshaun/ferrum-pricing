@@ -40,3 +40,8 @@ INSERT INTO pricing_settings (key, value, description) VALUES
   ('flex_block_4_label',   'Pro Block',        'Flex Time Block 4 — label'),
   ('flex_block_5_label',   'Enterprise Block', 'Flex Time Block 5 — label')
 ON CONFLICT (key) DO NOTHING;
+
+-- Voice BYOH fee (bring your own handset — wipe and register)
+INSERT INTO pricing_settings (key, value, description) VALUES
+  ('voice_byoh_fee', '20', 'Voice BYOH wipe & register fee per device ($)')
+ON CONFLICT (key) DO NOTHING;

@@ -31,7 +31,12 @@ export const YEALINK_MODELS = [
   { id: 'T43U', label: 'Yealink T43U', monthly: 8,  nrc: 179, desc: 'Mid-range USB expansion' },
   { id: 'T46U', label: 'Yealink T46U', monthly: 10, nrc: 269, desc: 'Executive color touchscreen' },
   { id: 'T48U', label: 'Yealink T48U', monthly: 13, nrc: 269, desc: 'Executive large touchscreen' },
+  { id: 'T57W', label: 'Yealink T57W', monthly: 15, nrc: 329, desc: 'Flagship large color touchscreen' },
+  { id: 'W60B', label: 'Yealink W60B', monthly: 8,  nrc: 189, desc: 'DECT cordless base + 1 handset' },
 ];
+
+// BYOH — bring your own handset — supported 3CX-compatible devices
+export const BYOH_NOTE = 'Client-owned devices must be supported by 3CX. Ferrum will wipe and register each device at the applicable per-handset fee.';
 
 // ─── VOICE PRICING ENGINE ─────────────────────────────────────────────────────
 export function calcVoice(v, settings) {
@@ -190,17 +195,19 @@ export function calcVoice(v, settings) {
     lines.push({ label: 'SMS — $0.02/segment · MMS — $0.04/segment', mrr: 0, cost: 0, section: 'sms', note: 'Metered — billed monthly. Client acknowledges per-segment rates.', metered: true });
   }
 
-  // ── HARDWARE ─────────────────────────────────────────────────────────────
-  if (v.hardwareType && v.hardwareType !== 'none' && v.hardwareModel) {
-    const model = YEALINK_MODELS.find(m => m.id === v.hardwareModel);
-    const qty   = parseInt(v.hardwareQty || 0);
-    if (model && qty > 0) {
+  // ── HARDWARE — supports mixed models ────────────────────────────────────
+  const hwItems = v.hardwareItems || (v.hardwareModel && v.hardwareQty > 0 ? [{ model: v.hardwareModel, qty: v.hardwareQty }] : []);
+  if (v.hardwareType && v.hardwareType !== 'none' && hwItems.length > 0) {
+    for (const item of hwItems) {
+      const model = YEALINK_MODELS.find(m => m.id === item.model);
+      const qty   = parseInt(item.qty || 0);
+      if (!model || qty <= 0) continue;
+
       if (v.hardwareType === 'lease') {
         const leaseMRR = qty * model.monthly;
         lines.push({ label: `${model.label} — Evergreen Lease (${qty} × $${model.monthly}/mo)`, mrr: leaseMRR, cost: leaseMRR * 0.6, section: 'hardware' });
         mrr += leaseMRR; costMrr += leaseMRR * 0.6;
       } else {
-        // Purchase — check contract term for discount
         let unitPrice = model.nrc;
         let discountNote = '';
         if (v.contractTerm === 36) { unitPrice = 0; discountNote = ' — free with 36-month contract'; }
@@ -208,6 +215,26 @@ export function calcVoice(v, settings) {
         const hwNRC = qty * unitPrice;
         lines.push({ label: `${model.label} — Purchase (${qty} × $${unitPrice}${discountNote})`, mrr: 0, nrc: hwNRC, cost: qty * model.nrc * 0.7, section: 'hardware' });
         nrc += hwNRC;
+      }
+    }
+    // Shipping note — billed at end of implementation at current UPS rate
+    if (v.hardwareType === 'purchase' && hwItems.reduce((s,i) => s + parseInt(i.qty||0),0) > 0) {
+      lines.push({ label: 'Shipping — billed at end of implementation at then-current UPS rates', mrr: 0, nrc: 0, cost: 0, section: 'hardware', note: 'TBD' });
+    }
+  }
+
+  // ── BYOH — bring your own handset ────────────────────────────────────────
+  const byohItems = v.byohItems || [];
+  const byohFee   = parseFloat(s.voice_byoh_fee || 20);
+  if (byohItems.length > 0) {
+    const totalByoh = byohItems.reduce((sum, i) => sum + parseInt(i.qty||0), 0);
+    if (totalByoh > 0) {
+      const byohNRC = totalByoh * byohFee;
+      for (const item of byohItems) {
+        const qty = parseInt(item.qty||0);
+        if (qty <= 0) continue;
+        lines.push({ label: `BYOH — ${item.model || 'Client device'} (${qty} × wipe & register)`, mrr: 0, nrc: qty * byohFee, cost: qty * byohFee * 0.3, section: 'hardware' });
+        nrc += qty * byohFee;
       }
     }
   }

@@ -1,5 +1,29 @@
 [
   {
+    "version": "3.1.0",
+    "date": "2026-04-26",
+    "summary": "Voice quote \u2014 hardware mix & match, BYOH, international dialing waiver, flex time removed",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Hardware mix & match \u2014 select multiple Yealink models with quantities on a single quote (e.g., 10 T33G + 5 T46U + 2 W60B). Added Yealink T57W and W60B models",
+        "BYOH (Bring Your Own Handset) \u2014 new hardware option for client-owned 3CX-compatible devices. Enter model and quantity; wipe & register fee applied per device at configurable rate (Admin \u2192 Pricing Settings \u2192 voice_byoh_fee, default $20)",
+        "Evergreen Lease vs Outright Purchase are now clearly mutually exclusive \u2014 radio button selection prevents mixing",
+        "\ud83d\udce6 Shipping notice on purchase orders \u2014 'billed at end of implementation at then-current UPS rates' displayed as a prominent note",
+        "\u26a0 International Dialing Authorization & Liability Waiver \u2014 new document. Opens from Voice Documents panel when international dialing is enabled, or can be created manually at any time",
+        "Waiver captures: client entity, authorized contact, title, dialing tier selection. Three tiers: Standard International, Extended International, Full Open Access",
+        "Full waiver text: toll fraud liability, no cap on charges, client assumes 100% financial responsibility, security responsibility, right to suspend, indemnification clause",
+        "Waiver exports directly to Smart Pricing Table via API for client signature or can be saved to the quote"
+      ],
+      "improved": [
+        "Voice Documents panel added to right column \u2014 shows waiver status (red Required badge when international dialing is active)"
+      ],
+      "fixed": [
+        "FlexTimeMeter removed from Hosted Voice quote \u2014 voice quotes have no included flex time; onsite support requires a Managed IT contract"
+      ]
+    }
+  },
+  {
     "version": "3.0.1",
     "date": "2026-04-26",
     "summary": "FlexTimeMeter on all IT quote types + two-tone progress bar for included vs add-on time",

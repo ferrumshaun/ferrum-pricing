@@ -10,7 +10,7 @@ import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
-import FlexTimeMeter from '../components/FlexTimeMeter';
+import IntlDialingWaiver from '../components/IntlDialingWaiver';
 import HubSpotConnect from '../components/HubSpotConnect';
 import SPTConnect    from '../components/SPTConnect';
 import MarketRateCard from '../components/MarketRateCard';
@@ -25,7 +25,7 @@ const DEF = {
   faxType: 'none', faxQty: 1,
   callRecording: false,
   smsEnabled: false, smsNewRegistration: true, smsCampaigns: 1,
-  hardwareType: 'none', hardwareModel: 'T33G', hardwareQty: 0, hardwareDiscount50: false,
+  hardwareType: 'none', hardwareItems: [], hardwareDiscount50: false, byohItems: [],
   programmingFee: 0, portingNumbers: 0,
   contractTerm: 24,
   internationalDialing: 'none',
@@ -58,6 +58,7 @@ export default function VoiceQuotePage() {
   const [v, setV]               = useState(DEF);
   const [proposalName, setProposalName] = useState('');
   const [sptProposalId,    setSptProposalId]    = useState(null);
+  const [showIntlWaiver,   setShowIntlWaiver]   = useState(false);
   const [pricingSnapshot, setPricingSnapshot] = useState(null);
   const [priceLockDate,   setPriceLockDate]   = useState(null);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
@@ -425,33 +426,82 @@ export default function VoiceQuotePage() {
         </Sec>
 
         {/* Hardware */}
-        <Sec t="Hardware (Yealink)" c="#374151">
-          <Fld lbl="Hardware Type">
-            <select value={v.hardwareType} onChange={e=>set('hardwareType',e.target.value)}
-              style={{ width:'100%', padding:'5px 7px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, background:'white', outline:'none' }}>
-              <option value="none">No Hardware</option>
-              <option value="lease">Evergreen Lease (monthly)</option>
-              <option value="purchase">Outright Purchase (one-time)</option>
-            </select>
+        <Sec t="Hardware" c="#374151">
+          {/* Hardware type — mutually exclusive */}
+          <Fld lbl="Hardware Option">
+            <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+              {[['none','No Hardware — Apps only'],['lease','Evergreen Lease (monthly recurring)'],['purchase','Outright Purchase (one-time)'],['byoh','BYOH — Bring Your Own Handset']].map(([val,lbl]) => (
+                <label key={val} style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', padding:'4px 6px', borderRadius:4, border:`1px solid ${v.hardwareType===val?'#374151':'#e5e7eb'}`, background:v.hardwareType===val?'#f8fafc':'white' }}>
+                  <input type="radio" name="hwType" value={val} checked={v.hardwareType===val} onChange={()=>set('hardwareType',val)} style={{ accentColor:'#374151' }}/>
+                  <span style={{ fontSize:10, fontWeight:v.hardwareType===val?700:400, color:'#374151' }}>{lbl}</span>
+                </label>
+              ))}
+            </div>
           </Fld>
-          {v.hardwareType !== 'none' && (
+
+          {/* Yealink mixed model builder */}
+          {(v.hardwareType==='lease'||v.hardwareType==='purchase') && (
             <>
-              <Fld lbl="Model">
-                <select value={v.hardwareModel} onChange={e=>set('hardwareModel',e.target.value)}
-                  style={{ width:'100%', padding:'5px 7px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, background:'white', outline:'none' }}>
-                  {YEALINK_MODELS.map(m=><option key={m.id} value={m.id}>{m.label} — ${m.monthly}/mo or ${m.nrc} NRC</option>)}
-                </select>
-              </Fld>
-              <Fld lbl="Quantity"><NI v={v.hardwareQty} s={val=>set('hardwareQty',val)}/></Fld>
-              {v.hardwareType === 'purchase' && (
-                <Tog on={v.hardwareDiscount50} set={val=>set('hardwareDiscount50',val)} lbl="Apply 50% hardware discount" sub="24-month contract discount"/>
-              )}
-              {v.hardwareType === 'purchase' && v.contractTerm === 36 && (
-                <div style={{ padding:'4px 7px', background:'#dcfce7', borderRadius:4, fontSize:9, color:'#166534', marginTop:3 }}>
-                  ✓ Hardware included free with 36-month contract
+              <Fld lbl="Phone Models — add as many as needed">
+                <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                  {(v.hardwareItems||[]).map((item,i) => (
+                    <div key={i} style={{ display:'flex', gap:5, alignItems:'center' }}>
+                      <select value={item.model} onChange={e=>{const items=[...(v.hardwareItems||[])];items[i]={...items[i],model:e.target.value};set('hardwareItems',items);}}
+                        style={{ flex:1, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:10, background:'white', outline:'none' }}>
+                        {YEALINK_MODELS.map(m=><option key={m.id} value={m.id}>{m.label} — {v.hardwareType==='lease'?`$${m.monthly}/mo`:`$${m.nrc}`} · {m.desc}</option>)}
+                      </select>
+                      <input type="number" min="1" value={item.qty||1} onChange={e=>{const items=[...(v.hardwareItems||[])];items[i]={...items[i],qty:+e.target.value};set('hardwareItems',items);}}
+                        style={{ width:52, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, fontFamily:'DM Mono, monospace', textAlign:'center', outline:'none' }}/>
+                      <button onClick={()=>{const items=(v.hardwareItems||[]).filter((_,j)=>j!==i);set('hardwareItems',items);}}
+                        style={{ padding:'3px 6px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:3, color:'#dc2626', fontSize:12, cursor:'pointer' }}>×</button>
+                    </div>
+                  ))}
+                  <button onClick={()=>set('hardwareItems',[...(v.hardwareItems||[]),{model:'T33G',qty:1}])}
+                    style={{ padding:'4px 8px', background:'white', border:'1px dashed #d1d5db', borderRadius:4, fontSize:10, color:'#6b7280', cursor:'pointer', textAlign:'left' }}>
+                    + Add phone model
+                  </button>
                 </div>
+              </Fld>
+              {v.hardwareType==='purchase' && (
+                <>
+                  <Tog on={v.hardwareDiscount50} set={val=>set('hardwareDiscount50',val)} lbl="Apply 50% hardware discount" sub="24-month contract discount"/>
+                  {v.contractTerm===36 && <div style={{ padding:'4px 7px', background:'#dcfce7', borderRadius:4, fontSize:9, color:'#166534', marginTop:3 }}>✓ Hardware included free with 36-month contract</div>}
+                  <div style={{ marginTop:6, padding:'5px 8px', background:'#fef3c7', border:'1px solid #fde68a', borderRadius:4, fontSize:9, color:'#92400e' }}>
+                    📦 Shipping — billed at end of implementation at then-current UPS rates. Not quoted upfront.
+                  </div>
+                </>
               )}
             </>
+          )}
+
+          {/* BYOH */}
+          {v.hardwareType==='byoh' && (
+            <Fld lbl="BYOH Devices — enter model and quantity">
+              <div style={{ fontSize:9, color:'#6b7280', marginBottom:6, lineHeight:1.5 }}>
+                Devices must be 3CX-supported. Each device will be wiped and registered at the applicable per-handset fee (${parseFloat(settings?.voice_byoh_fee||20).toFixed(0)}/device).
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                {(v.byohItems||[]).map((item,i) => (
+                  <div key={i} style={{ display:'flex', gap:5, alignItems:'center' }}>
+                    <input value={item.model||''} onChange={e=>{const items=[...(v.byohItems||[])];items[i]={...items[i],model:e.target.value};set('byohItems',items);}}
+                      placeholder="e.g. Yealink T42U, Polycom VVX300..." style={{ flex:1, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:10, outline:'none' }}/>
+                    <input type="number" min="1" value={item.qty||1} onChange={e=>{const items=[...(v.byohItems||[])];items[i]={...items[i],qty:+e.target.value};set('byohItems',items);}}
+                      style={{ width:52, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, fontFamily:'DM Mono, monospace', textAlign:'center', outline:'none' }}/>
+                    <button onClick={()=>{const items=(v.byohItems||[]).filter((_,j)=>j!==i);set('byohItems',items);}}
+                      style={{ padding:'3px 6px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:3, color:'#dc2626', fontSize:12, cursor:'pointer' }}>×</button>
+                  </div>
+                ))}
+                <button onClick={()=>set('byohItems',[...(v.byohItems||[]),{model:'',qty:1}])}
+                  style={{ padding:'4px 8px', background:'white', border:'1px dashed #d1d5db', borderRadius:4, fontSize:10, color:'#6b7280', cursor:'pointer', textAlign:'left' }}>
+                  + Add device
+                </button>
+              </div>
+              {(v.byohItems||[]).reduce((s,i)=>s+parseInt(i.qty||0),0) > 0 && (
+                <div style={{ marginTop:6, padding:'5px 8px', background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:4, fontSize:9, color:'#1e40af' }}>
+                  Total BYOH fee: {(v.byohItems||[]).reduce((s,i)=>s+parseInt(i.qty||0),0)} devices × ${parseFloat(settings?.voice_byoh_fee||20).toFixed(0)} = ${((v.byohItems||[]).reduce((s,i)=>s+parseInt(i.qty||0),0) * parseFloat(settings?.voice_byoh_fee||20)).toFixed(0)} NRC
+                </div>
+              )}
+            </Fld>
           )}
         </Sec>
 
@@ -666,13 +716,7 @@ export default function VoiceQuotePage() {
 
                 {/* Right column */}
                 <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                  {/* Flex Time Meter — Voice packages can include flex time blocks */}
-                  <FlexTimeMeter
-                    pkg={null}
-                    workstations={v.seats || 0}
-                    users={v.seats || 0}
-                    addonHours={null}
-                  />
+
                   {/* Tax estimate */}
                   <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
                     <div style={{ fontSize:10, fontWeight:700, color:'#374151', marginBottom:6 }}>Estimated Taxes & Fees</div>
@@ -754,6 +798,44 @@ export default function VoiceQuotePage() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Voice Documents */}
+                  <div style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:6, padding:'10px 12px', marginBottom:10 }}>
+                    <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'#6b7280', marginBottom:8 }}>📄 Documents</div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                      {v.internationalDialing !== 'none' ? (
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#fef2f2', borderRadius:4, border:'1px solid #fecaca' }}>
+                          <div>
+                            <div style={{ fontSize:11, fontWeight:600, color:'#991b1b' }}>⚠ International Dialing Waiver</div>
+                            <div style={{ fontSize:9, color:'#9ca3af', marginTop:1 }}>Required — client must sign before international calling is enabled</div>
+                          </div>
+                          <button onClick={() => setShowIntlWaiver(true)} style={{ padding:'4px 10px', background:'#7c1d1d', color:'white', border:'none', borderRadius:4, fontSize:10, fontWeight:600, cursor:'pointer', flexShrink:0 }}>Open Waiver</button>
+                        </div>
+                      ) : (
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#f8fafc', borderRadius:4, border:'1px dashed #d1d5db' }}>
+                          <div>
+                            <div style={{ fontSize:11, fontWeight:600, color:'#9ca3af' }}>International Dialing Waiver</div>
+                            <div style={{ fontSize:9, color:'#d1d5db' }}>Enable international dialing above to unlock · or create manually</div>
+                          </div>
+                          <button onClick={() => setShowIntlWaiver(true)} style={{ padding:'4px 10px', background:'#f3f4f6', color:'#9ca3af', border:'none', borderRadius:4, fontSize:10, fontWeight:600, cursor:'pointer' }}>Create</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {showIntlWaiver && (
+                    <IntlDialingWaiver
+                      onClose={() => setShowIntlWaiver(false)}
+                      quoteId={existingQuote?.id}
+                      quoteNumber={existingQuote?.quote_number}
+                      clientName={recipientBiz}
+                      recipientContact={recipientContact}
+                      recipientAddress={recipientAddress}
+                      settings={settings}
+                      sptApiKey={settings?.spt_api_key}
+                      selectedTier={v.internationalDialing !== 'none' ? v.internationalDialing : 'standard'}
+                    />
+                  )}
 
                   {/* Quote Notes */}
                   <QuoteNotes
