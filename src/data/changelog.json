@@ -1,5 +1,26 @@
 [
   {
+    "version": "3.0.0",
+    "date": "2026-04-26",
+    "summary": "Flex Time Blocks \u2014 managed IT monthly add-on and FlexIT pre-purchase annual blocks",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "\u23f1 Flex Time Blocks added to all managed IT quotes \u2014 five standard blocks: 5hr (Starter), 10hr (Standard), 20hr (Extended), 30hr (Pro), 40hr (Enterprise)",
+        "Market-adjusted pricing: each block is priced at a discount off the market T&M remote support rate (10\u201325% depending on block size)",
+        "\u26a1 FlexIT On-Demand block purchasing \u2014 same blocks available as one-time pre-purchases on FlexIT quotes. Valid 12 months, refillable at the original agreed rate",
+        "Rate lock on FlexIT blocks: if client refills within 30 days of depletion or expiration, original rate is honored. After 30 days a new quote at current rates is required",
+        "Tier 3 exclusion clearly stated: network design/engineering, server projects, firewall/SAN deployment, email migration, DR, software engineering, and security audits are bid separately at the Tier 3 rate and cannot be pooled in blocks",
+        "Admin \u2192 Packages: new Flex Time Model selector per package \u2014 None / Included (X min/WS/mo) / Required / All-Inclusive"
+      ],
+      "improved": [
+        "FlexIT billing summary updates when a flex block is selected \u2014 shows block purchase as a separate line with 12-month validity note",
+        "Flex Time block detail card shows: effective rate per hour, T&M comparison rate, savings amount, and full terms with Tier 3 exclusion"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "2.9.7",
     "date": "2026-04-26",
     "summary": "FlexIT Payment Schedule & Terms \u2014 full legal document matching SPT template",

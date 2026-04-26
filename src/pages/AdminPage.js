@@ -362,7 +362,8 @@ function PackagesAdmin() {
         hrs_server:     parseFloat(editing.hrs_server)     || 0,
         hrs_location:   parseFloat(editing.hrs_location)   || 0,
         flex_minutes_per_ws: parseInt(editing.flex_minutes_per_ws) || 0,
-        flex_label:     editing.flex_label || 'Flex Time (Onsite / Tier 2 Support)',
+        flex_label:       editing.flex_label || 'Flex Time (Onsite / Tier 2 Support)',
+        flex_time_model:  editing.flex_time_model || 'none',
         updated_by:     profile?.id
       };
       // Remove id from insert payload
@@ -445,6 +446,18 @@ function PackagesAdmin() {
             <Field label="Flex Time Label">
               <Input value={editing.flex_label || ''} onChange={v => setEditing(e => ({...e, flex_label: v}))} placeholder="Flex Time (Onsite / Tier 2 Support)" />
             </Field>
+            <div style={{ gridColumn: '1/-1' }}>
+              <Field label="Flex Time Model">
+                <select value={editing.flex_time_model||'none'} onChange={e => setEditing(p => ({...p, flex_time_model: e.target.value}))}
+                  style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, background:'white' }}>
+                  <option value="none">None — Not available on this package</option>
+                  <option value="included">Included — X min/WS per month (use field above)</option>
+                  <option value="required">Required — Client must purchase a block</option>
+                  <option value="all_inclusive">All-Inclusive — Unlimited Tier 1/2 remote support</option>
+                </select>
+                <div style={{ fontSize:9, color:'#9ca3af', marginTop:2 }}>Controls Flex Time block selector on quotes</div>
+              </Field>
+            </div>
             <div style={{ gridColumn: '1/-1' }}><Field label="Ideal For (description)"><Input value={editing.ideal_desc || ''} onChange={v => setEditing(e => ({...e, ideal_desc: v}))} /></Field></div>
           </div>
         </Modal>

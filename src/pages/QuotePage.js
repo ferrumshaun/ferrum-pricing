@@ -13,6 +13,7 @@ import HubSpotConnect from '../components/HubSpotConnect';
 import SPTConnect    from '../components/SPTConnect';
 import MarketRateCard from '../components/MarketRateCard';
 import { DocumentsPanel } from '../components/RateSheetModal';
+import FlexTimeSelector from '../components/FlexTimeSelector';
 import OnboardingIncentive, { formatIncentiveForExport } from '../components/OnboardingIncentive';
 
 const DEF_INPUTS = {
@@ -63,7 +64,8 @@ export default function QuotePage() {
   const [marketState,     setMarketState]     = useState('');
   const [repId,              setRepId]              = useState(null);
   const [pricingSnapshot,    setPricingSnapshot]    = useState(null);
-  const [sptProposalId,      setSptProposalId]      = useState(null);  // frozen rates when locked
+  const [sptProposalId,      setSptProposalId]      = useState(null);
+  const [flexHours,          setFlexHours]          = useState(null);  // frozen rates when locked
   const [priceLockDate,      setPriceLockDate]      = useState(null);
   const [showUnlockModal,    setShowUnlockModal]    = useState(false);
   const [repProfile,         setRepProfile]         = useState(null);
@@ -131,6 +133,7 @@ export default function QuotePage() {
       if (data.rep_id) setRepId(data.rep_id);
       if (data.pricing_snapshot) { setPricingSnapshot(data.pricing_snapshot); setPriceLockDate(data.price_locked_at); }
       if (data.spt_proposal_id) setSptProposalId(data.spt_proposal_id);
+      if (data.inputs?.flexHours) setFlexHours(data.inputs.flexHours);
       setQuoteStatus(data.status || 'draft');
       setDealDescription(data.notes || '');
       setHubDealId(data.hubspot_deal_id || '');
@@ -738,7 +741,7 @@ export default function QuotePage() {
                   clientName: recipientBiz, clientZip,
                   marketTier: selectedMkt?.tier_key,
                   packageName: selectedPkg?.name,
-                  proposalName, recipientContact, recipientEmail, recipientAddress,
+                  proposalName, recipientContact, recipientEmail, recipientAddress, flexHours: flexHours || null,
                   notes: dealDescription,
                   hubDealId, hubDealUrl, hubDealName,
                   inputs: { ...inputs },
@@ -1133,6 +1136,20 @@ export default function QuotePage() {
                       if (suggestedTier) setAcceptedMktTier(suggestedTier);
                     }}
                   />
+
+                  {/* Flex Time Add-On */}
+                  {selectedPkg && selectedPkg.flex_time_model !== 'all_inclusive' && (
+                    <FlexTimeSelector
+                      remoteRate={selectedMkt?.rates?.remote_support || 165}
+                      settings={settings}
+                      selectedHours={flexHours}
+                      onChange={hrs => setFlexHours(hrs)}
+                      mode="managed"
+                      packageModel={selectedPkg?.flex_time_model || 'none'}
+                      includedMinsPerWS={selectedPkg?.flex_included_mins_per_ws || 0}
+                      workstations={inputs.workstations || 0}
+                    />
+                  )}
 
                   {/* Documents panel */}
                   <DocumentsPanel

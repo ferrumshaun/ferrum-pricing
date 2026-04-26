@@ -11,6 +11,8 @@ import QuoteHistory from '../components/QuoteHistory';
 import HubSpotConnect from '../components/HubSpotConnect';
 import SPTConnect     from '../components/SPTConnect';
 import RateSheetModalComp from '../components/RateSheetModal';
+import FlexTimeSelector from '../components/FlexTimeSelector';
+import { calcFlexBlock } from '../lib/flexTime';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
 
 // ── FlexIT fixed assumptions (from PDF) ──────────────────────────────────────
@@ -94,6 +96,7 @@ export default function FlexITQuotePage() {
   const [overridePrepay, setOverridePrepay] = useState(false);
   const [prepayOverride, setPrepayOverride] = useState('');
   const [notes,          setNotes]          = useState('');
+  const [flexHours,      setFlexHours]      = useState(null);
 
   // Integrations
   const [hubDealId,      setHubDealId]      = useState('');
@@ -174,6 +177,7 @@ export default function FlexITQuotePage() {
       setHubDescription(data.inputs?.hubDescription || '');
       if (data.rep_id) setRepId(data.rep_id);
       if (data.spt_proposal_id) setSptProposalId(data.spt_proposal_id);
+      if (data.inputs?.flexHours) setFlexHours(data.inputs.flexHours);
       // Load market analysis
       if (data.client_zip) handleZipChange(data.client_zip);
     });
@@ -183,7 +187,7 @@ export default function FlexITQuotePage() {
   async function save() {
     setSaving(true); setSaveMsg('');
     const allInputs = {
-      proposalName, recipientBiz, recipientContact, recipientEmail, recipientAddress,
+      proposalName, recipientBiz, recipientContact, recipientEmail, recipientAddress, flexHours: flexHours || null,
       marketCity, marketState, prepayHours, overridePrepay, prepayOverride, notes,
       hubspotDealName: hubDealName, hubDescription,
     };
@@ -395,6 +399,18 @@ export default function FlexITQuotePage() {
             ))}
           </div>
 
+          {/* Flex Time Block — optional pre-purchase */}
+          <div style={{ marginBottom:12 }}>
+            <FlexTimeSelector
+              remoteRate={remoteRate}
+              settings={settings}
+              selectedHours={flexHours}
+              onChange={hrs => setFlexHours(hrs)}
+              mode="ondemand"
+              packageModel="none"
+            />
+          </div>
+
           {/* FlexIT Billing Summary */}
           <div style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:6, padding:12, marginBottom:12 }}>
             <div style={{ fontSize:11, fontWeight:700, color:'#0f1e3c', marginBottom:8 }}>Billing Summary</div>
@@ -412,6 +428,16 @@ export default function FlexITQuotePage() {
                   <td style={{ padding:'10px 12px', fontSize:12, fontFamily:'DM Mono, monospace', fontWeight:700, color:'#c2410c' }}>{fmt$2(prepayAmount)}</td>
                   <td style={{ padding:'10px 12px', fontSize:11, color:'#6b7280' }}>Upon agreement signing — non-refundable</td>
                 </tr>
+                {flexHours && (() => {
+                  const fb = calcFlexBlock(flexHours, remoteRate, settings);
+                  return (
+                    <tr style={{ borderBottom:'1px solid #e5e7eb', background:'#fff7ed' }}>
+                      <td style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:'#c2410c' }}>Flex Block — {flexHours}hrs pre-purchased</td>
+                      <td style={{ padding:'10px 12px', fontSize:12, fontFamily:'DM Mono, monospace', fontWeight:700, color:'#c2410c' }}>{fmt$2(fb?.blockPrice)}</td>
+                      <td style={{ padding:'10px 12px', fontSize:11, color:'#6b7280' }}>Valid 12 months · refillable at this rate</td>
+                    </tr>
+                  );
+                })()}
                 <tr>
                   <td style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:'#374151' }}>Ongoing Labor</td>
                   <td style={{ padding:'10px 12px', fontSize:11, color:'#6b7280' }}>At published rates</td>
