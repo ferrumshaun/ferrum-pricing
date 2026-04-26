@@ -500,7 +500,7 @@ export default function MultiSiteQuotePage() {
       <div style={{ display:'flex', height:'100%', overflow:'hidden' }}>
 
         {/* ── LEFT: Inputs ── */}
-        <div style={{ width:320, flexShrink:0, borderRight:'1px solid #e5e7eb', display:'flex', flexDirection:'column', overflow:'hidden', background:'#fafafa' }}>
+        <div style={{ width:345, flexShrink:0, borderRight:'1px solid #e5e7eb', display:'flex', flexDirection:'column', overflow:'hidden', background:'#fafafa' }}>
           <div style={{ flex:1, overflowY:'auto', padding:'12px 14px' }}>
 
             {/* HubSpot */}

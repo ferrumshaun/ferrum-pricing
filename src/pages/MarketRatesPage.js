@@ -15,6 +15,8 @@ export default function MarketRatesPage() {
 
 // ─── Market Rates Admin ───────────────────────────────────────────────────────
 function MarketRatesContent({ isAdmin }) {
+  // Clean zip to 5 digits for display and search
+  const zip5 = z => z ? String(z).replace(/\D/g, '').slice(0, 5) : '';
   const [markets,      setMarkets]      = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [search,       setSearch]       = useState('');
@@ -89,7 +91,7 @@ function MarketRatesContent({ isAdmin }) {
 
   const filtered = markets.filter(m => {
     const q = search.toLowerCase();
-    const matchSearch = !q || m.city?.toLowerCase().includes(q) || m.state?.toLowerCase().includes(q) || m.zip?.includes(q);
+    const matchSearch = !q || m.city?.toLowerCase().includes(q) || m.state?.toLowerCase().includes(q) || zip5(m.zip).includes(q.replace(/\D/g,''));
     const matchTier = filterTier === 'all' || m.market_tier === filterTier;
     return matchSearch && matchTier;
   });
@@ -193,7 +195,7 @@ function MarketRatesContent({ isAdmin }) {
                       onClick={() => { setExpanded(isExpanded ? null : m.id); setEditRates(isExpanded ? null : { ...rates }); }}>
                       <td style={{ padding: '9px 10px' }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: '#0f1e3c' }}>{m.city}, {m.state}</div>
-                        {m.zip && <div style={{ fontSize: 10, color: '#9ca3af' }}>{m.zip}</div>}
+                        {m.zip && <div style={{ fontSize: 10, color: '#9ca3af' }}>{zip5(m.zip)}</div>}
                       </td>
                       <td style={{ padding: '9px 10px' }}>
                         <span style={{ fontSize: 10, fontWeight: 700, color: tierColor(m.market_tier), background: tierColor(m.market_tier) + '18', padding: '2px 7px', borderRadius: 3 }}>
