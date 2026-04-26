@@ -16,8 +16,9 @@ const STATUS_STYLE = {
 export default function QuotesPage() {
   const [quotes,  setQuotes]  = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState('');
-  const [status,  setStatus]  = useState('');
+  const [search,     setSearch]     = useState('');
+  const [status,     setStatus]     = useState('');
+  const [showNewMenu, setShowNewMenu] = useState(false);
   const navigate = useNavigate();
 
   async function load() {
