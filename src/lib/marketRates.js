@@ -115,37 +115,39 @@ export async function getMarketByZip(zip) {
 // Accepts zip alone — resolves city/state via DB or AI
 // Returns { analysis, wasRefreshed }
 export async function getOrAnalyzeMarket(zip, forceRefresh = false, cityHint, stateHint) {
-  if (!zip) return null;
+  // Require either a zip or city+state — otherwise nothing to look up
+  if (!zip && !(cityHint && stateHint)) return null;
 
-  // 1. Try exact zip match first
-  if (!forceRefresh) {
+  // 1. Try exact zip match first (only when zip is available)
+  if (!forceRefresh && zip) {
     const byZip = await getMarketByZip(zip);
     if (byZip && !isStale(byZip.analyzed_at)) {
       return { analysis: byZip, wasRefreshed: false };
     }
-    // 2. Try city+state match if we have hints
-    if (cityHint && stateHint) {
-      const byCityState = await getMarketAnalysis(cityHint, stateHint);
-      if (byCityState && !isStale(byCityState.analyzed_at)) {
-        // Tag with zip for future lookups
-        if (!byCityState.zip) {
-          await supabase.from('market_rate_analyses')
-            .update({ zip, updated_at: new Date().toISOString() })
-            .eq('id', byCityState.id);
-        }
-        return { analysis: byCityState, wasRefreshed: false };
+  }
+
+  // 2. Try city+state match if we have hints
+  if (!forceRefresh && cityHint && stateHint) {
+    const byCityState = await getMarketAnalysis(cityHint, stateHint);
+    if (byCityState && !isStale(byCityState.analyzed_at)) {
+      // Tag with zip for future lookups if we now have one
+      if (zip && !byCityState.zip) {
+        await supabase.from('market_rate_analyses')
+          .update({ zip, updated_at: new Date().toISOString() })
+          .eq('id', byCityState.id);
       }
+      return { analysis: byCityState, wasRefreshed: false };
     }
   }
 
   // 3. Run AI analysis — pass zip + any hints
-  const aiResult = await runMarketAnalysis(cityHint || null, stateHint || null, zip);
+  const aiResult = await runMarketAnalysis(cityHint || null, stateHint || null, zip || null);
 
   // AI returns city/state in the result
   const city  = aiResult.city  || cityHint  || 'Unknown';
   const state = aiResult.state || stateHint || 'XX';
 
-  const saved = await saveMarketAnalysis(city, state, zip, aiResult, 'ai_generated');
+  const saved = await saveMarketAnalysis(city, state, zip || null, aiResult, 'ai_generated');
   return { analysis: saved, wasRefreshed: true };
 }
 

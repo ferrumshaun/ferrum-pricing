@@ -101,6 +101,19 @@ function MarketRatesContent({ isAdmin }) {
 
   return (
     <div>
+      {/* Analyzing status banner */}
+      {analyzing && (
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:6, marginBottom:12 }}>
+          <span style={{ display:'inline-block', width:14, height:14, border:'2px solid #93c5fd', borderTopColor:'#2563eb', borderRadius:'50%', animation:'spin 0.7s linear infinite', flexShrink:0 }}/>
+          <span style={{ fontSize:12, color:'#1e40af', fontWeight:600 }}>
+            Running AI market analysis — this may take 15–30 seconds...
+          </span>
+        </div>
+      )}
+
+      {/* Spin keyframe injected once */}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
@@ -220,8 +233,13 @@ function MarketRatesContent({ isAdmin }) {
                         <button
                           onClick={e => { e.stopPropagation(); refreshMarket(m); }}
                           disabled={analyzing === m.id}
-                          style={{ fontSize: 10, padding: '3px 8px', background: 'white', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', color: '#374151', fontWeight: 600, opacity: analyzing === m.id ? 0.5 : 1, whiteSpace: 'nowrap' }}>
-                          {analyzing === m.id ? '...' : '↻ Refresh'}
+                          style={{ fontSize: 10, padding: '3px 8px', background: analyzing === m.id ? '#eff6ff' : 'white', border: `1px solid ${analyzing === m.id ? '#93c5fd' : '#d1d5db'}`, borderRadius: 4, cursor: analyzing === m.id ? 'default' : 'pointer', color: analyzing === m.id ? '#2563eb' : '#374151', fontWeight: 600, whiteSpace: 'nowrap', display:'flex', alignItems:'center', gap:4 }}>
+                          {analyzing === m.id ? (
+                            <>
+                              <span style={{ display:'inline-block', width:8, height:8, border:'2px solid #93c5fd', borderTopColor:'#2563eb', borderRadius:'50%', animation:'spin 0.7s linear infinite' }}/>
+                              Analyzing...
+                            </>
+                          ) : '↻ Refresh'}
                         </button>
                       </td>
                     </tr>
@@ -283,8 +301,13 @@ function MarketRatesContent({ isAdmin }) {
                                 {saving ? 'Saving...' : 'Save Rate Changes'}
                               </button>
                               <button onClick={() => refreshMarket(m)} disabled={analyzing === m.id}
-                                style={{ padding: '6px 14px', background: 'white', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 11, color: '#374151', cursor: 'pointer' }}>
-                                {analyzing === m.id ? 'Re-analyzing...' : '↻ Re-run AI Analysis'}
+                                style={{ padding: '6px 14px', background: analyzing === m.id ? '#eff6ff' : 'white', border: `1px solid ${analyzing === m.id ? '#93c5fd' : '#d1d5db'}`, borderRadius: 5, fontSize: 11, color: analyzing === m.id ? '#2563eb' : '#374151', cursor: analyzing === m.id ? 'default' : 'pointer', display:'flex', alignItems:'center', gap:6 }}>
+                                {analyzing === m.id ? (
+                                  <>
+                                    <span style={{ display:'inline-block', width:10, height:10, border:'2px solid #93c5fd', borderTopColor:'#2563eb', borderRadius:'50%', animation:'spin 0.7s linear infinite' }}/>
+                                    Re-analyzing market...
+                                  </>
+                                ) : '↻ Re-run AI Analysis'}
                               </button>
                               <button onClick={() => { setExpanded(null); setEditRates(null); }}
                                 style={{ padding: '6px 12px', background: 'white', border: '1px solid #e5e7eb', borderRadius: 5, fontSize: 11, color: '#6b7280', cursor: 'pointer' }}>
