@@ -37,17 +37,26 @@ export default function QuoteHistory({ quoteId }) {
   }
 
   function formatTime(ts) {
-    const d = new Date(ts);
+    if (!ts) return '—';
+    const d   = new Date(ts);
     const now = new Date();
-    const diffMs = now - d;
+    const diffMs   = now - d;
     const diffMins = Math.floor(diffMs / 60000);
-    const diffHrs  = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
+
+    // Very recent — relative only
     if (diffMins < 1)  return 'just now';
     if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHrs < 24)  return `${diffHrs}h ago`;
-    if (diffDays < 7)  return `${diffDays}d ago`;
-    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+    // Anything older — show actual date + time so there's no ambiguity
+    const today     = new Date();
+    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+    const isToday     = d.toDateString() === today.toDateString();
+    const isYesterday = d.toDateString() === yesterday.toDateString();
+
+    const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    if (isToday)     return `Today at ${timeStr}`;
+    if (isYesterday) return `Yesterday at ${timeStr}`;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' at ' + timeStr;
   }
 
   function getDeltaColor(delta) {
