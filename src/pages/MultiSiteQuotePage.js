@@ -892,7 +892,7 @@ export default function MultiSiteQuotePage() {
             {/* Quote Notes */}
             {existingQuote && (
               <>
-                <QuoteNotes quoteId={existingQuote.id} hubspotDealId={hubDealId} />
+                <QuoteNotes quoteId={existingQuote.id} hubDealId={hubDealId} quoteNumber={existingQuote.quote_number} clientName={recipientBiz} />
                 <QuoteHistory quoteId={existingQuote.id} />
               </>
             )}

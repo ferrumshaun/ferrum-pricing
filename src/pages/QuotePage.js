@@ -577,6 +577,7 @@ export default function QuotePage() {
             </div>
           )}
           <Fld lbl="Contract Term" s={{ marginTop:8 }}><SI v={inputs.contractTerm} s={v=>set('contractTerm',+v)} opts={[['12','12 mo (5%)'],['24','24 mo (10%)'],['36','36 mo (20%)']]}/></Fld>
+          <Fld lbl="Quote Status" s={{ marginTop:4 }}><SI v={quoteStatus} s={setQuoteStatus} opts={[['draft','Draft'],['in_review','In Review'],['approved','Approved'],['sent','Sent'],['won','Won'],['lost','Lost'],['expired','Expired']]}/></Fld>
         </Sec>
 
         {/* People & Devices */}
@@ -613,6 +614,9 @@ export default function QuotePage() {
         {/* Add-on Products from DB */}
         {Object.entries(productsByCategory).map(([cat, catProducts]) => (
           <Sec key={cat} t={cat} c={catColor(cat)}>
+            {cat === 'Strategic Advisory' && (
+              <Tog on={inputs.execReporting} set={v=>set('execReporting',v)} lbl="Executive Reporting Required" sub="Triggers Enterprise recommendation"/>
+            )}
             {catProducts.map(p => {
               const gm = p.sell_price > 0 ? (1-p.cost_price/p.sell_price) : 0;
               const isExclusive = !!p.exclusive_group;
@@ -661,13 +665,7 @@ export default function QuotePage() {
           </Sec>
         ))}
 
-        {/* Deal Terms */}
-        <Sec t="Deal Terms" c="#374151">
-          <Fld lbl="Status"><SI v={quoteStatus} s={setQuoteStatus} opts={[['draft','Draft'],['in_review','In Review'],['approved','Approved'],['sent','Sent'],['won','Won'],['lost','Lost'],['expired','Expired']]}/></Fld>
-          <div style={{ marginTop:4 }}>
-            <Tog on={inputs.execReporting} set={v=>set('execReporting',v)} lbl="Executive Reporting Required" sub="Triggers Enterprise recommendation"/>
-          </div>
-        </Sec>
+
 
         {/* Save / Export */}
         <div style={{ padding:10, background:'#f8fafc', borderRadius:5, border:'1px solid #e5e7eb', marginTop:4 }}>

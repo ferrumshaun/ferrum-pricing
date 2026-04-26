@@ -220,6 +220,27 @@ export default function VoiceQuotePage() {
           </Fld>
         </Sec>
 
+        {/* Contract & Status — just under Proposal Details */}
+        <Sec t="Contract & Status" c="#374151">
+          <Grid2>
+            <Fld lbl="Contract Term">
+              <select value={v.contractTerm} onChange={e=>set('contractTerm',+e.target.value)}
+                style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, background:'white', outline:'none' }}>
+                <option value={12}>12 months</option>
+                <option value={24}>24 months</option>
+                <option value={36}>36 months</option>
+              </select>
+            </Fld>
+            <Fld lbl="Quote Status">
+              <select value={quoteStatus} onChange={e=>setQuoteStatus(e.target.value)}
+                style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, background:'white', outline:'none' }}>
+                {['draft','in_review','approved','sent','won','lost','expired'].map(s=><option key={s} value={s}>{s}</option>)}
+              </select>
+            </Fld>
+          </Grid2>
+          <Fld lbl="Programming Fee" sub="seats × $25"><NI v={v.programmingFee} s={val=>set('programmingFee',val)}/></Fld>
+        </Sec>
+
         {/* Quote Type */}
         <Sec t="Voice Quote Type" c="#7c3aed">
           <div style={{ display:'grid', gap:3 }}>
@@ -390,26 +411,7 @@ export default function VoiceQuotePage() {
           <Tog on={v.isManagedIT} set={val=>set('isManagedIT',val)} lbl="Managed IT client" sub={`${Math.round(parseFloat(settings.voice_bundle_discount||0.10)*100)}% discount on voice MRR`}/>
         </Sec>
 
-        {/* Deal Terms */}
-        <Sec t="Deal Terms" c="#374151">
-          <Grid2>
-            <Fld lbl="Contract Term">
-              <select value={v.contractTerm} onChange={e=>set('contractTerm',+e.target.value)}
-                style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, background:'white', outline:'none' }}>
-                <option value={12}>12 months</option>
-                <option value={24}>24 months</option>
-                <option value={36}>36 months</option>
-              </select>
-            </Fld>
-            <Fld lbl="Programming Fee" sub="seats × $25"><NI v={v.programmingFee} s={val=>set('programmingFee',val)}/></Fld>
-          </Grid2>
-          <Fld lbl="Quote Status">
-            <select value={quoteStatus} onChange={e=>setQuoteStatus(e.target.value)}
-              style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, background:'white', outline:'none' }}>
-              {['draft','sent','won','lost','expired'].map(s=><option key={s} value={s}>{s}</option>)}
-            </select>
-          </Fld>
-        </Sec>
+
 
         {/* Save */}
         <div style={{ padding:8, background:'#f8fafc', borderRadius:5, border:'1px solid #e5e7eb', marginTop:4 }}>
@@ -660,9 +662,8 @@ export default function VoiceQuotePage() {
                       </div>
                     ))}
                   </div>
-                </div>
 
-                  {/* Quote Notes — same position as QuotePage */}
+                  {/* Quote Notes */}
                   {existingQuote && (
                     <>
                       <QuoteNotes
@@ -674,6 +675,8 @@ export default function VoiceQuotePage() {
                       <QuoteHistory quoteId={existingQuote.id} />
                     </>
                   )}
+
+                </div>
               </div>
             </div>
         }
