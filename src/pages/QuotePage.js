@@ -121,6 +121,7 @@ export default function QuotePage() {
       if (data.inputs?.marketCity)       setMarketCity(data.inputs.marketCity);
       if (data.inputs?.marketState)      setMarketState(data.inputs.marketState);
       if (data.inputs?.aiMultiplier != null) { setAiMultiplier(data.inputs.aiMultiplier); setAiMultiplierTier(data.inputs.aiMultiplierTier || null); }
+      if (data.onboarding_incentive?.mode) setObIncentive(data.onboarding_incentive);
       if (data.rep_id) setRepId(data.rep_id);
       setQuoteStatus(data.status || 'draft');
       setDealDescription(data.notes || '');
@@ -794,7 +795,7 @@ export default function QuotePage() {
 
               {/* KPI cards — 4 inline */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:7, marginBottom:10 }}>
-                {[['Monthly MRR',fmt$0(result.finalMRR),'#0f1e3c','#f0f4ff'],['Onboarding',fmt$0(obIncentive?.effectiveFee ?? result.onboarding),'#0f766e','#f0fdf4'],['Implied GM',fmtPct(result.impliedGM),gc,gb],['Contract TCV',fmt$0(result.finalMRR*inputs.contractTerm+result.onboarding),'#6d28d9','#faf5ff']].map(([l,v,co,bg])=>(
+                {[['Monthly MRR',fmt$0(result.finalMRR),'#0f1e3c','#f0f4ff'],['Onboarding',fmt$0(obIncentive?.effectiveFee ?? result.onboarding),'#0f766e','#f0fdf4'],['Implied GM',fmtPct(result.impliedGM),gc,gb],['Contract TCV',fmt$0(result.finalMRR*inputs.contractTerm+(obIncentive?.effectiveFee??result.onboarding)),'#6d28d9','#faf5ff']].map(([l,v,co,bg])=>(
                   <div key={l} style={{ background:bg, borderRadius:5, padding:'7px 6px', textAlign:'center' }}>
                     <div style={{ fontSize:7, fontWeight:600, color:'#6b7280', letterSpacing:'.05em', textTransform:'uppercase', marginBottom:2 }}>{l}</div>
                     <div style={{ fontSize:13, fontWeight:700, fontFamily:'DM Mono, monospace', color:co }}>{v}</div>
@@ -928,7 +929,17 @@ export default function QuotePage() {
                     fee={result.onboarding}
                     marketTier={acceptedMktTier || (zipResult?.tier === 'major_metro' ? 'premium' : zipResult?.tier === 'mid_market' ? 'standard' : 'secondary')}
                     contractTerm={inputs.contractTerm}
-                    onChange={inc => setObIncentive(inc)}
+                    onChange={inc => {
+                      setObIncentive(inc);
+                      if (existingQuote?.id && inc?.mode) {
+                        const label = inc.mode === 'split'
+                          ? `Onboarding: split over ${inc.splitMonths} months (+${fmt$0(inc.monthlyAdd)}/mo)`
+                          : inc.mode === 'discount'
+                            ? `Onboarding: ${inc.discountPct}% discount applied — effective fee ${fmt$0(inc.effectiveFee)}`
+                            : 'Onboarding: no incentive selected';
+                        saveQuoteVersion({ quoteId: existingQuote.id, quoteData: { client_name: recipientBiz, status: quoteStatus }, inputs: { ...inputs, proposalName }, totals: { finalMRR: result.finalMRR, onboarding: inc.effectiveFee ?? result.onboarding }, lineItems: [], profile, note: label });
+                      }
+                    }}
                   />
 
                   {/* Cost model */}

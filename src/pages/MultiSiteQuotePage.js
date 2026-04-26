@@ -13,6 +13,7 @@ import { getOrAnalyzeMarket } from '../lib/marketRates';
 import QuoteNotes from '../components/QuoteNotes';
 import QuoteHistory from '../components/QuoteHistory';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import OnboardingIncentive from '../components/OnboardingIncentive';
 import HubSpotConnect from '../components/HubSpotConnect';
 
 const LOCATION_TYPES = { standard: 'Standard', restricted: 'Restricted' };
@@ -888,6 +889,18 @@ export default function MultiSiteQuotePage() {
                 <div style={{ fontSize:10 }}><span style={{ color:'#374151' }}>Credit Card</span> <span style={{ fontWeight:700, color:'#dc2626' }}>+{(ccSurcharge*100).toFixed(0)}% surcharge</span></div>
               </div>
             </div>
+
+            {/* Onboarding Incentive */}
+            {onboarding > 0 && (
+              <OnboardingIncentive
+                fee={onboarding}
+                marketTier={locationResults.length > 0 && locationAnalyses[locations[0]?.id]
+                  ? locationAnalyses[locations[0].id].market_tier
+                  : 'standard'}
+                contractTerm={contractTerm}
+                onChange={inc => setObIncentive(inc)}
+              />
+            )}
 
             {/* Quote Notes */}
             <QuoteNotes

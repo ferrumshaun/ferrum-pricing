@@ -28,8 +28,25 @@ exports.handler = async (event) => {
           return { statusCode: 500, body: JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured in Netlify environment variables' }) };
         }
 
-        const locationLine = city && state
-          ? 'City: ' + city + '\nState: ' + state + (zip ? '\nZIP: ' + zip : '')
+        // If we only have a zip, resolve city/state via USPS ZIP lookup API first
+        // to prevent AI hallucinating the wrong city
+        let resolvedCity = city;
+        let resolvedState = state;
+        if (zip && (!city || !state)) {
+          try {
+            const zipRes = await fetch(`https://api.zippopotam.us/us/${zip}`);
+            if (zipRes.ok) {
+              const zipData = await zipRes.json();
+              if (zipData.places?.length > 0) {
+                resolvedCity  = zipData.places[0]['place name'];
+                resolvedState = zipData.places[0]['state abbreviation'];
+              }
+            }
+          } catch (e) { /* fall through to AI resolution */ }
+        }
+
+        const locationLine = resolvedCity && resolvedState
+          ? 'City: ' + resolvedCity + '\nState: ' + resolvedState + (zip ? '\nZIP: ' + zip : '')
           : 'ZIP Code: ' + zip + ' (identify the primary city and state for this zip)';
 
         const prompt = 'You are a market research analyst for FerrumIT, a managed IT services provider (MSP/MSSP) based in Chicago.\n\n'
@@ -108,6 +125,12 @@ exports.handler = async (event) => {
           if (analysis[field] === undefined) {
             return { statusCode: 500, body: JSON.stringify({ error: 'AI response missing field: ' + field, raw: rawText }) };
           }
+        }
+
+        // Override city/state with authoritative USPS lookup to prevent hallucinations
+        if (resolvedCity && resolvedState) {
+          analysis.city  = resolvedCity;
+          analysis.state = resolvedState;
         }
 
         return {

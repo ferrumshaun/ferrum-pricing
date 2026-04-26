@@ -10,6 +10,7 @@ import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import OnboardingIncentive from '../components/OnboardingIncentive';
 import HubSpotConnect from '../components/HubSpotConnect';
 import MarketRateCard from '../components/MarketRateCard';
 
@@ -48,6 +49,7 @@ export default function BundleQuotePage() {
   // Shared client fields
   const [proposalName,     setProposalName]     = useState('');
   const [repId,          setRepId]          = useState(null);
+  const [obIncentive,    setObIncentive]    = useState(null);
   const [repProfile,     setRepProfile]     = useState(null);
   const [teamMembers,    setTeamMembers]    = useState([]);
   const [recipientBiz,     setRecipientBiz]     = useState('');
@@ -878,6 +880,16 @@ export default function BundleQuotePage() {
                   </div>
                 ))}
               </div>
+
+              {/* Onboarding Incentive */}
+              {combinedNRC > 0 && (
+                <OnboardingIncentive
+                  fee={combinedNRC}
+                  marketTier={zipResult?.tier === 'major_metro' ? 'premium' : zipResult?.tier === 'mid_market' ? 'standard' : 'secondary'}
+                  contractTerm={contractTerm}
+                  onChange={inc => setObIncentive(inc)}
+                />
+              )}
 
               {/* Quote Notes */}
               <QuoteNotes

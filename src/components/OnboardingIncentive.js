@@ -99,7 +99,7 @@ export default function OnboardingIncentive({ fee, marketTier, contractTerm, onC
   }, [mode, accepted, splitMonths, discountPct, fee]);
 
   if (!fee || fee <= 0) return null;
-  if (dismissed && !accepted) return null;
+  // Card stays visible always once shown — no permanent dismiss
 
   // ── Summary strip (accepted state) ────────────────────────────────────────
   if (accepted) {
@@ -117,7 +117,7 @@ export default function OnboardingIncentive({ fee, marketTier, contractTerm, onC
               <span style={{ fontSize: 10, color: '#16a34a', marginLeft: 8 }}>{summary}</span>
             </div>
           </div>
-          <button onClick={() => { setAccepted(false); onChange?.({ mode: null, effectiveFee: fee, monthlyAdd: 0 }); }}
+          <button onClick={() => setAccepted(false)}
             style={{ fontSize: 9, padding: '2px 8px', background: 'white', border: '1px solid #d1d5db', borderRadius: 3, cursor: 'pointer', color: '#6b7280' }}>
             Modify
           </button>
@@ -156,8 +156,7 @@ export default function OnboardingIncentive({ fee, marketTier, contractTerm, onC
             <div style={{ fontSize: 10, color: '#78350f', marginTop: 2 }}>{recommendation.reason}</div>
           )}
         </div>
-        <button onClick={() => setDismissed(true)}
-          style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }}>×</button>
+
       </div>
 
       {/* Mode selector */}
@@ -190,9 +189,10 @@ export default function OnboardingIncentive({ fee, marketTier, contractTerm, onC
           </button>
         ))}
         <button
-          onClick={() => { setMode(null); setDismissed(true); onChange?.({ mode: null, effectiveFee: fee, monthlyAdd: 0 }); }}
+          onClick={() => { setMode('none'); setAccepted(true); onChange?.({ mode: null, effectiveFee: fee, monthlyAdd: 0 }); }}
           style={{
-            padding: '8px 10px', border: '2px solid #e5e7eb', borderRadius: 6, background: 'white',
+            padding: '8px 10px', border: `2px solid ${mode === 'none' ? '#374151' : '#e5e7eb'}`, borderRadius: 6,
+            background: mode === 'none' ? '#f3f4f6' : 'white',
             color: '#6b7280', cursor: 'pointer', textAlign: 'left', fontSize: 10
           }}>
           <div style={{ fontSize: 13, marginBottom: 2 }}>✕</div>
@@ -275,7 +275,7 @@ export default function OnboardingIncentive({ fee, marketTier, contractTerm, onC
       {/* Accept button */}
       {mode && mode !== null && (mode !== 'split' || splitTier) && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button onClick={() => setAccepted(true)}
+          <button onClick={() => { setAccepted(true); }}
             style={{ padding: '6px 18px', background: '#166534', color: 'white', border: 'none', borderRadius: 5, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
             Accept Incentive
           </button>
