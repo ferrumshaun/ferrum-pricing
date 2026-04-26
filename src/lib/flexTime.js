@@ -1,12 +1,32 @@
 // flexTime.js — Flex Time Block pricing logic
 
-export const FLEX_BLOCKS = [
+// Default blocks — overridden by pricing_settings if configured
+export const DEFAULT_FLEX_BLOCKS = [
   { hours: 5,  label: 'Starter Block',    discountKey: 'flex_discount_5hr',  defaultDiscount: 0.10 },
   { hours: 10, label: 'Standard Block',   discountKey: 'flex_discount_10hr', defaultDiscount: 0.15 },
   { hours: 20, label: 'Extended Block',   discountKey: 'flex_discount_20hr', defaultDiscount: 0.20 },
   { hours: 30, label: 'Pro Block',        discountKey: 'flex_discount_30hr', defaultDiscount: 0.22 },
   { hours: 40, label: 'Enterprise Block', discountKey: 'flex_discount_40hr', defaultDiscount: 0.25 },
 ];
+
+// Resolve blocks from settings — falls back to defaults
+// Allows admin to configure 4hr instead of 5hr, etc.
+export function getFlexBlocks(settings) {
+  if (!settings) return DEFAULT_FLEX_BLOCKS;
+  const blocks = [];
+  for (let i = 1; i <= 5; i++) {
+    const hrs = parseInt(settings[`flex_block_${i}_hours`]);
+    if (!hrs || hrs <= 0) continue;
+    const label = settings[`flex_block_${i}_label`] || DEFAULT_FLEX_BLOCKS[i-1]?.label || `Block ${i}`;
+    const discountKey = `flex_discount_${hrs}hr`;
+    const defaultDiscount = DEFAULT_FLEX_BLOCKS[i-1]?.defaultDiscount || 0.10;
+    blocks.push({ hours: hrs, label, discountKey, defaultDiscount });
+  }
+  return blocks.length > 0 ? blocks : DEFAULT_FLEX_BLOCKS;
+}
+
+// Keep backward compat
+export const FLEX_BLOCKS = DEFAULT_FLEX_BLOCKS;
 
 // Round to nearest $0.50 for clean pricing
 function roundRate(n) { return Math.round(n * 2) / 2; }

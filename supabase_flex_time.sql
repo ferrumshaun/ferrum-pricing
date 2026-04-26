@@ -26,3 +26,17 @@ INSERT INTO pricing_settings (key, value, description) VALUES
 ON CONFLICT (key) DO NOTHING;
 
 SELECT 'Flex Time settings added' as result;
+
+-- Flex time block configuration (hours and discounts — admin-editable)
+INSERT INTO pricing_settings (key, value, description) VALUES
+  ('flex_block_1_hours',   '5',    'Flex Time Block 1 — hours'),
+  ('flex_block_2_hours',   '10',   'Flex Time Block 2 — hours'),
+  ('flex_block_3_hours',   '20',   'Flex Time Block 3 — hours'),
+  ('flex_block_4_hours',   '30',   'Flex Time Block 4 — hours'),
+  ('flex_block_5_hours',   '40',   'Flex Time Block 5 — hours'),
+  ('flex_block_1_label',   'Starter Block',    'Flex Time Block 1 — label'),
+  ('flex_block_2_label',   'Standard Block',   'Flex Time Block 2 — label'),
+  ('flex_block_3_label',   'Extended Block',   'Flex Time Block 3 — label'),
+  ('flex_block_4_label',   'Pro Block',        'Flex Time Block 4 — label'),
+  ('flex_block_5_label',   'Enterprise Block', 'Flex Time Block 5 — label')
+ON CONFLICT (key) DO NOTHING;

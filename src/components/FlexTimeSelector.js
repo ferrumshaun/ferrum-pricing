@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import {
-  FLEX_BLOCKS,
+  getFlexBlocks,
   calcFlexBlock,
-  calcAllFlexBlocks,
   FLEX_MANAGED_TERMS,
   FLEX_ONDEMAND_TERMS,
   TIER3_EXCLUSION,
@@ -30,14 +29,16 @@ export default function FlexTimeSelector({
   settings,
   selectedHours,
   onChange,
+  onApply,
   mode = 'managed',
   packageModel = 'none',
   includedMinsPerWS = 0,
   workstations = 0,
+  repCommissionRate = null,
 }) {
   const [showTerms, setShowTerms] = useState(false);
 
-  const blocks = calcAllFlexBlocks(remoteRate, settings);
+  const blocks = getFlexBlocks(settings).map(b => ({ ...calcFlexBlock(b.hours, remoteRate, settings), label: b.label })).filter(Boolean);
   const isOnDemand = mode === 'ondemand';
   const isAllInclusive = packageModel === 'all_inclusive';
   const includedHrs = includedMinsPerWS > 0 ? Math.round((includedMinsPerWS * workstations) / 60 * 10) / 10 : 0;
@@ -168,10 +169,28 @@ export default function FlexTimeSelector({
                 )}
               </div>
 
-              <button onClick={() => setShowTerms(t => !t)}
-                style={{ fontSize:9, color:'#c2410c', background:'none', border:'none', cursor:'pointer', padding:0, textDecoration:'underline' }}>
-                {showTerms ? 'Hide full terms' : 'View full terms & Tier 3 exclusions'}
-              </button>
+              {/* Commission note */}
+              {repCommissionRate != null && (() => {
+                const commAmt = (calcFlexBlock(selectedHours, remoteRate, settings)?.blockPrice || 0) * repCommissionRate;
+                return (
+                  <div style={{ fontSize:9, color:'#0f766e', background:'#f0fdf4', borderRadius:3, padding:'3px 6px', marginBottom:4, display:'inline-block' }}>
+                    ✓ Commissionable labor · {(repCommissionRate*100).toFixed(1)}% = ${commAmt.toFixed(2)}/mo
+                  </div>
+                );
+              })()}
+
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:4 }}>
+                <button onClick={() => setShowTerms(t => !t)}
+                  style={{ fontSize:9, color:'#c2410c', background:'none', border:'none', cursor:'pointer', padding:0, textDecoration:'underline' }}>
+                  {showTerms ? 'Hide full terms' : 'View full terms & Tier 3 exclusions'}
+                </button>
+                {onApply && (
+                  <button onClick={() => onApply(selectedHours)}
+                    style={{ padding:'5px 14px', background:'#0f1e3c', color:'white', border:'none', borderRadius:4, fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                    ✓ Apply & Save
+                  </button>
+                )}
+              </div>
 
               {showTerms && (
                 <div style={{ marginTop:8, padding:'8px 10px', background:'white', borderRadius:4, border:'1px solid #fed7aa' }}>

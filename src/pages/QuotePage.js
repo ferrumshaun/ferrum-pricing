@@ -287,7 +287,7 @@ export default function QuotePage() {
   async function saveQuote() {
     if (!recipientBiz.trim()) { setSaveMsg('Please enter a recipient business name.'); return; }
     setSaving(true); setSaveMsg('');
-    const allInputs = { ...inputs, proposalName, recipientContact, recipientEmail, recipientAddress, hubspotDealName: hubDealName, marketCity, marketState, aiMultiplier: aiMultiplier ?? null, aiMultiplierTier: aiMultiplierTier ?? null, repId: repId || null, repName: repProfile?.full_name || repProfile?.email || null };
+    const allInputs = { ...inputs, proposalName, recipientContact, recipientEmail, recipientAddress, hubspotDealName: hubDealName, marketCity, marketState, aiMultiplier: aiMultiplier ?? null, aiMultiplierTier: aiMultiplierTier ?? null, repId: repId || null, repName: repProfile?.full_name || repProfile?.email || null, flexHours: flexHours || null };
     const totals = result ? {
       finalMRR: result.finalMRR, onboarding: result.onboarding,
       impliedGM: result.impliedGM, totalCost: result.totalCost,
@@ -1097,10 +1097,22 @@ export default function QuotePage() {
                       settings={settings}
                       selectedHours={flexHours}
                       onChange={hrs => setFlexHours(hrs)}
+                      onApply={async (hrs) => {
+                        setFlexHours(hrs);
+                        // Autosave when Apply is clicked
+                        if (existingQuote?.id) {
+                          const updatedInputs = { ...inputs, proposalName, flexHours: hrs || null };
+                          await supabase.from('quotes').update({ inputs: updatedInputs }).eq('id', existingQuote.id);
+                          await saveQuoteVersion({ quoteId: existingQuote.id, quoteData: { client_name: recipientBiz, status: quoteStatus }, inputs: updatedInputs, totals: { finalMRR: effectiveFinalMRR }, lineItems: [], profile, note: hrs ? `Flex Time block applied: ${hrs} hours` : 'Flex Time block removed' });
+                          setSaveMsg('✓ Flex Time saved');
+                          setTimeout(() => setSaveMsg(''), 2500);
+                        }
+                      }}
                       mode="managed"
                       packageModel={selectedPkg?.flex_time_model || 'none'}
                       includedMinsPerWS={selectedPkg?.flex_included_mins_per_ws || 0}
                       workstations={inputs.workstations || 0}
+                      repCommissionRate={repProfile?.commission_rate ?? null}
                     />
                   )}
 
