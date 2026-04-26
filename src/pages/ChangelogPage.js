@@ -97,7 +97,7 @@ export default function ChangelogPage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: '#0f1e3c', lineHeight: 1.4 }}>{release.summary}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
-                      <span style={{ fontSize: 10, color: '#9ca3af' }}>{new Date(release.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                      <span style={{ fontSize: 10, color: '#9ca3af' }}>{new Date(release.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
                       <span style={{ fontSize: 9, fontWeight: 600, background: AUDIENCE_BG[release.audience], color: AUDIENCE_COLOR[release.audience], padding: '1px 5px', borderRadius: 3 }}>
                         {AUDIENCE_LABEL[release.audience]}
                       </span>
