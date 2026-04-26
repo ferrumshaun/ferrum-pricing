@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { buildRateSheet, fmtRate } from '../lib/rateSheet';
+import { supabase } from '../lib/supabase';
 import { createSPTProposal } from '../lib/smartPricingTable';
 import { supabase } from '../lib/supabase';
 
@@ -82,46 +83,22 @@ export default function RateSheetModal({
           <button onClick={onClose} style={{ background:'none', border:'none', color:'#64748b', fontSize:22, cursor:'pointer', lineHeight:1 }}>×</button>
         </div>
 
-        {/* SPT export bar */}
-        <div style={{ background:'#f8fafc', borderBottom:'1px solid #e5e7eb', padding:'10px 20px', flexShrink:0 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-            <div style={{ flex:1 }}>
-              {sptProposalId ? (
-                <div style={{ fontSize:11, color:'#166534', fontWeight:600 }}>
-                  ✓ Linked to SPT proposal
-                  {proposalUrl && <a href={proposalUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft:8, color:'#2563eb', fontSize:10 }}>View in SPT →</a>}
-                </div>
-              ) : (
-                <div style={{ fontSize:11, color:'#6b7280' }}>Not yet exported to Smart Pricing Table</div>
-              )}
-              {exportMsg && (
-                <div style={{ fontSize:11, fontWeight:600, color: exportMsg.startsWith('✓') ? '#166534' : '#dc2626', marginTop:2 }}>
-                  {exportMsg}
-                  {proposalUrl && <a href={proposalUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft:8, color:'#2563eb', fontWeight:400 }}>Open in SPT →</a>}
-                </div>
-              )}
-            </div>
-            <button onClick={exportToSPT} disabled={exporting}
-              style={{ padding:'7px 16px', background: exporting ? '#9ca3af' : '#f97316', color:'white', border:'none', borderRadius:5, fontSize:12, fontWeight:700, cursor: exporting ? 'default' : 'pointer', whiteSpace:'nowrap' }}>
-              {exporting ? 'Exporting...' : sptProposalId ? '↻ Re-export to SPT' : '↗ Export to Smart Pricing Table'}
-            </button>
-          </div>
-
-          {showKeyInput && (
-            <div style={{ marginTop:8, display:'flex', gap:6 }}>
-              <input value={sptKey} onChange={e => setSptKey(e.target.value)}
-                placeholder="Paste your SPT API key..."
-                style={{ flex:1, padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none', fontFamily:'DM Mono, monospace' }} />
-              <button onClick={() => { setShowKeyInput(false); exportToSPT(); }}
-                style={{ padding:'5px 12px', background:'#0f1e3c', color:'white', border:'none', borderRadius:4, fontSize:11, cursor:'pointer' }}>
-                Use Key
-              </button>
-              <div style={{ fontSize:9, color:'#9ca3af', alignSelf:'center' }}>
-                Save permanently in Admin → Integrations
-              </div>
-            </div>
-          )}
-        </div>
+        {/* SPT connect bar */}
+        <SPTConnectBar
+          sptProposalId={sptProposalId}
+          sptApiKey={sptKey || settings?.spt_api_key}
+          exporting={exporting}
+          exportMsg={exportMsg}
+          proposalUrl={proposalUrl}
+          clientName={clientName}
+          onExportNew={exportToSPT}
+          onLink={(pid, url) => {
+            setProposalUrl(url);
+            setExportMsg(`✓ Linked: ${pid}`);
+            onSPTLinked?.(pid, url);
+          }}
+          onUnlink={() => { setProposalUrl(null); setExportMsg(''); onSPTLinked?.(null, null); }}
+        />
 
         {/* Rate sheet content */}
         <div style={{ flex:1, overflowY:'auto', padding:'20px' }}>
@@ -219,16 +196,19 @@ export function DocumentsPanel({
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
           {/* Rate Sheet */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#f8fafc', borderRadius:4, border:'1px solid #e5e7eb' }}>
-            <div>
-              <div style={{ fontSize:11, fontWeight:600, color:'#0f1e3c' }}>Out-of-Scope Rate Schedule</div>
-              <div style={{ fontSize:9, color:'#9ca3af' }}>
-                {sptProposalId ? '✓ Exported to SPT' : 'Market-adjusted · ready to export'}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#f8fafc', borderRadius:4, border:`1px solid ${sptProposalId ? '#bbf7d0' : '#e5e7eb'}` }}>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <span style={{ fontSize:11, fontWeight:600, color:'#0f1e3c' }}>Out-of-Scope Rate Schedule</span>
+                {sptProposalId && <span style={{ fontSize:9, fontWeight:700, color:'#166534', background:'#dcfce7', padding:'1px 5px', borderRadius:3 }}>SPT ✓</span>}
+              </div>
+              <div style={{ fontSize:9, color:'#9ca3af', marginTop:1 }}>
+                {sptProposalId ? 'Linked to Smart Pricing Table — click to view or update' : 'Market-adjusted rates · link or create in SPT'}
               </div>
             </div>
             <button onClick={() => setShowRateSheet(true)}
-              style={{ padding:'4px 10px', background:'#0f1e3c', color:'white', border:'none', borderRadius:4, fontSize:10, fontWeight:600, cursor:'pointer' }}>
-              View / Export
+              style={{ padding:'4px 10px', background:'#0f1e3c', color:'white', border:'none', borderRadius:4, fontSize:10, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+              {sptProposalId ? 'View / Update' : 'View / Export'}
             </button>
           </div>
 
@@ -255,9 +235,212 @@ export function DocumentsPanel({
           quoteId={quoteId}
           quoteNumber={quoteNumber}
           sptProposalId={sptProposalId}
-          onSPTLinked={onSPTLinked}
+          onSPTLinked={(pid, url) => {
+            onSPTLinked?.(pid, url);
+            // Persist unlink to DB when pid is null
+            if (!pid && quoteId) supabase.from('quotes').update({ spt_proposal_id: null, spt_synced_at: null }).eq('id', quoteId);
+          }}
         />
       )}
     </>
+  );
+}
+
+
+// ── SPTConnectBar ─────────────────────────────────────────────────────────────
+// Compact bar shown inside the rate sheet drawer — handles link/unlink/create/view
+function SPTConnectBar({ sptProposalId, sptApiKey, exporting, exportMsg, proposalUrl, clientName, onExportNew, onLink, onUnlink }) {
+  const [showSearch, setShowSearch] = useState(false);
+
+  const hasKey = !!sptApiKey;
+
+  return (
+    <>
+      <div style={{ background:'#f8fafc', borderBottom:'1px solid #e5e7eb', padding:'10px 20px', flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+
+          {/* Status */}
+          <div style={{ flex:1, minWidth:0 }}>
+            {sptProposalId ? (
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:11, color:'#166534', fontWeight:600 }}>
+                  ✓ Linked to SPT proposal
+                </span>
+                {proposalUrl && (
+                  <a href={proposalUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize:10, color:'#f97316', fontWeight:600, textDecoration:'none' }}>
+                    Open in SPT →
+                  </a>
+                )}
+                <button onClick={() => {
+                  if (window.confirm('Unlink this SPT proposal? The proposal will remain in SPT but will no longer be associated with this quote.')) {
+                    onUnlink?.();
+                  }
+                }} style={{ fontSize:9, color:'#6b7280', background:'none', border:'none', cursor:'pointer', padding:0, textDecoration:'underline' }}>
+                  Unlink
+                </button>
+              </div>
+            ) : (
+              <div style={{ fontSize:11, color:'#6b7280' }}>
+                Not linked to Smart Pricing Table
+              </div>
+            )}
+            {exportMsg && (
+              <div style={{ fontSize:10, fontWeight:600, color: exportMsg.startsWith('✓') ? '#166534' : '#dc2626', marginTop:2 }}>
+                {exportMsg}
+              </div>
+            )}
+            {!hasKey && (
+              <div style={{ fontSize:9, color:'#dc2626', marginTop:2 }}>
+                ⚠ SPT API key not configured — add it in Admin → Integrations
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+            {/* Search & link existing */}
+            <button onClick={() => setShowSearch(true)} disabled={!hasKey}
+              style={{ padding:'6px 12px', background:'white', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, fontWeight:600, color:'#374151', cursor: hasKey ? 'pointer' : 'not-allowed', opacity: hasKey ? 1 : 0.5 }}>
+              🔍 Link Existing
+            </button>
+            {/* Create new */}
+            <button onClick={onExportNew} disabled={exporting || !hasKey}
+              style={{ padding:'6px 12px', background: hasKey ? '#f97316' : '#9ca3af', color:'white', border:'none', borderRadius:4, fontSize:11, fontWeight:700, cursor: (exporting || !hasKey) ? 'not-allowed' : 'pointer' }}>
+              {exporting ? 'Creating...' : sptProposalId ? '↻ Push Update' : '+ Create New'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {showSearch && (
+        <SPTSearchModal
+          sptApiKey={sptApiKey}
+          clientName={clientName}
+          onSelect={(proposal) => {
+            const url = `https://web.smartpricingtable.com/proposals/${proposal.id}`;
+            onLink?.(proposal.id, url);
+            setShowSearch(false);
+          }}
+          onClose={() => setShowSearch(false)}
+        />
+      )}
+    </>
+  );
+}
+
+// ── SPTSearchModal ────────────────────────────────────────────────────────────
+// Search existing SPT proposals and link one to this quote
+function SPTSearchModal({ sptApiKey, clientName, onSelect, onClose }) {
+  const [search,   setSearch]   = useState(clientName || '');
+  const [results,  setResults]  = useState([]);
+  const [loading,  setLoading]  = useState(false);
+  const [msg,      setMsg]      = useState('');
+  const [searched, setSearched] = useState(false);
+
+  async function doSearch() {
+    if (!search.trim()) return;
+    setLoading(true); setMsg(''); setResults([]);
+    try {
+      const res = await fetch('/.netlify/functions/sptProxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'listProposals', payload: { search: search.trim(), limit: 30 }, sptApiKey }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Search failed');
+      const proposals = data.data || [];
+      setResults(proposals);
+      setMsg(proposals.length === 0 ? 'No proposals found.' : '');
+      setSearched(true);
+    } catch (e) {
+      setMsg('✗ ' + e.message);
+    }
+    setLoading(false);
+  }
+
+  // Auto-search on open with client name
+  useState(() => { if (clientName) doSearch(); }, []);
+
+  const statusColor = (s) => ({
+    DRAFT: '#6b7280', SENT: '#2563eb', PENDING: '#d97706',
+    WON: '#166534', LOST: '#dc2626', CANCELLED: '#9ca3af', EXPIRED: '#9ca3af',
+  }[s] || '#6b7280');
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:700 }}>
+      <div style={{ background:'white', borderRadius:10, padding:24, width:540, maxHeight:'75vh', display:'flex', flexDirection:'column', boxShadow:'0 8px 32px rgba(0,0,0,0.2)' }}>
+        {/* Header */}
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <div style={{ width:24, height:24, background:'#f97316', borderRadius:4, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <span style={{ color:'white', fontSize:12, fontWeight:700 }}>S</span>
+            </div>
+            <div style={{ fontSize:14, fontWeight:700, color:'#0f1e3c' }}>Link Existing SPT Proposal</div>
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', fontSize:20, color:'#6b7280', cursor:'pointer' }}>×</button>
+        </div>
+
+        {/* Search input */}
+        <div style={{ display:'flex', gap:6, marginBottom:10 }}>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && doSearch()}
+            placeholder="Search by proposal name or client..."
+            autoFocus
+            style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:5, fontSize:12, outline:'none' }}
+          />
+          <button onClick={doSearch} disabled={loading}
+            style={{ padding:'8px 14px', background:'#f97316', color:'white', border:'none', borderRadius:5, fontSize:12, fontWeight:700, cursor:'pointer', opacity: loading ? 0.6 : 1 }}>
+            {loading ? '...' : 'Search'}
+          </button>
+        </div>
+
+        {msg && <div style={{ fontSize:11, color: msg.startsWith('✗') ? '#dc2626' : '#6b7280', marginBottom:8 }}>{msg}</div>}
+
+        {/* Results */}
+        <div style={{ flex:1, overflowY:'auto', border:'1px solid #e5e7eb', borderRadius:6 }}>
+          {!searched && !loading && (
+            <div style={{ padding:20, textAlign:'center', color:'#9ca3af', fontSize:12 }}>
+              Search for an existing SPT proposal to link to this quote.<br/>
+              <span style={{ fontSize:11 }}>Searching by client name will show the most relevant proposals.</span>
+            </div>
+          )}
+          {results.map(p => (
+            <div key={p.id} onClick={() => onSelect(p)}
+              style={{ padding:'10px 14px', borderBottom:'1px solid #f3f4f6', cursor:'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#fef3e7'}
+              onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8 }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:12, fontWeight:600, color:'#0f1e3c', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                    {p.name}
+                  </div>
+                  <div style={{ fontSize:10, color:'#9ca3af', marginTop:2 }}>
+                    {p.settings?.recipient?.name && <span>{p.settings.recipient.name} · </span>}
+                    Updated {new Date(p.updated_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })}
+                    {p.created_by?.name && <span> · {p.created_by.name}</span>}
+                  </div>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
+                  <span style={{ fontSize:9, fontWeight:700, color: statusColor(p.status), background: statusColor(p.status) + '18', padding:'2px 6px', borderRadius:3 }}>
+                    {p.status}
+                  </span>
+                  <span style={{ fontSize:11, color:'#f97316', fontWeight:600 }}>Link →</span>
+                </div>
+              </div>
+            </div>
+          ))}
+          {loading && (
+            <div style={{ padding:20, textAlign:'center', color:'#9ca3af', fontSize:12 }}>Searching Smart Pricing Table...</div>
+          )}
+        </div>
+
+        <div style={{ marginTop:10, fontSize:10, color:'#9ca3af', textAlign:'center' }}>
+          Select a proposal to link it to this Ferrum IQ quote. The proposal itself won't be modified.
+        </div>
+      </div>
+    </div>
   );
 }
