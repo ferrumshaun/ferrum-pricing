@@ -551,16 +551,15 @@ export default function MultiSiteQuotePage() {
                 if (!proposalName && full.deal.dealname) setProposalName(`FerrumIT Multi-Site IT — ${full.company?.name || full.deal.dealname}`);
               }}
               onDisconnect={() => { setHubDealId(''); setHubDealUrl(''); setHubDealName(''); }}
-
+            />
             <SPTConnect
               proposalId={sptProposalId}
               quoteId={existingQuote?.id}
               clientName={recipientBiz}
               quoteNumber={existingQuote?.quote_number}
               settings={settings}
-              onConnect={(pid, pname) => {setSptProposalId(pid)}}
-              onDisconnect={() => {setSptProposalId(null)}}
-/>
+              onConnect={(pid) => setSptProposalId(pid)}
+              onDisconnect={() => setSptProposalId(null)}
             />
 
             {/* Proposal */}

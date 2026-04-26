@@ -486,16 +486,15 @@ export default function QuotePage() {
           }}
           onDisconnect={() => { setHubDealId(''); setHubDealUrl(''); setHubDealName(''); }}
           onSync={syncToDeal}
-
+        />
         <SPTConnect
           proposalId={sptProposalId}
           quoteId={existingQuote?.id}
           clientName={recipientBiz}
           quoteNumber={existingQuote?.quote_number}
           settings={settings}
-          onConnect={(pid, pname) => {setSptProposalId(pid)}}
-          onDisconnect={() => {setSptProposalId(null)}}
-/>
+          onConnect={(pid) => setSptProposalId(pid)}
+          onDisconnect={() => setSptProposalId(null)}
         />
 
         {/* ── Client / Proposal fields ── */}
