@@ -58,7 +58,12 @@ export default function AssumptionsModal({
   const [newExclusion,     setNewExclusion]     = useState('');
   const [customNotes,      setCustomNotes]      = useState('');
 
-  const [saving,  setSaving]  = useState(false);
+  const [saving,        setSaving]        = useState(false);
+  const [generating,    setGenerating]    = useState(false);
+  const [aiResult,      setAiResult]      = useState(null);
+  const [switchDetails, setSwitchDetails] = useState('');
+  const [laptopNotes,   setLaptopNotes]   = useState('');
+  const [taskWorkerCount, setTaskWorkerCount] = useState('');
   const [saveMsg, setSaveMsg] = useState('');
 
   // Load saved assumptions
@@ -86,6 +91,10 @@ export default function AssumptionsModal({
         setDeliverables(a.deliverables || STANDARD_DELIVERABLES);
         setCustomExclusions(a.customExclusions || []);
         setCustomNotes(a.customNotes || '');
+        setSwitchDetails(a.switchDetails || '');
+        setLaptopNotes(a.laptopNotes || '');
+        setTaskWorkerCount(a.taskWorkerCount || '');
+        if (a.aiResult) setAiResult(a.aiResult);
       });
   }, [quoteId]);
 
@@ -93,12 +102,12 @@ export default function AssumptionsModal({
     if (!quoteId) { setSaveMsg('Save the quote first.'); return; }
     setSaving(true); setSaveMsg('');
     const assumptions = {
-      story, currentProvider, userList,
-      fieldTechCount, fieldTechNotes,
+      story, currentProvider, switchDetails, userList,
+      fieldTechCount: taskWorkerCount, fieldTechNotes, laptopNotes, taskWorkerCount,
       remoteCount, remoteType,
       serverNotes, networkNotes, telephonyNotes,
       m365Managed, m365Tier, m365Notes, cloudNotes,
-      modernizationNotes, deliverables,
+      modernizationNotes, deliverables, aiResult: aiResult || null,
       customExclusions, customNotes,
       savedAt: new Date().toISOString(),
     };
@@ -115,6 +124,33 @@ export default function AssumptionsModal({
     if (!newExclusion.trim()) return;
     setCustomExclusions(prev => [...prev, { id: `c_${Date.now()}`, text: newExclusion.trim() }]);
     setNewExclusion('');
+  }
+
+  async function generateAssumptions() {
+    if (!story.trim()) return;
+    setGenerating(true);
+    try {
+      const res = await fetch('/.netlify/functions/assumptionsAI', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          story, clientName, currentProvider, switchReasons,
+          userCount: inputs?.users, workstationCount: inputs?.workstations,
+          serverNotes, networkNotes, laptopNotes, m365Notes, cloudNotes,
+          selectedProducts: selectedProductObjects.map(p => p.name),
+          compliance: inputs?.compliance, industryRisk: inputs?.industryRisk,
+          packageName: pkg?.name,
+          remoteCount, remoteType, taskWorkerCount,
+          taskWorkerNotes: fieldTechNotes,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAiResult(data.result);
+    } catch (e) {
+      alert('AI generation failed: ' + e.message);
+    }
+    setGenerating(false);
   }
 
   const autoInclusions = buildAutoInclusions({ inputs, pkg, selectedProductObjects });
@@ -145,13 +181,80 @@ export default function AssumptionsModal({
           {/* ── ENVIRONMENT & USER ASSUMPTIONS ── */}
           <Sec title="Environment & User Assumptions" sub="Used for pricing — provided during discovery" color="#0f1e3c">
             <Field label="Customer Story / Discovery Notes">
-              <textarea value={story} onChange={e => setStory(e.target.value)} rows={4}
-                placeholder="Overview of the client — business, size, industry, pain points, what's driving this decision..." style={TA} />
+              <textarea value={story} onChange={e => setStory(e.target.value)} rows={5}
+                placeholder="Type or paste your raw discovery notes here — everything you learned on the call. Who are they, what do they do, what problems are they having, what do they need? The AI will translate this into clean professional assumptions." style={TA} />
+              <div style={{ display:'flex', justifyContent:'flex-end', marginTop:6 }}>
+                <button onClick={generateAssumptions} disabled={generating || !story.trim()}
+                  style={{ padding:'5px 14px', background: generating ? '#9ca3af' : '#7c3aed', color:'white', border:'none', borderRadius:4, fontSize:11, fontWeight:700, cursor: (generating || !story.trim()) ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', gap:5 }}>
+                  {generating ? (
+                    <>
+                      <span style={{ display:'inline-block', width:10, height:10, border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'white', borderRadius:'50%', animation:'spin 0.7s linear infinite' }}/>
+                      Generating...
+                    </>
+                  ) : '✨ Generate Assumptions with AI'}
+                </button>
+              </div>
             </Field>
+
+            {/* AI-generated assumptions preview */}
+            {aiResult && (
+              <div style={{ background:'#faf5ff', border:'1px solid #e9d5ff', borderRadius:6, padding:'12px 14px', marginTop:4 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#7c3aed' }}>✨ AI-Generated Assumptions</div>
+                  <button onClick={() => setAiResult(null)}
+                    style={{ background:'none', border:'none', color:'#9ca3af', cursor:'pointer', fontSize:12 }}>Clear</button>
+                </div>
+
+                {aiResult.environmentSummary && (
+                  <div style={{ marginBottom:10 }}>
+                    <div style={{ fontSize:9, fontWeight:700, color:'#6d28d9', textTransform:'uppercase', letterSpacing:'.04em', marginBottom:3 }}>Environment Overview</div>
+                    <p style={{ fontSize:11, color:'#374151', lineHeight:1.7, margin:0 }}>{aiResult.environmentSummary}</p>
+                  </div>
+                )}
+
+                {aiResult.switchingContext && (
+                  <div style={{ marginBottom:10 }}>
+                    <div style={{ fontSize:9, fontWeight:700, color:'#6d28d9', textTransform:'uppercase', letterSpacing:'.04em', marginBottom:3 }}>Why FerrumIT</div>
+                    <p style={{ fontSize:11, color:'#374151', lineHeight:1.7, margin:0 }}>{aiResult.switchingContext}</p>
+                  </div>
+                )}
+
+                {[
+                  ['User Assumptions', aiResult.userAssumptions],
+                  ['Infrastructure Assumptions', aiResult.infrastructureAssumptions],
+                  ['Cloud & Technology', aiResult.cloudAssumptions],
+                  ['Key Requirements', aiResult.keyRequirements],
+                ].filter(([, items]) => items?.length > 0).map(([label, items]) => (
+                  <div key={label} style={{ marginBottom:10 }}>
+                    <div style={{ fontSize:9, fontWeight:700, color:'#6d28d9', textTransform:'uppercase', letterSpacing:'.04em', marginBottom:4 }}>{label}</div>
+                    {items.map((item, i) => (
+                      <div key={i} style={{ display:'flex', gap:6, marginBottom:2 }}>
+                        <span style={{ color:'#7c3aed', fontSize:10, flexShrink:0, marginTop:1 }}>•</span>
+                        <span style={{ fontSize:11, color:'#374151', lineHeight:1.6 }}>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+
+                {aiResult.complianceNotes && (
+                  <div style={{ marginTop:6, padding:'6px 10px', background:'#fef3c7', borderRadius:4, fontSize:10, color:'#92400e' }}>
+                    ⚠ {aiResult.complianceNotes}
+                  </div>
+                )}
+
+                <div style={{ fontSize:9, color:'#9ca3af', marginTop:8, fontStyle:'italic' }}>
+                  This is saved with the quote and will appear in the formatted assumptions document. Edit the fields above to refine further.
+                </div>
+              </div>
+            )}
             <Grid2>
               <Field label="Current Provider / IT Setup">
                 <input value={currentProvider} onChange={e => setCurrentProvider(e.target.value)}
                   placeholder="e.g., CDW, local MSP, internal IT..." style={IN} />
+              </Field>
+              <Field label="Why are they switching? (add context beyond the checkboxes)">
+                <textarea value={switchDetails} onChange={e => setSwitchDetails(e.target.value)} rows={2}
+                  placeholder="e.g., Slow response times, unresolved tickets for months, no proactive monitoring, staff constantly calling with the same issues..." style={TA} />
               </Field>
               <Field label="Remote / Hybrid Workers">
                 <div style={{ display:'flex', gap:6 }}>
@@ -176,23 +279,31 @@ export default function AssumptionsModal({
             </Field>
 
             <div style={{ background:'#fafafa', border:'1px solid #f1f5f9', borderRadius:5, padding:'10px 12px', marginTop:8 }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#374151', marginBottom:6 }}>Mobile / Field Technicians (excluded from Power User count)</div>
+              <div style={{ fontSize:11, fontWeight:700, color:'#374151', marginBottom:2 }}>Task Workers vs Power Users</div>
+              <div style={{ fontSize:9, color:'#6b7280', marginBottom:8 }}>
+                Task workers have limited IT needs (tablets, job logging, no email/desktop) and are excluded from Power User pricing.
+                Power users are the {inputs?.users || 0} users included in the quoted price.
+              </div>
               <Grid2>
-                <Field label="Number of field/mobile workers">
-                  <input value={fieldTechCount} onChange={e => setFieldTechCount(e.target.value)}
+                <Field label="Number of task workers (not in Power User count)">
+                  <input value={taskWorkerCount} onChange={e => setTaskWorkerCount(e.target.value)}
                     placeholder="e.g., 8–10" style={IN} />
                 </Field>
                 <div />
               </Grid2>
-              <Field label="Notes on field tech usage (why excluded from pricing)">
+              <Field label="What do task workers use? Why excluded?">
                 <textarea value={fieldTechNotes} onChange={e => setFieldTechNotes(e.target.value)} rows={3}
-                  placeholder="e.g., These technicians primarily use tablets to log work activity. They do not use desktop computers, printers, or company email accounts. Because of this limited technology usage, they were not included in the Power User count..." style={TA} />
+                  placeholder="e.g., Use tablets to log field work activity only. No desktop computers, printers, or company email accounts. If they require email, laptops, or IT support they will be added at the applicable per-user rate." style={TA} />
               </Field>
             </div>
           </Sec>
 
           {/* ── CORE INFRASTRUCTURE ── */}
           <Sec title="Core Infrastructure in Scope" sub="Discovered during the sales call" color="#7c3aed">
+            <Field label="Laptops & Workstations">
+              <textarea value={laptopNotes} onChange={e => setLaptopNotes(e.target.value)} rows={2}
+                placeholder="e.g., Mix of Dell and HP desktops, 3-5 years old. 4 MacBooks used by design team. Most running Windows 11." style={TA} />
+            </Field>
             <Field label="Servers">
               <textarea value={serverNotes} onChange={e => setServerNotes(e.target.value)} rows={3}
                 placeholder="e.g., Windows Server 2016 (on-premises rack server) — currently used for Active Directory and file storage. Microsoft support ends October 2027." style={TA} />
