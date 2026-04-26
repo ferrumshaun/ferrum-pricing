@@ -248,7 +248,7 @@ export default function FlexITQuotePage() {
           </div>
           <div>
             <div style={{ fontSize:12, fontWeight:700, color:'#c2410c' }}>FlexIT On-Demand</div>
-            <div style={{ fontSize:9, color:'#9ca3af' }}>Time & Materials — No MSA Required</div>
+            <div style={{ fontSize:9, color:'#9ca3af' }}>Time & Materials — Break/Fix</div>
           </div>
         </div>
 
