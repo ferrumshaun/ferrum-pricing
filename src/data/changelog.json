@@ -1,5 +1,52 @@
 [
   {
+    "version": "2.9.7",
+    "date": "2026-04-26",
+    "summary": "FlexIT Payment Schedule & Terms \u2014 full legal document matching SPT template",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "\ud83d\udcb3 Payment Schedule & Terms document added to FlexIT documents panel \u2014 opens as a right-side drawer matching the SPT template exactly",
+        "Payment schedule shows: Month to Month term, Payment #1 (prepayment at signing, non-refundable), out-of-scope language",
+        "Full legal billing sections included: Automatic Payments (Required) with billing portal link, Invoicing Terms (Due Upon Receipt), Paper Check Payments ($10 fee), Purchase Orders, Setup Services Fee, Declined/Returned Payments ($50 fee), Hardware/Software/Licensing all sales final",
+        "Area 2 surcharge notice automatically shown when client location is in a metro surcharge market"
+      ],
+      "improved": [
+        "FlexIT documents panel now shows two cards: Rate Card and Payment Schedule \u2014 each with View/Export action"
+      ],
+      "fixed": []
+    }
+  },
+  {
+    "version": "2.9.6",
+    "date": "2026-04-26",
+    "summary": "FlexIT documents and billing corrections",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [
+        "FlexIT documents panel now shows Rate Sheet only \u2014 Assumptions and Payment Schedule cards removed (assumptions are the fixed 7-bullet T&M language shown inline; payment schedule replaced by FlexIT-specific billing summary)",
+        "FlexIT billing summary on the quote page corrected to reflect T&M model: Payment #1 prepayment at signing + Ongoing Labor billed as consumed, invoiced on completion. No monthly recurring fee language"
+      ],
+      "fixed": [
+        "FlexIT was showing managed IT payment schedule (NET 20, monthly billing commencement) \u2014 replaced with correct Due Upon Receipt, month-to-month T&M structure"
+      ]
+    }
+  },
+  {
+    "version": "2.9.5",
+    "date": "2026-04-26",
+    "summary": "FlexIT MSA language removed \u2014 break/fix description corrected",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [],
+      "fixed": [
+        "Removed 'No MSA Required' from FlexIT quote page header and nav dropdown \u2014 all Ferrum agreements require a signed MSA. Description updated to 'Time & Materials \u2014 Break/Fix' in both locations"
+      ]
+    }
+  },
+  {
     "version": "2.9.4",
     "date": "2026-04-26",
     "summary": "FlexIT added to top nav New Quote dropdown",
