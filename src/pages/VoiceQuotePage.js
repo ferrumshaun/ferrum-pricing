@@ -56,6 +56,7 @@ export default function VoiceQuotePage() {
 
   const [v, setV]               = useState(DEF);
   const [proposalName, setProposalName] = useState('');
+  const [sptProposalId,    setSptProposalId]    = useState(null);
   const [pricingSnapshot, setPricingSnapshot] = useState(null);
   const [priceLockDate,   setPriceLockDate]   = useState(null);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
@@ -119,6 +120,7 @@ export default function VoiceQuotePage() {
       if (data.inputs?.voice) setV({ ...DEF, ...data.inputs.voice });
       if (data.rep_id) setRepId(data.rep_id);
       if (data.pricing_snapshot) { setPricingSnapshot(data.pricing_snapshot); setPriceLockDate(data.price_locked_at); }
+      if (data.spt_proposal_id) setSptProposalId(data.spt_proposal_id);
     });
   }, [id, configLoading]);
 
