@@ -41,8 +41,8 @@ export default function FlexTimeMeter({ pkg, workstations, users, addonHours }) 
   const includedPct = Math.min((includedHrs / barMax) * 100, 100);
   const addonPct    = Math.min((addonHrs  / barMax) * 100, 100 - includedPct);
 
-  // Not included + no addon
-  if (fmins === 0 && !addonHrs) {
+  // Not included + no addon → show "By Request"
+  if (includedMins === 0 && addonHrs === 0) {
     return (
       <div style={{ marginBottom:10, padding:'10px 14px', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div>

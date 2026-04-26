@@ -4,6 +4,7 @@ import { supabase, logActivity } from '../lib/supabase';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 import { calcQuote, lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
+import { calcFlexBlock } from '../lib/flexTime';
 import { searchDeals, getDealFull, createDeal, updateDeal, updateDealDescription } from '../lib/hubspot';
 import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
@@ -414,6 +415,13 @@ export default function QuotePage() {
         repCommissionRate: repProfile?.commission_rate ?? null,
       });
 
+  // Flex block add-on cost (added to MRR and TCV)
+  const flexBlock = (result && flexHours)
+    ? calcFlexBlock(flexHours, calcPkg?.rates?.remote_support || selectedMkt?.rates?.remote_support || 165, calcSettings)
+    : null;
+  const flexBlockMRR    = flexBlock?.blockPrice   || 0;
+  const effectiveFinalMRR  = result ? result.finalMRR + flexBlockMRR : 0;
+
   if (configLoading) return <div style={{ padding: 24, color: '#6b7280', fontSize: 12 }}>Loading pricing data...</div>;
 
   // Multi-term preview — calc all 3 terms silently (safe: configLoading already guarded above)
@@ -462,8 +470,8 @@ export default function QuotePage() {
           description={dealDescription}
           onDescriptionChange={setDealDescription}
           quoteNumber={existingQuote?.quote_number}
-          mrr={result?.finalMRR}
-          contractValue={result ? result.finalMRR * inputs.contractTerm + result.onboarding : 0}
+          mrr={effectiveFinalMRR || result?.finalMRR}
+          contractValue={result ? effectiveFinalMRR * inputs.contractTerm + result.onboarding : 0}
           packageName={selectedPkg?.name}
           contractTerm={inputs.contractTerm}
           existingQuoteId={existingQuote?.id}
@@ -893,7 +901,7 @@ export default function QuotePage() {
 
               {/* KPI cards — 4 inline */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:7, marginBottom:10 }}>
-                {[['Monthly MRR',fmt$0(result.finalMRR),'#0f1e3c','#f0f4ff'],['Onboarding',fmt$0(obIncentive?.effectiveFee ?? result.onboarding),'#0f766e','#f0fdf4'],['Implied GM',fmtPct(result.impliedGM),gc,gb],['Contract TCV',fmt$0(result.finalMRR*inputs.contractTerm+(obIncentive?.effectiveFee??result.onboarding)),'#6d28d9','#faf5ff']].map(([l,v,co,bg])=>(
+                {[['Monthly MRR',fmt$0(effectiveFinalMRR),'#0f1e3c','#f0f4ff'],['Onboarding',fmt$0(obIncentive?.effectiveFee ?? result.onboarding),'#0f766e','#f0fdf4'],['Implied GM',fmtPct(result.impliedGM),gc,gb],['Contract TCV',fmt$0(effectiveFinalMRR*inputs.contractTerm+(obIncentive?.effectiveFee??result.onboarding)),'#6d28d9','#faf5ff']].map(([l,v,co,bg])=>(
                   <div key={l} style={{ background:bg, borderRadius:5, padding:'7px 6px', textAlign:'center' }}>
                     <div style={{ fontSize:7, fontWeight:600, color:'#6b7280', letterSpacing:'.05em', textTransform:'uppercase', marginBottom:2 }}>{l}</div>
                     <div style={{ fontSize:13, fontWeight:700, fontFamily:'DM Mono, monospace', color:co }}>{v}</div>
@@ -951,7 +959,8 @@ export default function QuotePage() {
                   <LI lbl="Operational Subtotal" v={result.opSubtotal} bold/>
                   {result.compMult!==1&&<LI lbl={`Risk multiplier: ${result.compMult.toFixed(2)}×`} v={result.riskAdjMRR} muted/>}
                   {result.discount<0&&<LI lbl={`${Math.round(result.discRate*100)}% contract discount`} v={result.discount} ind/>}
-                  <LI lbl="✦ Final Monthly MRR" v={result.finalMRR} hi/>
+                  {flexBlock && <LI lbl={`Flex Time — ${flexBlock.hours}hr block (${flexBlock.discountPct}% off T&M)`} v={flexBlock.blockPrice} ind/>}
+                  <LI lbl={flexBlockMRR > 0 ? `✦ Final MRR (incl. ${flexBlock.hours}hr flex block)` : '✦ Final Monthly MRR'} v={effectiveFinalMRR} hi/>
                 </div>
 
                 <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
