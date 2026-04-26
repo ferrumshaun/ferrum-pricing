@@ -10,6 +10,7 @@ import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import FlexTimeMeter from '../components/FlexTimeMeter';
 import { DocumentsPanel } from '../components/RateSheetModal';
 import OnboardingIncentive from '../components/OnboardingIncentive';
 import HubSpotConnect from '../components/HubSpotConnect';
@@ -821,7 +822,15 @@ export default function BundleQuotePage() {
             {/* ── LEFT COLUMN: IT → Voice → Cost Model ── */}
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
 
-              {/* IT line items */}
+                            {/* Flex Time Meter */}
+              <FlexTimeMeter
+                pkg={selectedPkg}
+                workstations={itInputs?.workstations || 0}
+                users={itInputs?.users || 0}
+                addonHours={null}
+              />
+
+{/* IT line items */}
               <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
                 <div style={{ fontSize:10, fontWeight:700, color:'#2563eb', marginBottom:6 }}>🖥 Managed IT — {fmt$0(itResult?.finalMRR||0)}/mo</div>
                 {itResult ? (

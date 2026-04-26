@@ -1,5 +1,26 @@
 [
   {
+    "version": "3.0.1",
+    "date": "2026-04-26",
+    "summary": "FlexTimeMeter on all IT quote types + two-tone progress bar for included vs add-on time",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "FlexTimeMeter component now appears on all managed IT quote types: IT, Hosted Voice, Bundle (IT+Voice), and Multi-Location",
+        "Two-tone progress bar: blue segment = included time from package, orange segment = purchased add-on block time \u2014 instantly visible distinction",
+        "Legend below bar shows exact hours for each segment with color-coded labels",
+        "When an add-on block is selected on the IT quote, the meter updates live to show combined total hours per month"
+      ],
+      "improved": [
+        "Multi-Location meter totals workstations and users across all locations for an accurate flex time pool display",
+        "Meter shows 'By Request' state when package has no included time and no block purchased, with a prompt to purchase a block"
+      ],
+      "fixed": [
+        "FlexTimeMeter extracted from inline IIFE in QuotePage into a shared reusable component \u2014 now consistent across all four IT quote types"
+      ]
+    }
+  },
+  {
     "version": "3.0.0",
     "date": "2026-04-26",
     "summary": "Flex Time Blocks \u2014 managed IT monthly add-on and FlexIT pre-purchase annual blocks",

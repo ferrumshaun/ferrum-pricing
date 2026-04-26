@@ -10,6 +10,7 @@ import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import FlexTimeMeter from '../components/FlexTimeMeter';
 import HubSpotConnect from '../components/HubSpotConnect';
 import SPTConnect    from '../components/SPTConnect';
 import MarketRateCard from '../components/MarketRateCard';
@@ -665,6 +666,13 @@ export default function VoiceQuotePage() {
 
                 {/* Right column */}
                 <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                  {/* Flex Time Meter — Voice packages can include flex time blocks */}
+                  <FlexTimeMeter
+                    pkg={null}
+                    workstations={v.seats || 0}
+                    users={v.seats || 0}
+                    addonHours={null}
+                  />
                   {/* Tax estimate */}
                   <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
                     <div style={{ fontSize:10, fontWeight:700, color:'#374151', marginBottom:6 }}>Estimated Taxes & Fees</div>

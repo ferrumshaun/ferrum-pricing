@@ -13,6 +13,7 @@ import { getOrAnalyzeMarket } from '../lib/marketRates';
 import QuoteNotes from '../components/QuoteNotes';
 import QuoteHistory from '../components/QuoteHistory';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import FlexTimeMeter from '../components/FlexTimeMeter';
 import { DocumentsPanel } from '../components/RateSheetModal';
 import OnboardingIncentive from '../components/OnboardingIncentive';
 import HubSpotConnect from '../components/HubSpotConnect';
@@ -949,7 +950,15 @@ export default function MultiSiteQuotePage() {
               </div>
             </div>
 
-            {/* Onboarding Incentive */}
+                        {/* Flex Time Meter */}
+            <FlexTimeMeter
+              pkg={selectedPkg}
+              workstations={locations.reduce((s,l) => s + (parseInt(l.workstations)||0), 0)}
+              users={locations.reduce((s,l) => s + (parseInt(l.users)||0), 0)}
+              addonHours={null}
+            />
+
+{/* Onboarding Incentive */}
             {onboarding > 0 && (
               <OnboardingIncentive
                 fee={onboarding}
