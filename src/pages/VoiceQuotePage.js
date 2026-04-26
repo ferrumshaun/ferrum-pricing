@@ -55,6 +55,9 @@ export default function VoiceQuotePage() {
 
   const [v, setV]               = useState(DEF);
   const [proposalName, setProposalName] = useState('');
+  const [repId,        setRepId]        = useState(null);
+  const [repProfile,   setRepProfile]   = useState(null);
+  const [teamMembers,  setTeamMembers]  = useState([]);
   const [recipientBiz, setRecipientBiz] = useState('');
   const [recipientContact, setRecipientContact] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
@@ -78,6 +81,20 @@ export default function VoiceQuotePage() {
 
   const set = useCallback((k, val) => setV(p => ({ ...p, [k]: val })), []);
 
+  // ── Rep ──────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    supabase.from('profiles').select('id, full_name, email, commission_rate').order('full_name')
+      .then(({ data }) => setTeamMembers(data || []));
+  }, []);
+  useEffect(() => {
+    if (!repId && profile?.id && !id) setRepId(profile.id);
+  }, [profile, id]);
+  useEffect(() => {
+    if (!repId || !teamMembers.length) return;
+    const rep = teamMembers.find(m => m.id === repId);
+    if (rep) setRepProfile(rep);
+  }, [repId, teamMembers]);
+
   // Load existing quote
   useEffect(() => {
     if (!id || id === 'new' || configLoading) return;
@@ -96,6 +113,7 @@ export default function VoiceQuotePage() {
       setHubDealUrl(data.hubspot_deal_url || '');
       setHubDealName(data.inputs?.hubspotDealName || '');
       if (data.inputs?.voice) setV({ ...DEF, ...data.inputs.voice });
+      if (data.rep_id) setRepId(data.rep_id);
     });
   }, [id, configLoading]);
 
@@ -117,6 +135,7 @@ export default function VoiceQuotePage() {
       status: quoteStatus, notes: dealDescription, inputs: allInputs,
       line_items: r?.lines || [], totals,
       hubspot_deal_id: hubDealId || null, hubspot_deal_url: hubDealUrl || null,
+      rep_id:     repId || profile?.id || null,
       updated_by: profile?.id,
     };
     if (!existingQuote) payload.created_by = profile?.id;
@@ -206,6 +225,17 @@ export default function VoiceQuotePage() {
 
         {/* Client fields */}
         <Sec t="Proposal Details" c="#0f1e3c">
+          <Fld lbl="Assigned Sales Rep">
+            <select value={repId || ''} onChange={e => setRepId(e.target.value)}
+              style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, background:'white', outline:'none', color:'#374151' }}>
+              <option value="">— select rep —</option>
+              {teamMembers.map(m => (
+                <option key={m.id} value={m.id}>
+                  {m.full_name || m.email?.split('@')[0]}{m.commission_rate != null ? ` (${(m.commission_rate*100).toFixed(1)}% comm)` : ' (global rate)'}
+                </option>
+              ))}
+            </select>
+          </Fld>
           <Fld lbl="Proposal Name"><TI value={proposalName} onChange={setProposalName} placeholder="FerrumIT Hosted Voice — Acme Corp"/></Fld>
           <Fld lbl="Client Business Name"><TI value={recipientBiz} onChange={setRecipientBiz} placeholder="Acme Corp"/></Fld>
           <Grid2>
@@ -215,7 +245,7 @@ export default function VoiceQuotePage() {
           <Fld lbl="Business Address"><TI value={recipientAddress} onChange={setRecipientAddress} placeholder="123 Main St, Chicago, IL 60601"/></Fld>
           <Fld lbl="Zip Code">
             <input value={clientZip} onChange={e=>handleZipChange(e.target.value)} placeholder="60601"
-              style={{ width:'100%', padding:'4px 7px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, fontFamily:'DM Mono, monospace', outline:'none' }}/>
+              style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, fontFamily:'DM Mono, monospace', outline:'none' }}/>
             {zipResult && <div style={{ fontSize:9, color:'#6b7280', marginTop:2 }}>{zipResult.name || `ZIP ${zipResult.zip}`}</div>}
           </Fld>
         </Sec>

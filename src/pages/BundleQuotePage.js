@@ -47,6 +47,9 @@ export default function BundleQuotePage() {
 
   // Shared client fields
   const [proposalName,     setProposalName]     = useState('');
+  const [repId,          setRepId]          = useState(null);
+  const [repProfile,     setRepProfile]     = useState(null);
+  const [teamMembers,    setTeamMembers]    = useState([]);
   const [recipientBiz,     setRecipientBiz]     = useState('');
   const [recipientContact, setRecipientContact] = useState('');
   const [recipientEmail,   setRecipientEmail]   = useState('');
@@ -89,6 +92,20 @@ export default function BundleQuotePage() {
     if (!selectedMkt && marketTiers.length) setSelectedMkt(marketTiers.find(t => t.tier_key === 'mid_market') || marketTiers[0]);
   }, [packages, marketTiers]);
 
+  // ── Rep ──────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    supabase.from('profiles').select('id, full_name, email, commission_rate').order('full_name')
+      .then(({ data }) => setTeamMembers(data || []));
+  }, []);
+  useEffect(() => {
+    if (!repId && profile?.id && !id) setRepId(profile.id);
+  }, [profile, id]);
+  useEffect(() => {
+    if (!repId || !teamMembers.length) return;
+    const rep = teamMembers.find(m => m.id === repId);
+    if (rep) setRepProfile(rep);
+  }, [repId, teamMembers]);
+
   // Load existing
   useEffect(() => {
     if (!id || id === 'new' || configLoading) return;
@@ -106,6 +123,7 @@ export default function BundleQuotePage() {
       setHubDealId(data.hubspot_deal_id || '');
       setHubDealUrl(data.hubspot_deal_url || '');
       setHubDealName(data.inputs?.hubspotDealName || '');
+      if (data.rep_id) setRepId(data.rep_id);
       if (data.inputs?.it)    setItInputs({ ...DEF_IT, ...data.inputs.it });
       if (data.inputs?.voice) setV({ ...DEF_V, isManagedIT: true, ...data.inputs.voice });
       if (data.inputs?.package_name && packages.length) setSelectedPkg(packages.find(p => p.name === data.inputs.package_name));
@@ -303,6 +321,7 @@ export default function BundleQuotePage() {
       line_items: [...(itResult?.lineItems || []), ...(voiceResultFinal?.lines || [])],
       totals,
       hubspot_deal_id: hubDealId || null, hubspot_deal_url: hubDealUrl || null,
+      rep_id:     repId || profile?.id || null,
       updated_by: profile?.id,
     };
     if (!existingQuote) payload.created_by = profile?.id;
@@ -410,26 +429,35 @@ export default function BundleQuotePage() {
         />
 
         {/* Client fields */}
-        <Sec t="Client Details" c="#0f1e3c">
+        <Sec t="Proposal Details" c="#0f1e3c">
+          <Fld lbl="Assigned Sales Rep">
+            <select value={repId || ''} onChange={e => setRepId(e.target.value)}
+              style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, background:'white', outline:'none', color:'#374151' }}>
+              <option value="">— select rep —</option>
+              {teamMembers.map(m => (
+                <option key={m.id} value={m.id}>
+                  {m.full_name || m.email?.split('@')[0]}{m.commission_rate != null ? ` (${(m.commission_rate*100).toFixed(1)}% comm)` : ' (global rate)'}
+                </option>
+              ))}
+            </select>
+          </Fld>
           <Fld lbl="Proposal Name"><TI value={proposalName} onChange={setProposalName} placeholder="FerrumIT Bundle — Acme Corp"/></Fld>
           <Fld lbl="Client Business Name"><TI value={recipientBiz} onChange={setRecipientBiz} placeholder="Acme Corp"/></Fld>
           <Grid2>
-            <Fld lbl="Contact Name"><TI value={recipientContact} onChange={setRecipientContact}/></Fld>
-            <Fld lbl="Contact Email"><TI value={recipientEmail} onChange={setRecipientEmail}/></Fld>
+            <Fld lbl="Contact Name"><TI value={recipientContact} onChange={setRecipientContact} placeholder="Jane Smith"/></Fld>
+            <Fld lbl="Contact Email"><TI value={recipientEmail} onChange={setRecipientEmail} placeholder="jane@acme.com"/></Fld>
           </Grid2>
-          <Fld lbl="Business Address"><TI value={recipientAddress} onChange={setRecipientAddress}/></Fld>
-          {/* Zip */}
-          <div style={{ background:'#f0f7ff', border:'1px solid #bfdbfe', borderRadius:5, padding:'7px 9px' }}>
-            <div style={{ fontSize:8, fontWeight:700, color:'#1e40af', letterSpacing:'.06em', textTransform:'uppercase', marginBottom:4 }}>📍 Location</div>
+          <Fld lbl="Business Address"><TI value={recipientAddress} onChange={setRecipientAddress} placeholder="123 Main St, Chicago, IL 60601"/></Fld>
+          <Fld lbl="Zip Code">
             <div style={{ display:'flex', gap:5, alignItems:'center' }}>
-              <input value={clientZip} onChange={e=>handleZipChange(e.target.value)} placeholder="Zip code"
-                style={{ flex:1, padding:'4px 7px', border:'1px solid #93c5fd', borderRadius:4, fontSize:11, fontFamily:'DM Mono, monospace', outline:'none' }}/>
+              <input value={clientZip} onChange={e=>handleZipChange(e.target.value)} placeholder="60601"
+                style={{ flex:1, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, fontFamily:'DM Mono, monospace', outline:'none' }}/>
               {zipResult && !zipApplied && (
-                <button onClick={()=>applyZip()} style={{ padding:'4px 7px', background:mktColor[zipResult.tier]||'#374151', color:'white', border:'none', borderRadius:3, fontSize:9, fontWeight:700, cursor:'pointer' }}>Apply →</button>
+                <button onClick={()=>applyZip()} style={{ padding:'3px 7px', background:mktColor[zipResult.tier]||'#374151', color:'white', border:'none', borderRadius:3, fontSize:9, fontWeight:700, cursor:'pointer' }}>Apply →</button>
               )}
             </div>
-            {zipResult && <div style={{ fontSize:9, color:mktColor[zipResult.tier], marginTop:3, fontWeight:600 }}>{zipResult.name} {zipApplied && '✓'}</div>}
-          </div>
+            {zipResult && <div style={{ fontSize:9, color:'#6b7280', marginTop:2 }}>{zipResult.name}{zipApplied ? ' ✓' : ''}</div>}
+          </Fld>
         </Sec>
 
         {/* ── MANAGED IT SECTION ── */}
