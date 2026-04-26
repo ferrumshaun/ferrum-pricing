@@ -7,7 +7,8 @@ import changelog from '../data/changelog.json';
 const STORAGE_KEY = 'ferrum_changelog_last_seen';
 
 const NAV = [
-  { to: '/quotes',   label: 'Saved Quotes', icon: '📋' },
+  { to: '/quotes',       label: 'Saved Quotes',          icon: '📋' },
+  { to: '/market-rates', label: 'Market Rates',           icon: '🌎' },
 ];
 const ADMIN_NAV = [
   { to: '/admin',    label: 'Admin',        icon: '⚙' },

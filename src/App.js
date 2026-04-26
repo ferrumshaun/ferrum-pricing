@@ -12,6 +12,7 @@ import BundleQuotePage    from './pages/BundleQuotePage';
 import MultiSiteQuotePage from './pages/MultiSiteQuotePage';
 import ChangelogPage   from './pages/ChangelogPage';
 import Layout          from './components/Layout';
+import MarketRatesPage from './pages/MarketRatesPage';
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -41,6 +42,7 @@ function AppRoutes() {
         <Route path="bundle/new"      element={<BundleQuotePage />} />
         <Route path="bundle/:id"      element={<BundleQuotePage />} />
         <Route path="multisite"       element={<MultiSiteQuotePage />} />
+        <Route path="market-rates"     element={<MarketRatesPage />} />
         <Route path="multisite/new"   element={<MultiSiteQuotePage />} />
         <Route path="multisite/:id"   element={<MultiSiteQuotePage />} />
         <Route path="changelog"  element={<ChangelogPage />} />
