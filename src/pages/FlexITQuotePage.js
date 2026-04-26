@@ -188,32 +188,24 @@ export default function FlexITQuotePage() {
       hubspotDealName: hubDealName, hubDescription,
     };
     const payload = {
-      quote_type:        'flexIT',
-      client_name:       recipientBiz,
-      client_zip:        clientZip || null,
-      status:            quoteStatus,
-      package_name:      'FlexIT On-Demand',
-      contract_term_months: null,
-      monthly_fee:       0,
-      onboarding_fee:    prepayAmount,
-      contract_value:    prepayAmount,
-      inputs:            allInputs,
-      hubspot_deal_id:   hubDealId || null,
-      hubspot_deal_url:  hubDealUrl || null,
-      rep_id:            repId || profile?.id || null,
-      updated_by:        profile?.id,
-      updated_at:        new Date().toISOString(),
-      ...(sptProposalId ? { spt_proposal_id: sptProposalId } : {}),
+      client_name:     recipientBiz,
+      client_zip:      clientZip || null,
+      status:          quoteStatus,
+      package_name:    'FlexIT On-Demand',
+      inputs:          allInputs,
+      totals:          { prepayAmount, remoteRate, marketTier: marketAnalysis?.market_tier || null },
+      line_items:      [],
+      hubspot_deal_id: hubDealId || null,
+      hubspot_deal_url:hubDealUrl || null,
+      rep_id:          repId || profile?.id || null,
+      spt_proposal_id: sptProposalId || null,
+      updated_by:      profile?.id,
     };
 
     try {
       let qId = existingQuote?.id;
       if (!qId) {
-        const { data: seq } = await supabase.rpc('next_quote_sequence');
-        const qNum = `FIT-FLEX-${String(seq || Date.now()).padStart(4, '0')}`;
-        payload.quote_number = qNum;
-        payload.created_by   = profile?.id;
-        payload.created_at   = new Date().toISOString();
+        payload.created_by = profile?.id;
         const { data, error } = await supabase.from('quotes').insert(payload).select().single();
         if (error) throw error;
         setExistingQuote(data);
