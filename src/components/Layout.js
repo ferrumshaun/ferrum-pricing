@@ -98,6 +98,11 @@ export default function Layout() {
                 <div style={{ fontWeight: 600 }}>🏢 Multi-Site IT</div>
                 <div style={{ fontSize: 10, color: '#9ca3af' }}>Multiple locations — blended market rates + volume discount</div>
               </button>
+              <div style={{ height: 1, background: '#f3f4f6', margin: '2px 0' }}/>
+              <button onClick={() => { navigate('/flexIT/new'); setNewMenuOpen(false); }} style={{ width: '100%', textAlign: 'left', padding: '8px 14px', background: 'none', border: 'none', fontSize: 12, color: '#374151', cursor: 'pointer', display: 'block' }}>
+                <div style={{ fontWeight: 600, color: '#f97316' }}>⚡ FlexIT On-Demand</div>
+                <div style={{ fontSize: 10, color: '#9ca3af' }}>Time & materials — no MSA required</div>
+              </button>
             </div>
           )}
         </div>
