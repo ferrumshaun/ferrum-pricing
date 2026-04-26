@@ -890,12 +890,13 @@ export default function MultiSiteQuotePage() {
             </div>
 
             {/* Quote Notes */}
-            {existingQuote && (
-              <>
-                <QuoteNotes quoteId={existingQuote.id} hubDealId={hubDealId} quoteNumber={existingQuote.quote_number} clientName={recipientBiz} />
-                <QuoteHistory quoteId={existingQuote.id} />
-              </>
-            )}
+            <QuoteNotes
+              quoteId={existingQuote?.id}
+              quoteNumber={existingQuote?.quote_number}
+              clientName={recipientBiz}
+              hubDealId={hubDealId}
+            />
+            <QuoteHistory quoteId={existingQuote?.id} />
 
           </div>
         </div>

@@ -664,17 +664,13 @@ export default function VoiceQuotePage() {
                   </div>
 
                   {/* Quote Notes */}
-                  {existingQuote && (
-                    <>
-                      <QuoteNotes
-                        quoteId={existingQuote.id}
-                        quoteNumber={existingQuote.quote_number}
-                        clientName={recipientBiz}
-                        hubDealId={hubDealId}
-                      />
-                      <QuoteHistory quoteId={existingQuote.id} />
-                    </>
-                  )}
+                  <QuoteNotes
+                    quoteId={existingQuote?.id}
+                    quoteNumber={existingQuote?.quote_number}
+                    clientName={recipientBiz}
+                    hubDealId={hubDealId}
+                  />
+                  <QuoteHistory quoteId={existingQuote?.id} />
 
                 </div>
               </div>
