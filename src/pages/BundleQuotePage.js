@@ -892,8 +892,6 @@ export default function BundleQuotePage() {
 
             </div>
           </div>
-
-          </div>
         </div>
         </div>{/* end inner scroll */}
       </div>
