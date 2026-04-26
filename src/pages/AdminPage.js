@@ -347,7 +347,9 @@ function PackagesAdmin() {
   async function save() {
     setSaving(true); setSaveError('');
     try {
-      const payload = { ...editing,
+      // Strip computed display-only fields before saving
+      const { '$ws': _ws, '$user': _user, '$server': _srv, '$location': _loc, ...editingClean } = editing;
+      const payload = { ...editingClean,
         ws_rate:        parseFloat(editing.ws_rate)        || 0,
         user_rate:      parseFloat(editing.user_rate)      || 0,
         server_rate:    parseFloat(editing.server_rate)    || 0,
