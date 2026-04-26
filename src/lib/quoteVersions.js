@@ -2,7 +2,7 @@
 import { supabase } from './supabase';
 import { computeDiff, buildSnapshot } from './quoteDiff';
 
-export async function saveQuoteVersion({ quoteId, quoteData, inputs, totals, lineItems, profile }) {
+export async function saveQuoteVersion({ quoteId, quoteData, inputs, totals, lineItems, profile, note }) {
   if (!quoteId) return;
 
   // Get the latest version number and previous snapshot
@@ -18,8 +18,9 @@ export async function saveQuoteVersion({ quoteId, quoteData, inputs, totals, lin
   const snapshot    = buildSnapshot(quoteData, inputs, totals, lineItems);
   const { changes, summary } = computeDiff(existing?.snapshot || null, snapshot);
 
-  // Always save v1; for subsequent saves, only save if something changed
-  if (nextVersion > 1 && changes.length === 0) return;
+  // Always save v1 or when a note is explicitly provided (e.g. incentive change, unlock)
+  // For regular saves, only write if something actually changed
+  if (nextVersion > 1 && changes.length === 0 && !note) return;
 
   await supabase.from('quote_versions').insert({
     quote_id:       quoteId,
@@ -28,7 +29,7 @@ export async function saveQuoteVersion({ quoteId, quoteData, inputs, totals, lin
     saved_by_name:  profile?.full_name || profile?.email?.split('@')[0],
     saved_by_email: profile?.email,
     snapshot,
-    diff:           { changes, summary },
-    change_summary: summary,
+    diff:           { changes, summary, note: note || null },
+    change_summary: note || summary,
   });
 }

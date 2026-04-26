@@ -121,7 +121,9 @@ export default function QuoteHistory({ quoteId }) {
                 {/* Summary */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 11, fontWeight: 500, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {isFirst ? 'Initial save' : ver.change_summary || 'No changes detected'}
+                    {isFirst ? 'Initial save' : diff.note ? (
+                      <span style={{ color: '#0f766e', fontWeight: 600 }}>📝 {diff.note}</span>
+                    ) : ver.change_summary || 'No changes detected'}
                   </div>
                   <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 1, display: 'flex', gap: 6 }}>
                     <span>{ver.saved_by_name || ver.saved_by_email?.split('@')[0] || 'Team'}</span>
