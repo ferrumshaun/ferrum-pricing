@@ -759,126 +759,140 @@ export default function BundleQuotePage() {
             </div>
           )}
 
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-            {/* IT line items */}
-            <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
-              <div style={{ fontSize:10, fontWeight:700, color:'#2563eb', marginBottom:6 }}>🖥 Managed IT — {fmt$0(itResult?.finalMRR||0)}/mo</div>
-              {itResult ? (
-                <>
-                  <SH l="Base Package"/>
-                  <LI lbl={`Workstations (${itInputs.workstations} × $${selectedPkg?.ws_rate})`} v={itResult.wB} ind/>
-                  <LI lbl={`Users (${itInputs.users} × $${selectedPkg?.user_rate})`} v={itResult.uB} ind/>
-                  <LI lbl="Servers" v={itResult.sB} ind/>
-                  <LI lbl="Locations" v={itResult.lB} ind/>
-                  <LI lbl="Tenants / Vendors" v={itResult.tB + itResult.vB} ind/>
-                  {itResult.eB > 0 && <LI lbl="Endpoint density uplift" v={itResult.eB} ind/>}
-                  <LI lbl="IT Base Subtotal" v={itResult.itSubtotal} bold/>
-                  {itResult.lineItems.length > 0 && (
-                    <>
-                      <SH l="Security & Add-ons"/>
-                      {itResult.lineItems.map(li => <LI key={li.product_id} lbl={`${li.product_name} (${li.qty} × $${li.sell_price})`} v={li.revenue} ind/>)}
-                    </>
-                  )}
-                  {itResult.discount < 0 && <LI lbl={`${Math.round(itResult.discRate*100)}% contract discount`} v={itResult.discount} ind/>}
-                  <LI lbl="✦ IT Final MRR" v={itResult.finalMRR} hi/>
-                </>
-              ) : <div style={{ fontSize:11, color:'#9ca3af', padding:'8px 0' }}>Fill in IT details to see pricing</div>}
-            </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, alignItems:'start' }}>
 
-            {/* Voice line items */}
-            <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
-              <div style={{ fontSize:10, fontWeight:700, color:'#7c3aed', marginBottom:6 }}>📞 Voice — {fmt$0(voiceDiscountedMRR)}/mo</div>
-              {voiceResultFinal ? (
-                <>
-                  {[['seats','Billable Seats'],['devices','Non-Billable (Included)'],['hybrid','3CX & Hosting'],['sip','SIP Trunking'],['numbers','Numbers & DIDs'],['fax','Fax'],['addons','Add-ons'],['sms','SMS/MMS'],['hardware','Hardware'],['onetime','One-Time Fees']].map(([sec,secLabel])=>{
-                    const secLines = voiceResultFinal.lines.filter(l=>l.section===sec);
-                    if (!secLines.length) return null;
-                    return (
-                      <span key={sec}>
-                        <SH l={secLabel}/>
-                        {secLines.map((l,i)=>(
-                          <div key={i} style={{ display:'flex', justifyContent:'space-between', padding:'1px 2px', marginLeft:7 }}>
-                            <span style={{ fontSize:8, color:l.mrr===0&&!l.nrc?'#9ca3af':'#6b7280' }}>{l.label}</span>
-                            <div style={{ textAlign:'right', flexShrink:0, marginLeft:4 }}>
-                              {l.mrr!==0&&<div style={{ fontSize:9, fontFamily:'DM Mono, monospace', color:'#374151' }}>{l.mrr<0?`(${fmt$(-l.mrr)})`:fmt$(l.mrr)}<span style={{ fontSize:7, color:'#9ca3af' }}>/mo</span></div>}
-                              {l.nrc>0&&<div style={{ fontSize:8, fontFamily:'DM Mono, monospace', color:'#0f766e' }}>{fmt$(l.nrc)}<span style={{ fontSize:7, color:'#9ca3af' }}> NRC</span></div>}
-                              {l.mrr===0&&!l.nrc&&<div style={{ fontSize:7, color:'#9ca3af' }}>{l.note||'Incl.'}</div>}
+            {/* ── LEFT COLUMN: IT → Voice → Cost Model ── */}
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+
+              {/* IT line items */}
+              <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#2563eb', marginBottom:6 }}>🖥 Managed IT — {fmt$0(itResult?.finalMRR||0)}/mo</div>
+                {itResult ? (
+                  <>
+                    <SH l="Base Package"/>
+                    <LI lbl={`WS (${itInputs.workstations} × $${selectedPkg?.ws_rate})`} v={itResult.wB} ind/>
+                    <LI lbl={`US (${itInputs.users} × $${selectedPkg?.user_rate})`} v={itResult.uB} ind/>
+                    <LI lbl="Servers" v={itResult.sB} ind/>
+                    <LI lbl="Locations" v={itResult.lB} ind/>
+                    <LI lbl="Tenants / Vendors" v={itResult.tB + itResult.vB} ind/>
+                    {itResult.eB > 0 && <LI lbl="Endpoint density uplift" v={itResult.eB} ind/>}
+                    <LI lbl="IT Base Subtotal" v={itResult.itSubtotal} bold/>
+                    {itResult.lineItems.length > 0 && (
+                      <>
+                        <SH l="Security & Add-ons"/>
+                        {itResult.lineItems.map(li => <LI key={li.product_id} lbl={`${li.product_name} (${li.qty} × $${li.sell_price})`} v={li.revenue} ind/>)}
+                      </>
+                    )}
+                    {itResult.discount < 0 && <LI lbl={`${Math.round(itResult.discRate*100)}% contract discount`} v={itResult.discount} ind/>}
+                    <LI lbl="✦ IT Final MRR" v={itResult.finalMRR} hi/>
+                  </>
+                ) : <div style={{ fontSize:11, color:'#9ca3af', padding:'8px 0' }}>Fill in IT details to see pricing</div>}
+              </div>
+
+              {/* Voice line items */}
+              <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#7c3aed', marginBottom:6 }}>📞 Voice — {fmt$0(voiceDiscountedMRR)}/mo</div>
+                {voiceResultFinal ? (
+                  <>
+                    {[['seats','Billable Seats'],['devices','Non-Billable (Included)'],['hybrid','3CX & Hosting'],['sip','SIP Trunking'],['numbers','Numbers & DIDs'],['fax','Fax'],['addons','Add-ons'],['sms','SMS/MMS'],['hardware','Hardware'],['onetime','One-Time Fees']].map(([sec,secLabel])=>{
+                      const secLines = voiceResultFinal.lines.filter(l=>l.section===sec);
+                      if (!secLines.length) return null;
+                      return (
+                        <span key={sec}>
+                          <SH l={secLabel}/>
+                          {secLines.map((l,i)=>(
+                            <div key={i} style={{ display:'flex', justifyContent:'space-between', padding:'1px 2px', marginLeft:7 }}>
+                              <span style={{ fontSize:8, color:l.mrr===0&&!l.nrc?'#9ca3af':'#6b7280' }}>{l.label}</span>
+                              <div style={{ textAlign:'right', flexShrink:0, marginLeft:4 }}>
+                                {l.mrr!==0&&<div style={{ fontSize:9, fontFamily:'DM Mono, monospace', color:'#374151' }}>{l.mrr<0?`(${fmt$(-l.mrr)})`:fmt$(l.mrr)}<span style={{ fontSize:7, color:'#9ca3af' }}>/mo</span></div>}
+                                {l.nrc>0&&<div style={{ fontSize:8, fontFamily:'DM Mono, monospace', color:'#0f766e' }}>{fmt$(l.nrc)}<span style={{ fontSize:7, color:'#9ca3af' }}> NRC</span></div>}
+                                {l.mrr===0&&!l.nrc&&<div style={{ fontSize:7, color:'#9ca3af' }}>{l.note||'Incl.'}</div>}
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </span>
-                    );
-                  })}
-                  <LI lbl="Voice Subtotal" v={voiceResultFinal.finalMRR} bold/>
-                  {bundle?.voiceDiscount > 0 && <LI lbl={`Bundle discount (${Math.round(bundle.rate*100)}%)`} v={-bundle.voiceDiscount} ind/>}
-                  <LI lbl="✦ Voice Final MRR" v={voiceDiscountedMRR} hi/>
-                </>
-              ) : <div style={{ fontSize:11, color:'#9ca3af', padding:'8px 0' }}>Fill in Voice details to see pricing</div>}
-            </div>
+                          ))}
+                        </span>
+                      );
+                    })}
+                    <LI lbl="Voice Subtotal" v={voiceResultFinal.finalMRR} bold/>
+                    {bundle?.voiceDiscount > 0 && <LI lbl={`Bundle discount (${Math.round(bundle.rate*100)}%)`} v={-bundle.voiceDiscount} ind/>}
+                    <LI lbl="✦ Voice Final MRR" v={voiceDiscountedMRR} hi/>
+                  </>
+                ) : <div style={{ fontSize:11, color:'#9ca3af', padding:'8px 0' }}>Fill in Voice details to see pricing</div>}
+              </div>
 
-            {/* Combined totals + cost model */}
-            <div style={{ background:'#0f1e3c', borderRadius:6, padding:12 }}>
-              <div style={{ fontSize:9, fontWeight:700, color:'#475569', letterSpacing:'.06em', textTransform:'uppercase', marginBottom:8 }}>Combined Deal Summary</div>
-              {[
-                ['Quote #',        existingQuote?.quote_number || 'Unsaved'],
-                ['Client',         recipientBiz],
-                recipientContact && ['Contact', recipientContact],
-                ['Package',        selectedPkg?.name],
-                ['Contract',       `${contractTerm} months`],
-                ['IT MRR',         fmt$0(itResult?.finalMRR||0)],
-                ['Voice MRR',      fmt$0(voiceDiscountedMRR)],
-                bundle?.voiceDiscount>0 && ['Bundle Savings', `${fmt$0(bundle.voiceDiscount)}/mo`],
-                ['Combined MRR',   fmt$0(combinedMRR)],
-                ['One-Time Fees',  fmt$0(combinedNRC)],
-                ['Total Contract Value', fmt$0(combinedTCV)],
-                hubDealId && ['HubSpot', hubDealName||`#${hubDealId}`],
-              ].filter(Boolean).map(([k,val])=>(
-                <div key={k} style={{ display:'flex', justifyContent:'space-between', padding:'3px 0', borderBottom:'1px solid #1e3a5f' }}>
-                  <span style={{ fontSize:9, color:'#64748b' }}>{k}</span>
-                  <span style={{ fontSize:9, fontWeight:600, color:'white', fontFamily:(typeof val==='string'&&val.startsWith('$'))?'DM Mono, monospace':'inherit' }}>{val}</span>
+              {/* Cost model */}
+              <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#374151', marginBottom:6 }}>Combined Cost Model</div>
+                <LI lbl="IT tooling + labor" v={itResult?.totalCost||0} ind/>
+                <LI lbl="Voice delivery cost" v={voiceResultFinal?.totalCost||0} ind/>
+                <LI lbl="Total Estimated Cost" v={combinedCost} bold/>
+                <div style={{ display:'flex', justifyContent:'space-between', padding:'5px 6px', background:gb, borderRadius:4, marginTop:4 }}>
+                  <span style={{ fontSize:10, fontWeight:700, color:gc }}>Combined Gross Margin</span>
+                  <span style={{ fontSize:13, fontWeight:700, fontFamily:'DM Mono, monospace', color:gc }}>{fmtPct(combinedGM)}</span>
                 </div>
-              ))}
+                {combinedGM < 0.40 && <div style={{ marginTop:4, fontSize:9, color:'#92400e', background:'#fef3c7', padding:'3px 5px', borderRadius:3 }}>⚠ Below 40% — review scope.</div>}
+                <div style={{ marginTop:8, padding:'6px 8px', background:'#f9fafb', borderRadius:4 }}>
+                  <div style={{ fontSize:9, color:'#6b7280', marginBottom:2 }}>Onboarding / One-Time</div>
+                  <LI lbl="IT Onboarding" v={itResult?.onboarding||0} ind/>
+                  {voiceResultFinal?.nrc > 0 && <LI lbl="Voice One-Time Fees" v={voiceResultFinal.nrc} ind/>}
+                  <LI lbl="Total One-Time" v={combinedNRC} bold/>
+                </div>
+              </div>
+
+              {/* Market Rate Analysis */}
+              <MarketRateCard
+                quoteId={existingQuote?.id}
+                clientZip={clientZip}
+                onRatesAccepted={(rates, suggestedTier) => {
+                  if (suggestedTier && marketTiers.length) {
+                    const tier = marketTiers.find(t => t.tier_key === suggestedTier);
+                    if (tier) setSelectedMkt(tier);
+                  }
+                }}
+              />
             </div>
 
-            {/* Cost model */}
-            <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
-              <div style={{ fontSize:10, fontWeight:700, color:'#374151', marginBottom:6 }}>Combined Cost Model</div>
-              <LI lbl="IT tooling + labor" v={itResult?.totalCost||0} ind/>
-              <LI lbl="Voice delivery cost" v={voiceResultFinal?.totalCost||0} ind/>
-              <LI lbl="Total Estimated Cost" v={combinedCost} bold/>
-              <div style={{ display:'flex', justifyContent:'space-between', padding:'5px 6px', background:gb, borderRadius:4, marginTop:4 }}>
-                <span style={{ fontSize:10, fontWeight:700, color:gc }}>Combined Gross Margin</span>
-                <span style={{ fontSize:13, fontWeight:700, fontFamily:'DM Mono, monospace', color:gc }}>{fmtPct(combinedGM)}</span>
+            {/* ── RIGHT COLUMN: Deal Summary → QuoteNotes → QuoteHistory ── */}
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+
+              {/* Combined Deal Summary */}
+              <div style={{ background:'#0f1e3c', borderRadius:6, padding:12 }}>
+                <div style={{ fontSize:9, fontWeight:700, color:'#475569', letterSpacing:'.06em', textTransform:'uppercase', marginBottom:8 }}>Combined Deal Summary</div>
+                {[
+                  ['Quote #',        existingQuote?.quote_number || 'Unsaved'],
+                  ['Client',         recipientBiz],
+                  recipientContact && ['Contact', recipientContact],
+                  ['Package',        selectedPkg?.name],
+                  ['Contract',       `${contractTerm} months`],
+                  ['IT MRR',         fmt$0(itResult?.finalMRR||0)],
+                  ['Voice MRR',      fmt$0(voiceDiscountedMRR)],
+                  bundle?.voiceDiscount>0 && ['Bundle Savings', `${fmt$0(bundle.voiceDiscount)}/mo`],
+                  ['Combined MRR',   fmt$0(combinedMRR)],
+                  ['One-Time Fees',  fmt$0(combinedNRC)],
+                  ['Total Contract Value', fmt$0(combinedTCV)],
+                  hubDealId && ['HubSpot', hubDealName||`#${hubDealId}`],
+                ].filter(Boolean).map(([k,val])=>(
+                  <div key={k} style={{ display:'flex', justifyContent:'space-between', padding:'3px 0', borderBottom:'1px solid #1e3a5f' }}>
+                    <span style={{ fontSize:9, color:'#64748b' }}>{k}</span>
+                    <span style={{ fontSize:9, fontWeight:600, color:'white', fontFamily:(typeof val==='string'&&val.startsWith('$'))?'DM Mono, monospace':'inherit' }}>{val}</span>
+                  </div>
+                ))}
               </div>
-              {combinedGM < 0.40 && <div style={{ marginTop:4, fontSize:9, color:'#92400e', background:'#fef3c7', padding:'3px 5px', borderRadius:3 }}>⚠ Below 40% — review scope.</div>}
-              <div style={{ marginTop:8, padding:'6px 8px', background:'#f9fafb', borderRadius:4 }}>
-                <div style={{ fontSize:9, color:'#6b7280', marginBottom:2 }}>Onboarding / One-Time</div>
-                <LI lbl="IT Onboarding" v={itResult?.onboarding||0} ind/>
-                {voiceResultFinal?.nrc > 0 && <LI lbl="Voice One-Time Fees" v={voiceResultFinal.nrc} ind/>}
-                <LI lbl="Total One-Time" v={combinedNRC} bold/>
-              </div>
+
+              {/* Quote Notes */}
+              <QuoteNotes
+                quoteId={existingQuote?.id}
+                quoteNumber={existingQuote?.quote_number}
+                clientName={recipientBiz}
+                hubDealId={hubDealId}
+              />
+
+              {/* Revision History */}
+              <QuoteHistory quoteId={existingQuote?.id} />
+
             </div>
+          </div>
 
-            {/* Quote notes */}
-            <MarketRateCard
-                    quoteId={existingQuote?.id}
-                    clientZip={clientZip}
-                    onRatesAccepted={(rates, suggestedTier) => {
-                      if (suggestedTier && marketTiers.length) {
-                        const tier = marketTiers.find(t => t.tier_key === suggestedTier);
-                        if (tier) setSelectedMkt(tier);
-                      }
-                    }}
-                  />
-            <QuoteNotes
-              quoteId={existingQuote?.id}
-              quoteNumber={existingQuote?.quote_number}
-              clientName={recipientBiz}
-              hubDealId={hubDealId}
-            />
-
-            {/* Revision History */}
-            <QuoteHistory quoteId={existingQuote?.id} />
           </div>
         </div>
         </div>{/* end inner scroll */}
