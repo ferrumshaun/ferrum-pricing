@@ -10,7 +10,7 @@ import QuoteNotes   from '../components/QuoteNotes';
 import QuoteHistory from '../components/QuoteHistory';
 import HubSpotConnect from '../components/HubSpotConnect';
 import SPTConnect     from '../components/SPTConnect';
-import { DocumentsPanel } from '../components/RateSheetModal';
+import RateSheetModalComp from '../components/RateSheetModal';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
 
 // ── FlexIT fixed assumptions (from PDF) ──────────────────────────────────────
@@ -384,7 +384,7 @@ export default function FlexITQuotePage() {
           {/* KPI Strip */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:16 }}>
             {[
-              ['Prepayment', fmt$2(prepayAmount), '#c2410c', '#fff7ed'],
+              ['Initial Prepayment', fmt$2(prepayAmount), '#c2410c', '#fff7ed'],
               ['Remote Rate', `${fmt$2(remoteRate)}/hr`, '#0f766e', '#f0fdf4'],
               ['Market', marketAnalysis ? `${marketCity || '—'} · ${marketAnalysis.market_tier}` : 'Enter ZIP', '#6d28d9', '#faf5ff'],
             ].map(([l,v,co,bg]) => (
@@ -393,6 +393,36 @@ export default function FlexITQuotePage() {
                 <div style={{ fontSize:13, fontWeight:700, fontFamily:'DM Mono, monospace', color:co, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v}</div>
               </div>
             ))}
+          </div>
+
+          {/* FlexIT Billing Summary */}
+          <div style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:6, padding:12, marginBottom:12 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'#0f1e3c', marginBottom:8 }}>Billing Summary</div>
+            <table style={{ width:'100%', borderCollapse:'collapse', border:'1px solid #e5e7eb', borderRadius:4, overflow:'hidden' }}>
+              <thead>
+                <tr style={{ background:'#0f1e3c' }}>
+                  <th style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'white', textAlign:'left', textTransform:'uppercase', letterSpacing:'.04em' }}>Payment</th>
+                  <th style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'white', textAlign:'left', textTransform:'uppercase', letterSpacing:'.04em' }}>Amount</th>
+                  <th style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'white', textAlign:'left', textTransform:'uppercase', letterSpacing:'.04em' }}>Trigger</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style={{ borderBottom:'1px solid #fde68a', background:'#fffbeb' }}>
+                  <td style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:'#374151' }}>#1 — Initial Prepayment</td>
+                  <td style={{ padding:'10px 12px', fontSize:12, fontFamily:'DM Mono, monospace', fontWeight:700, color:'#c2410c' }}>{fmt$2(prepayAmount)}</td>
+                  <td style={{ padding:'10px 12px', fontSize:11, color:'#6b7280' }}>Upon agreement signing — non-refundable</td>
+                </tr>
+                <tr>
+                  <td style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:'#374151' }}>Ongoing Labor</td>
+                  <td style={{ padding:'10px 12px', fontSize:11, color:'#6b7280' }}>At published rates</td>
+                  <td style={{ padding:'10px 12px', fontSize:11, color:'#6b7280' }}>Billed as consumed — invoiced upon completion or end of billing period</td>
+                </tr>
+              </tbody>
+            </table>
+            <div style={{ fontSize:9, color:'#9ca3af', marginTop:8, lineHeight:1.5 }}>
+              Term: Month to Month · Invoicing: Due Upon Receipt · No monthly recurring fee
+              {area2Applied && <span style={{ marginLeft:8, color:'#dc2626', fontWeight:600 }}>· Area 2 +{rateSheet?.meta?.area2SurchargePct || 30}% surcharge applies</span>}
+            </div>
           </div>
 
           {/* Rate Card Preview */}
@@ -441,8 +471,8 @@ export default function FlexITQuotePage() {
             ))}
           </div>
 
-          {/* Documents */}
-          <DocumentsPanel
+          {/* Documents — FlexIT: Rate Sheet only (assumptions are fixed, payment schedule is inline) */}
+          <FlexITDocumentsPanel
             analysis={marketAnalysis}
             settings={settings}
             clientName={recipientBiz}
@@ -451,12 +481,9 @@ export default function FlexITQuotePage() {
             quoteNumber={existingQuote?.quote_number}
             sptProposalId={sptProposalId}
             onSPTLinked={(pid) => setSptProposalId(pid)}
-            inputs={{ users: 0, workstations: 0, compliance: 'none', selectedProducts: [] }}
-            pkg={null}
-            products={[]}
-            complianceKey={[]}
-            result={prepayAmount > 0 ? { finalMRR: 0, onboarding: prepayAmount } : null}
-            obIncentive={null}
+            prepayAmount={prepayAmount}
+            remoteRate={remoteRate}
+            area2Applied={area2Applied}
           />
 
           {/* Quote Notes */}
@@ -470,6 +497,203 @@ export default function FlexITQuotePage() {
 
         </div>
       </div>
+    </div>
+  );
+}
+
+
+// ── FlexIT Documents Panel — Rate Sheet only ──────────────────────────────────
+// FlexIT has fixed standard assumptions (shown inline) and no monthly payment schedule.
+// Only the Rate Sheet needs to be managed here for SPT export.
+function FlexITDocumentsPanel({ analysis, settings, clientName, recipientContact, quoteId, quoteNumber, sptProposalId, onSPTLinked, prepayAmount, remoteRate, area2Applied }) {
+  const [showRateSheet, setShowRateSheet] = React.useState(false);
+  const [showPayment,   setShowPayment]   = React.useState(false);
+  return (
+    <>
+      <div style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:6, padding:'10px 12px', marginBottom:10 }}>
+        <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'#6b7280', marginBottom:8 }}>
+          📄 Documents
+        </div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#f8fafc', borderRadius:4, border:`1px solid ${sptProposalId ? '#bbf7d0' : '#e5e7eb'}` }}>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+              <span style={{ fontSize:11 }}>💲</span>
+              <span style={{ fontSize:11, fontWeight:600, color:'#0f1e3c' }}>Rate Card / Rate Schedule</span>
+              {sptProposalId && <span style={{ fontSize:8, fontWeight:700, color:'#166534', background:'#dcfce7', padding:'1px 5px', borderRadius:3 }}>SPT ✓</span>}
+            </div>
+            <div style={{ fontSize:9, color:'#9ca3af', marginTop:1, paddingLeft:16 }}>
+              {sptProposalId ? 'Linked to Smart Pricing Table' : 'Market-adjusted T&M rates · link or create in SPT'}
+            </div>
+          </div>
+          <button onClick={() => setShowRateSheet(true)}
+            style={{ padding:'4px 10px', background:'#0f1e3c', color:'white', border:'none', borderRadius:4, fontSize:10, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+            {sptProposalId ? 'View / Update' : 'View / Export'}
+          </button>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#f8fafc', borderRadius:4, border:'1px solid #e5e7eb', marginTop:5 }}>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+              <span style={{ fontSize:11 }}>💳</span>
+              <span style={{ fontSize:11, fontWeight:600, color:'#0f1e3c' }}>Payment Schedule & Terms</span>
+            </div>
+            <div style={{ fontSize:9, color:'#9ca3af', marginTop:1, paddingLeft:16 }}>Month to Month · Due Upon Receipt · prepayment at signing</div>
+          </div>
+          <button onClick={() => setShowPayment(true)}
+            style={{ padding:'4px 10px', background:'#0f1e3c', color:'white', border:'none', borderRadius:4, fontSize:10, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+            View
+          </button>
+        </div>
+      </div>
+
+      {showPayment && React.createElement(
+        FlexITPaymentModal,
+        { onClose: () => setShowPayment(false), prepayAmount, remoteRate, clientName, settings, area2Applied }
+      )}
+
+      {showRateSheet && React.createElement(
+        RateSheetModalComp,
+        {
+          onClose: () => setShowRateSheet(false),
+          analysis, settings, clientName, recipientContact,
+          quoteId, quoteNumber, sptProposalId,
+          onSPTLinked: (pid, url) => {
+            onSPTLinked?.(pid, url);
+            if (!pid && quoteId) supabase.from('quotes').update({ spt_proposal_id: null }).eq('id', quoteId);
+          },
+        }
+      )}
+    </>
+  );
+}
+
+
+// ── FlexIT Payment Schedule Modal ─────────────────────────────────────────────
+function FlexITPaymentModal({ onClose, prepayAmount, remoteRate, clientName, settings, area2Applied }) {
+  const fmt2 = n => n != null ? `$${Number(n).toFixed(2)}` : '—';
+  const checkFee   = parseFloat(settings?.payment_check_fee    || 10);
+  const ccSurcharge= parseFloat(settings?.payment_cc_surcharge || 0.02);
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', display:'flex', alignItems:'stretch', justifyContent:'flex-end', zIndex:600 }}>
+      <div style={{ flex:1 }} onClick={onClose} />
+      <div style={{ width:620, background:'white', display:'flex', flexDirection:'column', boxShadow:'-8px 0 40px rgba(0,0,0,0.2)' }}>
+
+        {/* Header */}
+        <div style={{ background:'#0f1e3c', padding:'14px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
+          <div>
+            <div style={{ fontSize:15, fontWeight:700, color:'white' }}>Payment Schedule & Terms</div>
+            <div style={{ fontSize:10, color:'#64748b', marginTop:1 }}>{clientName || 'Client'} · FlexIT On-Demand · Month to Month</div>
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:'#64748b', fontSize:22, cursor:'pointer', lineHeight:1 }}>×</button>
+        </div>
+
+        <div style={{ flex:1, overflowY:'auto', padding:20 }}>
+
+          {/* Term header */}
+          <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:6, padding:'10px 14px', marginBottom:16, textAlign:'center' }}>
+            <span style={{ fontSize:13, fontWeight:700, color:'#c2410c' }}>Term of this agreement is MONTH TO MONTH</span>
+          </div>
+
+          {/* Payment table */}
+          <div style={{ marginBottom:16 }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', border:'1px solid #e5e7eb', borderRadius:6, overflow:'hidden' }}>
+              <thead>
+                <tr style={{ background:'#0f1e3c' }}>
+                  {['Payment', 'Amount', 'Due Date'].map(h => (
+                    <th key={h} style={{ padding:'9px 12px', fontSize:10, fontWeight:700, color:'white', textAlign:'left', textTransform:'uppercase', letterSpacing:'.04em' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr style={{ background: prepayAmount > 0 ? '#fffbeb' : 'white', borderBottom:'1px solid #e5e7eb' }}>
+                  <td style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:'#374151' }}>#1 — Initial Prepayment</td>
+                  <td style={{ padding:'10px 12px', fontSize:12, fontFamily:'DM Mono, monospace', fontWeight:700, color:'#c2410c' }}>
+                    {prepayAmount > 0 ? fmt2(prepayAmount) : '$0.00'}
+                  </td>
+                  <td style={{ padding:'10px 12px', fontSize:11, color:'#6b7280' }}>Upon Agreement Signing</td>
+                </tr>
+              </tbody>
+            </table>
+            <div style={{ fontSize:9, color:'#dc2626', fontWeight:600, marginTop:5 }}>* Payment #1 is non-refundable.</div>
+          </div>
+
+          {/* Out of scope */}
+          <div style={{ background:'#fef3c7', border:'1px solid #fde68a', borderRadius:5, padding:'8px 12px', marginBottom:16, fontSize:11, color:'#92400e', lineHeight:1.6 }}>
+            Any items not explicitly included in this quote are considered out of scope. Out-of-scope services will be quoted separately as a project or billed at the then-current hourly rates, subject to customer approval prior to commencement of work.
+          </div>
+
+          {/* Billing & Payment Terms sections — match the PDF exactly */}
+          <SectionHeader title="Billing & Payment Terms" />
+
+          <SubSec title="Automatic Payments (Required)">
+            For recurring billing purposes, the Client is required to maintain a valid <strong>ACH/EFT or credit card</strong> on file for automatic payment processing. In lieu of automatic debit, the Client may elect to remit payment via <strong>direct EFT, bank wire, or ACH transfer</strong> using our online billing portal at{' '}
+            <a href="https://ferrumit.com/billing" target="_blank" rel="noopener noreferrer" style={{ color:'#2563eb' }}>ferrumit.com/billing</a>.
+            {' '}Account and remittance information may be obtained by contacting Ferrum Technology Services, LLC's finance team at{' '}
+            <a href="mailto:billing@ferrumit.com" style={{ color:'#2563eb' }}>billing@ferrumit.com</a>.
+            <div style={{ background:'#fef9c3', border:'1px solid #fde047', borderRadius:4, padding:'6px 8px', marginTop:6, fontSize:10, color:'#713f12', lineHeight:1.5 }}>
+              Payment information must be submitted or confirmed prior to the commencement of services. Recurring invoices will be processed automatically using the agreed payment method in accordance with the billing schedule.
+            </div>
+          </SubSec>
+
+          <SubSec title="Invoicing Terms">
+            Services are invoiced with <strong>Due Upon Receipt</strong> payment terms. Invoices will be automatically paid on the due date using the payment method on file.
+          </SubSec>
+
+          <SubSec title="Paper Check Payments">
+            While electronic payment is required for recurring billing, any paper checks received will incur a <strong>${checkFee.toFixed(0)} administrative processing and handling fee</strong>.
+          </SubSec>
+
+          {ccSurcharge > 0 && (
+            <SubSec title="Credit Card Payments">
+              A <strong>{(ccSurcharge * 100).toFixed(0)}% surcharge</strong> applies to all credit card transactions. ACH/EFT is the recommended payment method.
+            </SubSec>
+          )}
+
+          <SubSec title="Purchase Orders">
+            If a purchase order is required, please submit it to{' '}
+            <a href="mailto:billing@ferrumit.com" style={{ color:'#2563eb' }}>billing@ferrumit.com</a> prior to invoicing.
+          </SubSec>
+
+          <SectionHeader title="Setup Services Fee" />
+          <div style={{ fontSize:11, color:'#374151', lineHeight:1.7, marginBottom:14 }}>
+            A one-time setup, configuration, and installation fee{prepayAmount > 0 ? ` of ${fmt2(prepayAmount)}` : ''} is due at the start of the agreement and will be billed as specified in this Quote.
+          </div>
+
+          <SectionHeader title="Declined or Returned Payments" />
+          <div style={{ fontSize:11, color:'#374151', lineHeight:1.7, marginBottom:14 }}>
+            Any declined or returned payments may incur a <strong>$50 administrative fee</strong>.
+          </div>
+
+          <SectionHeader title="Hardware, Software, Licensing & Third-Party Services" />
+          <div style={{ fontSize:11, color:'#374151', lineHeight:1.7, marginBottom:14 }}>
+            All sales of hardware, software, licensing, and third-party services are final. Please review and verify all orders prior to submission, as returns or refunds are not available.
+          </div>
+
+          {area2Applied && (
+            <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:5, padding:'8px 12px', fontSize:11, color:'#991b1b', lineHeight:1.6 }}>
+              ⚠ Metropolitan / Extended Area surcharge (+30%) applies to all charges for services rendered at this location.
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionHeader({ title }) {
+  return (
+    <div style={{ background:'#0f1e3c', borderRadius:5, padding:'7px 14px', textAlign:'center', marginBottom:10 }}>
+      <span style={{ fontSize:13, fontWeight:700, color:'white' }}>{title}</span>
+    </div>
+  );
+}
+
+function SubSec({ title, children }) {
+  return (
+    <div style={{ marginBottom:12 }}>
+      <div style={{ fontSize:11, fontWeight:700, color:'#374151', marginBottom:3 }}>{title}</div>
+      <div style={{ fontSize:11, color:'#6b7280', lineHeight:1.7 }}>{children}</div>
     </div>
   );
 }
