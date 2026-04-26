@@ -10,6 +10,7 @@ import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import { DocumentsPanel } from '../components/RateSheetModal';
 import OnboardingIncentive from '../components/OnboardingIncentive';
 import HubSpotConnect from '../components/HubSpotConnect';
 import MarketRateCard from '../components/MarketRateCard';
@@ -49,6 +50,7 @@ export default function BundleQuotePage() {
   // Shared client fields
   const [proposalName,     setProposalName]     = useState('');
   const [pricingSnapshot, setPricingSnapshot] = useState(null);
+  const [sptProposalId,   setSptProposalId]   = useState(null);
   const [priceLockDate,   setPriceLockDate]   = useState(null);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [repId,          setRepId]          = useState(null);
@@ -130,6 +132,7 @@ export default function BundleQuotePage() {
       setHubDealName(data.inputs?.hubspotDealName || '');
       if (data.rep_id) setRepId(data.rep_id);
       if (data.pricing_snapshot) { setPricingSnapshot(data.pricing_snapshot); setPriceLockDate(data.price_locked_at); }
+      if (data.spt_proposal_id) setSptProposalId(data.spt_proposal_id);
       if (data.inputs?.it)    setItInputs({ ...DEF_IT, ...data.inputs.it });
       if (data.inputs?.voice) setV({ ...DEF_V, isManagedIT: true, ...data.inputs.voice });
       if (data.inputs?.package_name && packages.length) setSelectedPkg(packages.find(p => p.name === data.inputs.package_name));
@@ -932,6 +935,24 @@ export default function BundleQuotePage() {
                   onChange={inc => setObIncentive(inc)}
                 />
               )}
+
+              {/* Documents */}
+              <DocumentsPanel
+                analysis={zipResult ? { city: marketCity, state: marketState, market_tier: zipResult.tier, pricing_multiplier: marketTiers.find(t => t.tier_key === zipResult.tier)?.pricing_multiplier || 1, rates: marketTiers.find(t => t.tier_key === zipResult.tier)?.rates || {} } : null}
+                settings={settings}
+                clientName={recipientBiz}
+                recipientContact={recipientContact}
+                quoteId={existingQuote?.id}
+                quoteNumber={existingQuote?.quote_number}
+                sptProposalId={sptProposalId}
+                onSPTLinked={(pid) => setSptProposalId(pid)}
+                inputs={itInputs}
+                pkg={selectedPkg}
+                products={products}
+                complianceKey={itInputs?.compliance === 'moderate' ? ['hipaa','soc2'] : itInputs?.compliance === 'high' ? ['pci','cmmc'] : []}
+                result={itResult ? { finalMRR: bundle?.finalMRR || 0, onboarding: itResult.onboarding + (voiceResultFinal?.nrc || 0) } : null}
+                obIncentive={obIncentive}
+              />
 
               {/* Quote Notes */}
               <QuoteNotes

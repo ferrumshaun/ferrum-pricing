@@ -13,6 +13,7 @@ import { getOrAnalyzeMarket } from '../lib/marketRates';
 import QuoteNotes from '../components/QuoteNotes';
 import QuoteHistory from '../components/QuoteHistory';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import { DocumentsPanel } from '../components/RateSheetModal';
 import OnboardingIncentive from '../components/OnboardingIncentive';
 import HubSpotConnect from '../components/HubSpotConnect';
 
@@ -63,6 +64,7 @@ export default function MultiSiteQuotePage() {
   const [hubDealName, setHubDealName] = useState('');
 
   // ── Rep ───────────────────────────────────────────────────────────────────
+  const [obIncentive,      setObIncentive]      = useState(null);
   const [pricingSnapshot, setPricingSnapshot] = useState(null);
   const [priceLockDate,   setPriceLockDate]   = useState(null);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
@@ -73,6 +75,7 @@ export default function MultiSiteQuotePage() {
   // ── UI ────────────────────────────────────────────────────────────────────
   const [expandedLoc, setExpandedLoc] = useState(null);
   const [showConvertModal, setShowConvertModal] = useState(false);
+  const [sptProposalId,    setSptProposalId]    = useState(null);
 
   // ── Load team members ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -112,6 +115,7 @@ export default function MultiSiteQuotePage() {
       setSelectedProducts(data.inputs?.selectedProducts || []);
       if (data.rep_id) setRepId(data.rep_id);
       if (data.pricing_snapshot) { setPricingSnapshot(data.pricing_snapshot); setPriceLockDate(data.price_locked_at); }
+      if (data.spt_proposal_id) setSptProposalId(data.spt_proposal_id);
       if (data.inputs?.locations?.length) setLocations(data.inputs.locations);
       if (data.package_name && packages.length) setSelectedPkg(packages.find(p => p.name === data.package_name));
     });
@@ -363,6 +367,8 @@ export default function MultiSiteQuotePage() {
     a.download = `${existingQuote.quote_number}_spt.json`;
     a.click();
   }
+
+  const complianceKey = compliance === 'moderate' ? ['hipaa','soc2'] : compliance === 'high' ? ['pci','cmmc'] : [];
 
   if (configLoading) return <div style={{ padding:24, color:'#6b7280', fontSize:12 }}>Loading...</div>;
 
@@ -944,6 +950,24 @@ export default function MultiSiteQuotePage() {
                 onChange={inc => setObIncentive(inc)}
               />
             )}
+
+            {/* Documents */}
+            <DocumentsPanel
+              analysis={locationResults[0]?.analysis || null}
+              settings={settings}
+              clientName={recipientBiz}
+              recipientContact={recipientContact}
+              quoteId={existingQuote?.id}
+              quoteNumber={existingQuote?.quote_number}
+              sptProposalId={sptProposalId}
+              onSPTLinked={(pid) => setSptProposalId(pid)}
+              inputs={{ ...inputs, users: locations.reduce((s,l) => s+(parseInt(l.users)||0),0), workstations: locations.reduce((s,l) => s+(parseInt(l.workstations)||0),0), locations: locations.length }}
+              pkg={selectedPkg}
+              products={products}
+              complianceKey={complianceKey}
+              result={{ finalMRR, onboarding }}
+              obIncentive={obIncentive}
+            />
 
             {/* Quote Notes */}
             <QuoteNotes
