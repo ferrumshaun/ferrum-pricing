@@ -1,5 +1,26 @@
 [
   {
+    "version": "2.9.0",
+    "date": "2026-04-26",
+    "summary": "FlexIT On-Demand quote type \u2014 time & materials with market-adjusted rate card",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "\u26a1 FlexIT On-Demand \u2014 new quote type for time & materials / break-fix engagements with no MSA required",
+        "New Quote button upgraded to a dropdown menu listing all five quote types: Managed IT, Hosted Voice, Bundle, Multi-Location IT, FlexIT On-Demand",
+        "FlexIT quotes auto-generate a market-adjusted Rate Card from the market intelligence data for the client's ZIP code",
+        "Prepayment calculator: enter hours (default 2) \u00d7 market remote support rate = prepayment amount. Override available if needed",
+        "Area 2 surcharge (+30%) automatically applied and shown when client ZIP is in a metro surcharge market",
+        "Full document suite: Rate Sheet export, Assumptions (7 fixed T&M bullets from the SPT template), Payment Schedule (Month to Month, Due Upon Receipt)",
+        "HubSpot deal connect and SPT proposal link/create \u2014 same as all other quote types",
+        "FlexIT quotes appear in Saved Quotes list with an orange FlexIT badge",
+        "Quote number format: FIT-FLEX-####"
+      ],
+      "improved": [],
+      "fixed": []
+    }
+  },
+  {
     "version": "2.8.3",
     "date": "2026-04-26",
     "summary": "MultiSite page crash fix \u2014 inputs undefined in DocumentsPanel",

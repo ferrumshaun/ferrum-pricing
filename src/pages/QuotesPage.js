@@ -39,9 +39,34 @@ export default function QuotesPage() {
           <h2 style={{ fontSize: 14, fontWeight: 700, color: '#0f1e3c' }}>Saved Quotes</h2>
           <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>All team quotes — searchable and shareable</p>
         </div>
-        <button onClick={() => navigate('/')} style={{ padding: '6px 14px', background: '#0f1e3c', color: 'white', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600 }}>
-          + New Quote
-        </button>
+        <div style={{ position:'relative' }}>
+          <button onClick={() => setShowNewMenu(v => !v)}
+            style={{ padding:'6px 14px', background:'#0f1e3c', color:'white', border:'none', borderRadius:5, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+            + New Quote ▾
+          </button>
+          {showNewMenu && (
+            <>
+              <div onClick={() => setShowNewMenu(false)} style={{ position:'fixed', inset:0, zIndex:99 }}/>
+              <div style={{ position:'absolute', right:0, top:'calc(100% + 4px)', background:'white', border:'1px solid #e5e7eb', borderRadius:6, boxShadow:'0 4px 16px rgba(0,0,0,0.12)', zIndex:100, minWidth:210, overflow:'hidden' }}>
+                {[
+                  { label:'🖥  Managed IT',       path:'/',             badge:'IT',        color:'#2563eb' },
+                  { label:'📞  Hosted Voice',      path:'/voice/new',    badge:'Voice',     color:'#7c3aed' },
+                  { label:'📦  Bundle (IT + Voice)',path:'/bundle/new',  badge:'Bundle',    color:'#6d28d9' },
+                  { label:'📍  Multi-Location IT',  path:'/multisite/new',badge:'Multi',   color:'#0f766e' },
+                  { label:'⚡  FlexIT On-Demand',  path:'/flexIT/new',   badge:'FlexIT',   color:'#f97316' },
+                ].map(({ label, path, badge, color }) => (
+                  <div key={path} onClick={() => { navigate(path); setShowNewMenu(false); }}
+                    style={{ padding:'10px 14px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid #f3f4f6' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+                    <span style={{ fontSize:12, color:'#374151' }}>{label}</span>
+                    <span style={{ fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:3, background: color + '18', color }}>{badge}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -74,16 +99,18 @@ export default function QuotesPage() {
                 const totals = q.totals || {};
                 const gm = totals.impliedGM || totals.gm || 0;
                 const ss = STATUS_STYLE[q.status] || STATUS_STYLE.draft;
-                const isVoice     = q.package_name?.startsWith('Voice');
-                const isBundle    = q.package_name?.startsWith('Bundle');
-                const isMultiSite = q.package_name?.startsWith('Multi-Site');
+                const isFlexIT    = q.quote_type === 'flexIT' || q.package_name === 'FlexIT On-Demand';
+                const isVoice     = !isFlexIT && q.package_name?.startsWith('Voice');
+                const isBundle    = !isFlexIT && q.package_name?.startsWith('Bundle');
+                const isMultiSite = !isFlexIT && q.package_name?.startsWith('Multi-Site');
                 return (
-                  <tr key={q.id} onClick={() => navigate(isMultiSite ? `/multisite/${q.id}` : isBundle ? `/bundle/${q.id}` : isVoice ? `/voice/${q.id}` : `/quotes/${q.id}`)} style={{ borderBottom: '1px solid #f3f4f6', background: i % 2 === 0 ? 'white' : '#fafafa', cursor: 'pointer' }}
+                  <tr key={q.id} onClick={() => navigate(isFlexIT ? `/flexIT/${q.id}` : isMultiSite ? `/multisite/${q.id}` : isBundle ? `/bundle/${q.id}` : isVoice ? `/voice/${q.id}` : `/quotes/${q.id}`)} style={{ borderBottom: '1px solid #f3f4f6', background: i % 2 === 0 ? 'white' : '#fafafa', cursor: 'pointer' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#f0f7ff'}
                     onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'white' : '#fafafa'}>
                     <td style={{ padding: '8px 10px', fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#1e40af', fontWeight: 600 }}>{q.quote_number}</td>
                     <td style={{ padding: '8px 10px', fontWeight: 600, color: '#0f1e3c' }}>
                       {q.client_name}
+                      {isFlexIT && <span style={{ marginLeft:5, fontSize:9, background:'#f97316', color:'white', padding:'1px 5px', borderRadius:3, fontWeight:700 }}>FlexIT</span>}
                       {isMultiSite && <span style={{ marginLeft:5, fontSize:9, background:'#6d28d9', color:'white', padding:'1px 5px', borderRadius:3, fontWeight:700 }}>Multi-Site</span>}
                       {isBundle && !isMultiSite && <span style={{ marginLeft:5, fontSize:9, background:'linear-gradient(135deg,#2563eb,#7c3aed)', color:'white', padding:'1px 5px', borderRadius:3, fontWeight:700 }}>Bundle</span>}
                       {isVoice && !isBundle && <span style={{ marginLeft:5, fontSize:9, background:'#7c3aed', color:'white', padding:'1px 5px', borderRadius:3, fontWeight:700 }}>Voice</span>}
