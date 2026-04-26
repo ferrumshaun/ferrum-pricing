@@ -63,6 +63,9 @@ export default function MultiSiteQuotePage() {
   const [hubDealName, setHubDealName] = useState('');
 
   // ── Rep ───────────────────────────────────────────────────────────────────
+  const [pricingSnapshot, setPricingSnapshot] = useState(null);
+  const [priceLockDate,   setPriceLockDate]   = useState(null);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [repId,       setRepId]       = useState(null);
   const [repProfile,  setRepProfile]  = useState(null);
   const [teamMembers, setTeamMembers] = useState([]);
@@ -108,6 +111,7 @@ export default function MultiSiteQuotePage() {
       setIndustryRisk(data.inputs?.industryRisk || 'low');
       setSelectedProducts(data.inputs?.selectedProducts || []);
       if (data.rep_id) setRepId(data.rep_id);
+      if (data.pricing_snapshot) { setPricingSnapshot(data.pricing_snapshot); setPriceLockDate(data.price_locked_at); }
       if (data.inputs?.locations?.length) setLocations(data.inputs.locations);
       if (data.package_name && packages.length) setSelectedPkg(packages.find(p => p.name === data.package_name));
     });
@@ -268,6 +272,8 @@ export default function MultiSiteQuotePage() {
       line_items: addonLineItems,
       hubspot_deal_id: hubDealId || null, hubspot_deal_url: hubDealUrl || null,
       rep_id: repId || profile?.id || null,
+      ...(quoteStatus === 'approved' && !pricingSnapshot ? { pricing_snapshot: { lockedAt: new Date().toISOString() }, price_locked_at: new Date().toISOString(), price_locked_by: profile?.id } : {}),
+      ...(pricingSnapshot ? { pricing_snapshot: pricingSnapshot, price_locked_at: priceLockDate } : {}),
       updated_by: profile?.id,
     };
     if (!existingQuote) payload.created_by = profile?.id;
@@ -697,6 +703,43 @@ export default function MultiSiteQuotePage() {
         {/* ── RIGHT: Preview ── */}
         <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', background:'#f8fafc', minWidth:0 }}>
           <ReviewBanner quote={{ ...existingQuote, status: quoteStatus, hubspot_deal_id: hubDealId }} quoteType="multisite" onStatusChange={s => setQuoteStatus(s)} />
+
+          {/* Price Lock Banner */}
+          {pricingSnapshot && (
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 14px', background:'#1e3a5f', borderBottom:'1px solid #2d4f7a' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:14 }}>🔒</span>
+                <div>
+                  <span style={{ fontSize:11, fontWeight:700, color:'#93c5fd' }}>Prices locked</span>
+                  <span style={{ fontSize:10, color:'#64748b', marginLeft:6 }}>as of {priceLockDate ? new Date(priceLockDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'approval'}</span>
+                </div>
+              </div>
+              {(profile?.id === repId || profile?.role === 'admin') && (
+                <button onClick={() => setShowUnlockModal(true)}
+                  style={{ fontSize:10, padding:'3px 10px', background:'rgba(255,255,255,0.1)', color:'#93c5fd', border:'1px solid #2d4f7a', borderRadius:3, cursor:'pointer', fontWeight:600 }}>
+                  Unlock Pricing
+                </button>
+              )}
+            </div>
+          )}
+          {showUnlockModal && (
+            <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:500 }}>
+              <div style={{ background:'white', borderRadius:10, padding:28, width:440, boxShadow:'0 8px 32px rgba(0,0,0,0.2)' }}>
+                <h3 style={{ fontSize:15, fontWeight:700, color:'#0f1e3c', margin:'0 0 10px' }}>⚠ Unlock Pricing</h3>
+                <p style={{ fontSize:12, color:'#374151', lineHeight:1.6, margin:'0 0 14px' }}>Pricing was locked when this quote was approved. Unlocking allows rates to update from current package pricing.</p>
+                <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:5, padding:'8px 12px', fontSize:11, color:'#991b1b', marginBottom:18 }}>
+                  If this quote has been sent or exported to Smart Pricing Table, unlocking may cause price discrepancies. Consider a new revision instead.
+                </div>
+                <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+                  <button onClick={() => setShowUnlockModal(false)} style={{ padding:'7px 16px', background:'#f3f4f6', border:'1px solid #e5e7eb', borderRadius:5, fontSize:12, cursor:'pointer' }}>Cancel</button>
+                  <button onClick={async () => {
+                    setPricingSnapshot(null); setPriceLockDate(null); setShowUnlockModal(false);
+                    if (existingQuote?.id) await supabase.from('quotes').update({ pricing_snapshot: null, price_locked_at: null, price_locked_by: null }).eq('id', existingQuote.id);
+                  }} style={{ padding:'7px 18px', background:'#dc2626', color:'white', border:'none', borderRadius:5, fontSize:12, fontWeight:700, cursor:'pointer' }}>Unlock & Recalculate</button>
+                </div>
+              </div>
+            </div>
+          )}
           <div style={{ flex:1, overflowY:'auto', padding:'14px 16px' }}>
 
             {/* Header */}

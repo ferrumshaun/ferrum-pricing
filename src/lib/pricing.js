@@ -187,7 +187,13 @@ const COMP_M = { none: 1.0, moderate: 1.12, high: 1.22 };
 const CPLX_M = { low: 1.0, medium: 1.08, high: 1.18 };
 
 // ─── MAIN CALC ───────────────────────────────────────────────────────────────
-export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMultiplierOverride, repCommissionRate }) {
+export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMultiplierOverride, repCommissionRate, snapshot }) {
+  // If a pricing snapshot exists, use frozen rates instead of live data
+  if (snapshot) {
+    pkg      = snapshot.package  || pkg;
+    products = snapshot.products || products;
+    settings = snapshot.settings || settings;
+  }
   if (!pkg || !marketTier || !settings) return null;
 
   const s = settings; // shorthand — settings is a key→value map
