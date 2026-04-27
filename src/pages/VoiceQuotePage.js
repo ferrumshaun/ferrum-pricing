@@ -316,7 +316,6 @@ export default function VoiceQuotePage() {
               </select>
             </Fld>
           </Grid2>
-          <Fld lbl="Programming Fee" sub="seats × $25"><NI v={v.programmingFee} s={val=>set('programmingFee',val)}/></Fld>
         </Sec>
 
         {/* Quote Type */}
