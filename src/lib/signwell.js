@@ -49,18 +49,8 @@ export async function sendIntlDialingWaiver({
       file_base64: base64Content,
     }],
     recipients: [
-      {
-        id: '1',
-        name: contactName || clientName,
-        email: clientEmail,
-        send_email: true,
-      },
-      {
-        id: '2',
-        name: 'Shaun Lang',
-        email: 'slang@ferrumit.com',
-        send_email: true,
-      },
+      { id: '1', name: contactName || clientName, email: clientEmail },
+      { id: '2', name: 'Shaun Lang',              email: 'slang@ferrumit.com' },
     ],
   });
 
