@@ -180,7 +180,7 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted, fa
   if (!analysis || !workingRates) return null;
 
   const ahRates = calcAfterHoursRates(workingRates.onsite_additional);
-  const stale = isStale(analysis.analyzed_at);
+  const stale = analysis.analyzed_at ? isStale(analysis.analyzed_at) : false;
   const hasOverrides = Object.keys(overrides).length > 0;
   const overrideCount = Object.keys(overrides).length;
 
@@ -209,7 +209,7 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted, fa
               CoL Index: {analysis.col_index}
               <span style={{ margin: '0 4px', color: '#d1d5db' }}>·</span>
               <span style={{ color: stale ? '#d97706' : '#6b7280' }}>
-                Analyzed: {new Date(analysis.analyzed_at).toLocaleDateString()}
+                Analyzed: {analysis.analyzed_at ? new Date(analysis.analyzed_at).toLocaleDateString() : 'Rate locked'}
                 {stale && ' ⚠ stale'}
               </span>
               <span style={{ margin: '0 4px', color: '#d1d5db' }}>·</span>

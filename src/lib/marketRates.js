@@ -120,10 +120,11 @@ export async function saveMarketAnalysis(city, state, zip, analysis, source = 'a
 // ── Look up by zip first ──────────────────────────────────────────────────
 export async function getMarketByZip(zip) {
   if (!zip || zip.length < 5) return null;
+  // Search both primary zip column AND zip_codes array so all associated ZIPs resolve
   const { data } = await supabase
     .from('market_rate_analyses')
     .select('*')
-    .eq('zip', zip)
+    .or(`zip.eq.${zip},zip_codes.cs.{"${zip}"}`)
     .maybeSingle();
   return data || null;
 }
