@@ -54,6 +54,7 @@ export default function MultiSiteQuotePage() {
   const [compliance,   setCompliance]   = useState('none');
   const [industryRisk, setIndustryRisk] = useState('low');
   const [selectedProducts, setSelectedProducts] = useState([]);
+  const [flexHours,    setFlexHours]    = useState(null);
 
   // ── Locations ─────────────────────────────────────────────────────────────
   const [locations,         setLocations]         = useState([createLocation({ name: 'Location 1' })]);
@@ -196,6 +197,14 @@ export default function MultiSiteQuotePage() {
   const finalLaborMRR = discountedLocMRR - termDisc;
 
   const finalMRR = finalLaborMRR + addonRevenue;
+
+  // Flex Time block — must be computed before effectiveMRR / effectiveCost / GM
+  // since those (line below) read flexBlockMRR + flexLaborCost
+  const flexBlock      = (selectedPkg && flexHours && locationResults.length > 0)
+    ? calcFlexBlock(flexHours, locationResults[0]?.analysis?.rates?.remote_support || 165, settings) : null;
+  const flexBlockMRR   = flexBlock?.blockPrice || 0;
+  const burdenedRate   = parseFloat(settings?.burdened_hourly_rate || 125);
+  const flexLaborCost  = flexBlock ? flexBlock.hours * burdenedRate : 0;
 
   // Commission
   const commissionRate   = repProfile?.commission_rate ?? (parseFloat(settings.commission_rate) || 0);
@@ -378,11 +387,6 @@ export default function MultiSiteQuotePage() {
   }
 
   const complianceKey  = compliance === 'moderate' ? ['hipaa','soc2'] : compliance === 'high' ? ['pci','cmmc'] : [];
-  const flexBlock      = (selectedPkg && flexHours && locationResults.length > 0)
-    ? calcFlexBlock(flexHours, locationResults[0]?.analysis?.rates?.remote_support || 165, settings) : null;
-  const flexBlockMRR   = flexBlock?.blockPrice || 0;
-  const burdenedRate   = parseFloat(settings?.burdened_hourly_rate || 125);
-  const flexLaborCost  = flexBlock ? flexBlock.hours * burdenedRate : 0;
 
   if (configLoading) return <div style={{ padding:24, color:'#6b7280', fontSize:12 }}>Loading...</div>;
 

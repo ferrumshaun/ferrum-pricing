@@ -153,7 +153,7 @@ function ProductsAdmin() {
     setLoading(true);
     const [prodRes, catRes] = await Promise.all([
       supabase.from('products').select('*').order('category').order('sort_order'),
-      supabase.from('pricing_settings').select('value').eq('key','product_categories').single(),
+      supabase.from('pricing_settings').select('value').eq('key','product_categories').maybeSingle(),
     ]);
     if (prodRes.error) console.error('Load products error:', prodRes.error);
     setProducts(prodRes.data || []);

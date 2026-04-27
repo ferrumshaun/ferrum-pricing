@@ -280,6 +280,15 @@ export default function BundleQuotePage() {
   const itResult = configLoading || !selectedPkg || !selectedMkt ? null
     : calcQuote({ inputs: itInputs, pkg: selectedPkg, marketTier: selectedMkt, products, settings });
 
+  // Flex Time block — same pattern as QuotePage / MultiSiteQuotePage.
+  // flexHours is null when no flex block is selected; both flexBlock and flexLaborCost
+  // gracefully evaluate to null/0 in that case so the cost-model panel renders cleanly.
+  const flexBlock      = (itResult && flexHours)
+    ? calcFlexBlock(itResult.svcHrs, flexHours, settings) : null;
+  const burdenedRate   = parseFloat(settings?.burdened_hourly_rate || 125);
+  const flexLaborCost  = flexBlock ? flexBlock.hours * burdenedRate : 0;
+  const flexBlockMRR   = flexBlock?.blockPrice || 0;
+
   // IT base MRR = only the 6 package rates, no add-ons, no uplifts
   const itBaseMRR = itResult
     ? (itResult.wB + itResult.uB + itResult.sB + itResult.lB + itResult.tB + itResult.vB)

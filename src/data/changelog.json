@@ -1,5 +1,18 @@
 [
   {
+    "version": "3.4.9",
+    "date": "2026-04-27",
+    "summary": "Hotfix — Bundle and Multi-Site quote pages crashed on render due to undefined flex-time variables",
+    "audience": "all",
+    "categories": {
+      "fixed": [
+        "Bundle quote page rendered as a white screen with ReferenceError: flexLaborCost is not defined. The IT cost-model panel referenced flexBlock and flexLaborCost (copy-pasted from QuotePage during the original bundle build) but neither was ever declared on the bundle page. Added the canonical flex-time block calculation right after itResult is computed — same pattern as QuotePage.js — so the cost-model panel now renders cleanly whether or not a flex block is selected",
+        "Multi-Site quote page rendered as a white screen with TDZ error 'Cannot access bt before initialization'. The flex-time block declarations existed at lines 381-385 but were referenced 163 lines earlier at lines 218-219 — the minifier flagged the temporal dead zone. Moved flexBlock / flexBlockMRR / burdenedRate / flexLaborCost declarations to immediately after finalMRR is computed (line 199) so they are defined before every use. Also added the missing useState declaration for flexHours which had a setFlexHours call but no backing state — would have crashed on any saved Multi-Site quote with flexHours stored in inputs",
+        "Console noise — Admin → IT & Security Products tab fired a 406 on every page load when the product_categories row did not exist in pricing_settings. Switched .single() to .maybeSingle() so a missing row returns null cleanly instead of throwing a 406; the page already had a fallback to DEFAULT_CATEGORIES so behavior is unchanged"
+      ]
+    }
+  },
+  {
     "version": "3.4.8",
     "date": "2026-04-27",
     "summary": "Saved Quotes UX — onboarding column fix, unified quote type tags, Products tab search",
