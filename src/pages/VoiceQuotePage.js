@@ -1158,6 +1158,22 @@ export default function VoiceQuotePage() {
                           Open
                         </button>
                       </div>
+                      {/* Letter of Authorization — only shown when porting numbers */}
+                      {(v.portingNumbers || 0) > 0 && (
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#eef2ff', borderRadius:4, border:'1px solid #c7d2fe' }}>
+                          <div>
+                            <div style={{ fontSize:11, fontWeight:600, color:'#3730a3' }}>📜 Letter of Authorization</div>
+                            <div style={{ fontSize:9, color:'#9ca3af', marginTop:1 }}>
+                              {v.portingNumbers} number{v.portingNumbers > 1 ? 's' : ''} to port — client signature required before submitting to carrier
+                            </div>
+                          </div>
+                          <button onClick={() => setShowLOA(true)}
+                            style={{ padding:'4px 10px', background:'#3730a3', color:'white', border:'none', borderRadius:4, fontSize:10, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+                            Open LOA
+                          </button>
+                        </div>
+                      )}
+
                       {v.internationalDialing !== 'none' ? (
                         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#fef2f2', borderRadius:4, border:'1px solid #fecaca' }}>
                           <div>
