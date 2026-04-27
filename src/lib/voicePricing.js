@@ -147,8 +147,8 @@ export function calcVoice(v, settings) {
     mrr += tfMRR; costMrr += tfNumbers * 1.50;
   }
   if (v.tollFreePerMin) {
-    const tfpm = parseFloat(v.tollFreePerMin || 0.05);
-    lines.push({ label: `Toll-Free Usage — $${tfpm}/min (metered)`, mrr: 0, cost: 0, section: 'numbers', note: `$${tfpm}/min — billed monthly in arrears`, metered: true });
+    const tfpm = Math.max(0.019, parseFloat(v.tollFreePerMinRate ?? 0.05));
+    lines.push({ label: `Toll-Free Usage — $${tfpm.toFixed(3)}/min (metered)`, mrr: 0, cost: 0, section: 'numbers', note: `$${tfpm.toFixed(3)}/min — billed monthly in arrears`, metered: true });
   }
   const e911DIDs = parseInt(v.e911DIDs || 0);
   if (e911DIDs > 0) {

@@ -24,7 +24,7 @@ const DEF = {
   commonAreaPhones: 0, voicemailOnly: 0, doorPhones: 0, pagingDevices: 0, specialRingers: 0,
   cxTierId: 'pro_8', clientPaysMonthly: true, isManagedIT: false, largerInstance: false,
   sipChannels: 0,
-  localDIDs: 0, smsDIDs: 0, tollFreeNumbers: 0, e911DIDs: 0, tollFreePerMin: false, tollFreePerMinRate: 0.05,
+  localDIDs: 0, smsDIDs: 0, tollFreeNumbers: 0, e911DIDs: 0, tollFreePerMin: false, tollFreePerMinRate: 0.05, portingDIDList: '',
   faxType: 'none', faxQty: 1,
   callRecording: false,
   smsEnabled: false, smsNewRegistration: true, smsCampaigns: 1,
@@ -398,8 +398,66 @@ export default function VoiceQuotePage() {
             <Fld lbl="E911 DIDs" sub="$2.50/mo flat"><NI v={v.e911DIDs} s={val=>set('e911DIDs',val)}/></Fld>
           </div>
           <Tog on={v.tollFreePerMin} set={val=>set('tollFreePerMin',val)} lbl="Show toll-free per-minute rate" sub="$0.05/min default — metered"/>
-          <Fld lbl="Numbers to Port (one-time)" sub="$25/number"><NI v={v.portingNumbers} s={val=>set('portingNumbers',val)}/></Fld>
+          {v.tollFreePerMin && (
+            <div style={{ marginTop:4, padding:'8px 10px', background:'#f8fafc', border:'1px solid #e5e7eb', borderRadius:5 }}>
+              <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:5 }}>Toll-Free Per-Minute Rate</div>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <div style={{ fontSize:10, color:'#6b7280' }}>Rate ($/min)</div>
+                <input
+                  type="number"
+                  step="0.001"
+                  min="0.019"
+                  value={v.tollFreePerMinRate ?? 0.05}
+                  onChange={e => {
+                    const val = parseFloat(e.target.value);
+                    set('tollFreePerMinRate', isNaN(val) ? 0.05 : Math.max(0.019, val));
+                  }}
+                  onBlur={e => {
+                    const val = parseFloat(e.target.value);
+                    if (isNaN(val) || val < 0.019) set('tollFreePerMinRate', 0.019);
+                  }}
+                  style={{ width:80, padding:'4px 7px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, fontFamily:'DM Mono, monospace', outline:'none' }}
+                />
+                {(v.tollFreePerMinRate ?? 0.05) <= 0.019 && (
+                  <span style={{ fontSize:9, color:'#dc2626', fontWeight:600 }}>Floor rate — cannot go lower</span>
+                )}
+                {(v.tollFreePerMinRate ?? 0.05) > 0.019 && (v.tollFreePerMinRate ?? 0.05) !== 0.05 && (
+                  <span style={{ fontSize:9, color:'#d97706', fontWeight:600 }}>Custom rate — standard is $0.05/min</span>
+                )}
+                {(v.tollFreePerMinRate ?? 0.05) === 0.05 && (
+                  <span style={{ fontSize:9, color:'#6b7280' }}>Standard rate</span>
+                )}
+              </div>
+              <div style={{ fontSize:8, color:'#9ca3af', marginTop:4 }}>Minimum $0.019/min. Adjust for negotiated or volume rates.</div>
+            </div>
+          )}
+          <Fld lbl="Numbers to Port (one-time)" sub={`$${parseFloat(settings?.voice_port_fee||6).toFixed(2)}/number`}><NI v={v.portingNumbers} s={val=>set('portingNumbers',val)}/></Fld>
         </Sec>
+
+        {/* Number Porting Detail — shown when portingNumbers > 0 */}
+        {(v.portingNumbers || 0) > 0 && (
+          <Sec t="Numbers to Port" c="#7c3aed">
+            <div style={{ marginBottom:8, padding:'7px 10px', background:'#f5f3ff', border:'1px solid #ddd6fe', borderRadius:5, fontSize:9, color:'#6d28d9', lineHeight:1.6 }}>
+              📋 List all numbers to be ported below. This information will be used to generate the Letter of Authorization (LOA) — the signed document submitted to the current carrier to authorize the port.
+            </div>
+            <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:5 }}>
+              Numbers Being Ported ({(v.portingDIDList||'').split('\n').filter(l=>l.trim()).length} of {v.portingNumbers} entered)
+            </div>
+            <textarea
+              value={v.portingDIDList || ''}
+              onChange={e => set('portingDIDList', e.target.value)}
+              rows={Math.max(4, (v.portingNumbers || 1) + 1)}
+              placeholder={Array.from({length: v.portingNumbers || 1}, (_,i) => `(555) 555-000${i+1}`).join('\n')}
+              style={{ width:'100%', padding:'6px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, fontFamily:'DM Mono, monospace', resize:'vertical', outline:'none', lineHeight:1.8 }}
+            />
+            <div style={{ fontSize:8, color:'#9ca3af', marginTop:3 }}>One number per line. Include area code. Format: (555) 555-0100 or 5555550100 — both work.</div>
+            {(v.portingDIDList||'').split('\n').filter(l=>l.trim()).length > (v.portingNumbers||0) && (
+              <div style={{ marginTop:5, padding:'5px 8px', background:'#fef3c7', border:'1px solid #fde68a', borderRadius:4, fontSize:9, color:'#92400e' }}>
+                ⚠ You have entered more numbers than the port quantity above. Update the quantity or remove extra numbers.
+              </div>
+            )}
+          </Sec>
+        )}
 
         {/* International Dialing */}
         <Sec t="International Dialing Policy" c="#dc2626">
