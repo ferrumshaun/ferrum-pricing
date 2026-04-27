@@ -17,13 +17,32 @@ export function getRecommendedTier(seats, licenseType) {
 
 // ─── FAX PACKAGES ────────────────────────────────────────────────────────────
 export const FAX_PACKAGES = {
-  email_only: { label: 'Email-Only Fax',    price: 9.95,   users: 1,   pages: null, dids: 0,   overage_page: null, extra_did: null, extra_user: null, desc: 'Fax to email only, no portal' },
-  solo:       { label: 'Virtual Fax — Solo',     price: 12.00,  users: 1,   pages: 50,   dids: 1,   overage_page: 0.10, extra_did: null, extra_user: null, desc: '1 user · 50 pages · 1 DID' },
-  team:       { label: 'Virtual Fax — Team',     price: 29.00,  users: 5,   pages: 500,  dids: 1,   overage_page: 0.08, extra_did: null, extra_user: null, desc: '5 users · 500 pages · 1 DID' },
-  business:   { label: 'Virtual Fax — Business', price: 59.00,  users: 15,  pages: 1000, dids: 1,   overage_page: 0.06, extra_did: 3.00, extra_user: 3.00, desc: '15 users · 1,000 pages · $3 extra DID/user' },
-  infinity:   { label: 'Virtual Fax — Infinity', price: 119.00, users: 50,  pages: 2500, dids: 1,   overage_page: 0.05, extra_did: 2.00, extra_user: 2.00, desc: '50 users · 2,500 pages · $2 extra DID/user' },
-  ata:        { label: 'ATA Fax Device',         price: 15.00,  users: 1,   pages: 250,  dids: 1,   overage_page: 0.10, extra_did: null, extra_user: null, hardware_nrc: 150, desc: '250 pages · ATA hardware · $150 one-time device' },
+  email_only: { label: 'Email-Only Fax',         price: 9.95,   users: 1,   pages: null, dids: 0, overage_page: null, extra_did: null, extra_user: null, desc: 'Fax to email only — no portal, no DID' },
+  solo:       { label: 'Virtual Fax — Solo',      price: 12.00,  users: 1,   pages: 50,   dids: 1, overage_page: 0.10, extra_did: null, extra_user: null, desc: '1 user · 50 pages/mo · 1 DID · $0.10/page overage' },
+  team:       { label: 'Virtual Fax — Team',      price: 29.00,  users: 5,   pages: 500,  dids: 1, overage_page: 0.08, extra_did: null, extra_user: null, desc: '5 users · 500 pages/mo · 1 DID · $0.08/page overage' },
+  business:   { label: 'Virtual Fax — Business',  price: 59.00,  users: 15,  pages: 1000, dids: 1, overage_page: 0.06, extra_did: 3.00, extra_user: 3.00, desc: '15 users · 1,000 pages/mo · 1 DID + $3/extra DID or user' },
+  infinity:   { label: 'Virtual Fax — Infinity',  price: 119.00, users: 50,  pages: 2500, dids: 1, overage_page: 0.05, extra_did: 2.00, extra_user: 2.00, desc: '50 users · 2,500 pages/mo · 1 DID + $2/extra DID or user' },
 };
+
+// ─── ATA MODELS ─────────────────────────────────────────────────────────────
+// Hardware + monthly fee are separate line items
+export const ATA_MODELS = [
+  { id: 'ht802',   label: 'Grandstream HT802',  hardware_nrc: 65,   monthly: 15.00, ports: 2, desc: '2 FXS ports — standard analog fax/phone adapter' },
+  { id: 'ht812',   label: 'Grandstream HT812',  hardware_nrc: 95,   monthly: 15.00, ports: 2, desc: '2 FXS ports — business grade with gigabit ethernet' },
+  { id: 'ht814',   label: 'Grandstream HT814',  hardware_nrc: 135,  monthly: 15.00, ports: 4, desc: '4 FXS ports — multi-line analog adapter' },
+  { id: 'ht818',   label: 'Grandstream HT818',  hardware_nrc: 195,  monthly: 15.00, ports: 8, desc: '8 FXS ports — high-density analog gateway' },
+  { id: 'custom',  label: 'Other / BYOD ATA',   hardware_nrc: 0,    monthly: 15.00, ports: 1, desc: 'Client-supplied ATA — monthly service fee only' },
+];
+
+export function suggestFaxPackage(users, dids) {
+  if (!users && !dids) return null;
+  const u = parseInt(users) || 0;
+  const d = parseInt(dids)  || 0;
+  if (u <= 1 && d <= 1) return 'solo';
+  if (u <= 5 && d <= 1) return 'team';
+  if (u <= 15)          return 'business';
+  return 'infinity';
+}
 
 // ─── YEALINK HARDWARE ────────────────────────────────────────────────────────
 export const YEALINK_MODELS = [
@@ -158,17 +177,27 @@ export function calcVoice(v, settings) {
   }
 
   // ── FAX ───────────────────────────────────────────────────────────────────
+  // ── Virtual Fax Package ───────────────────────────────────────────────────
   if (v.faxType && v.faxType !== 'none') {
     const fp = FAX_PACKAGES[v.faxType];
     if (fp) {
-      const faxQty = parseInt(v.faxQty || 1);
-      const faxMRR = fp.price * faxQty;
-      lines.push({ label: `${fp.label}${faxQty > 1 ? ` × ${faxQty}` : ''}`, mrr: faxMRR, cost: faxMRR * 0.6, section: 'fax', desc: fp.desc });
+      const faxUsers   = parseInt(v.faxUsers || 1);
+      const faxDIDs    = parseInt(v.faxDIDs  || 1);
+      let faxMRR = fp.price;
+
+      // Extra users/DIDs beyond base package
+      const extraUsers = fp.extra_user && faxUsers > fp.users ? (faxUsers - fp.users) * fp.extra_user : 0;
+      const extraDIDs  = fp.extra_did  && faxDIDs  > fp.dids  ? (faxDIDs  - fp.dids)  * fp.extra_did  : 0;
+      faxMRR += extraUsers + extraDIDs;
+
+      lines.push({ label: fp.label, mrr: faxMRR, cost: faxMRR * 0.6, section: 'fax', desc: fp.desc });
       mrr += faxMRR; costMrr += faxMRR * 0.6;
-      if (fp.overage_page) lines.push({ label: `Fax Overage Rate`, mrr: 0, cost: 0, section: 'fax', note: `$${fp.overage_page}/page over ${fp.pages} pages`, metered: true });
-      if (v.faxType === 'ata') {
-        nrc += fp.hardware_nrc * faxQty;
-        lines.push({ label: `ATA Fax Device (${faxQty} × $${fp.hardware_nrc} one-time)`, mrr: 0, nrc: fp.hardware_nrc * faxQty, cost: 85 * faxQty, section: 'fax' });
+      if (extraUsers > 0) lines.push({ label: `Fax Extra Users (${faxUsers - fp.users} × $${fp.extra_user})`, mrr: extraUsers, cost: extraUsers * 0.6, section: 'fax' });
+      if (extraDIDs  > 0) lines.push({ label: `Fax Extra DIDs (${faxDIDs - fp.dids} × $${fp.extra_did})`,    mrr: extraDIDs,  cost: extraDIDs  * 0.6, section: 'fax' });
+      if (fp.overage_page) lines.push({ label: 'Fax Overage Rate', mrr: 0, cost: 0, section: 'fax', note: `$${fp.overage_page}/page over ${fp.pages} pages`, metered: true });
+
+      if (false) { // placeholder so old ATA block closes cleanly
+        nrc += 0;
       }
     }
   }

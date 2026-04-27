@@ -27,7 +27,7 @@ const DEF = {
   cxTierId: 'pro_8', clientPaysMonthly: true, isManagedIT: false, largerInstance: false,
   sipChannels: 0,
   localDIDs: 0, smsDIDs: 0, tollFreeNumbers: 0, e911DIDs: 0, tollFreePerMin: false, tollFreePerMinRate: 0.05, portingDIDList: '',
-  faxType: 'none', faxQty: 1,
+  faxType: 'none', faxUsers: 1, faxDIDs: 1, ataItems: [],
   callRecording: false,
   smsEnabled: false, smsNewRegistration: true, smsCampaigns: 1,
   hardwareType: 'none', hardwareItems: [], hardwareDiscount50: false, byohItems: [],
@@ -501,21 +501,125 @@ export default function VoiceQuotePage() {
 
         {/* Fax */}
         <Sec t="Virtual Fax" c="#0891b2">
+
+          {/* Step 1 — user + DID count drives package suggestion */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6, marginBottom:8 }}>
+            <Fld lbl="Fax Users" hint="How many users need fax access">
+              <NI v={v.faxUsers||1} s={val=>{set('faxUsers',val); const sug=suggestFaxPackage(val,v.faxDIDs); if(sug&&v.faxType!=='none'&&v.faxType!=='email_only') set('faxType',sug);}}/>
+            </Fld>
+            <Fld lbl="Fax DID Numbers" hint="Dedicated fax lines needed">
+              <NI v={v.faxDIDs||1} s={val=>{set('faxDIDs',val); const sug=suggestFaxPackage(v.faxUsers,val); if(sug&&v.faxType!=='none'&&v.faxType!=='email_only') set('faxType',sug);}}/>
+            </Fld>
+          </div>
+
+          {/* Step 2 — package picker with auto-suggested badge */}
           <Fld lbl="Fax Package">
-            <select value={v.faxType} onChange={e=>set('faxType',e.target.value)}
-              style={{ width:'100%', padding:'5px 7px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, background:'white', outline:'none' }}>
-              <option value="none">No Fax</option>
-              <option value="email_only">Email-Only Fax — $9.95/mo</option>
-              <option value="solo">Virtual Fax Solo — $12/mo (1 user, 50 pages)</option>
-              <option value="team">Virtual Fax Team — $29/mo (5 users, 500 pages)</option>
-              <option value="business">Virtual Fax Business — $59/mo (15 users, 1,000 pages)</option>
-              <option value="infinity">Virtual Fax Infinity — $119/mo (50 users, 2,500 pages)</option>
-              <option value="ata">ATA Fax Device — $15/mo + $150 one-time (250 pages)</option>
-            </select>
+            <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+              {[{v:'none',l:'No Fax',p:null,d:''},
+                {v:'email_only',l:'Email-Only Fax',p:'$9.95/mo',d:'Fax to email only — no portal, no DID'},
+                {v:'solo',l:'Virtual Fax — Solo',p:'$12/mo',d:'1 user · 50 pages · 1 DID · $0.10/pg overage'},
+                {v:'team',l:'Virtual Fax — Team',p:'$29/mo',d:'5 users · 500 pages · 1 DID · $0.08/pg overage'},
+                {v:'business',l:'Virtual Fax — Business',p:'$59/mo',d:'15 users · 1,000 pages · +$3/extra DID or user'},
+                {v:'infinity',l:'Virtual Fax — Infinity',p:'$119/mo',d:'50 users · 2,500 pages · +$2/extra DID or user'},
+              ].map(opt => {
+                const suggested = opt.v !== 'none' && opt.v !== 'email_only' && suggestFaxPackage(v.faxUsers||1, v.faxDIDs||1) === opt.v;
+                const selected  = v.faxType === opt.v;
+                return (
+                  <div key={opt.v} onClick={()=>set('faxType',opt.v)}
+                    style={{ padding:'6px 8px', borderRadius:4, cursor:'pointer',
+                      border:`${selected?'2':'1'}px solid ${selected?'#0891b2':'#e5e7eb'}`,
+                      background:selected?'#ecfeff':'white',
+                      display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div>
+                      <span style={{ fontSize:10, fontWeight:700, color:selected?'#0e7490':'#374151' }}>{opt.l}</span>
+                      {suggested && !selected && <span style={{ fontSize:8, marginLeft:5, padding:'1px 5px', background:'#d1fae5', color:'#065f46', borderRadius:3, fontWeight:700 }}>suggested</span>}
+                      {opt.d && <div style={{ fontSize:8, color:'#6b7280', marginTop:1 }}>{opt.d}</div>}
+                    </div>
+                    {opt.p && <span style={{ fontSize:9, fontFamily:'DM Mono, monospace', color:'#6b7280', flexShrink:0 }}>{opt.p}</span>}
+                  </div>
+                );
+              })}
+            </div>
           </Fld>
-          {v.faxType && v.faxType !== 'none' && v.faxType !== 'email_only' && (
-            <Fld lbl="Number of Fax Lines"><NI v={v.faxQty} s={val=>set('faxQty',val)}/></Fld>
-          )}
+
+          {/* Extra user/DID cost when over package limits */}
+          {v.faxType && !['none','email_only','solo','team'].includes(v.faxType) && (() => {
+            const fp = FAX_PACKAGES[v.faxType];
+            const eu = fp?.extra_user && (v.faxUsers||1) > fp.users ? (v.faxUsers - fp.users) : 0;
+            const ed = fp?.extra_did  && (v.faxDIDs||1)  > fp.dids  ? (v.faxDIDs  - fp.dids)  : 0;
+            if (!eu && !ed) return null;
+            return (
+              <div style={{ padding:'5px 8px', background:'#ecfeff', border:'1px solid #a5f3fc', borderRadius:4, fontSize:9, color:'#0e7490', marginTop:4 }}>
+                {eu > 0 && <div>+ {eu} extra users × ${fp.extra_user}/mo = ${(eu * fp.extra_user).toFixed(2)}/mo</div>}
+                {ed > 0 && <div>+ {ed} extra DIDs × ${fp.extra_did}/mo = ${(ed * fp.extra_did).toFixed(2)}/mo</div>}
+              </div>
+            );
+          })()}
+        </Sec>
+
+        {/* ATA Devices — separate from fax package */}
+        <Sec t="ATA Devices" c="#0369a1">
+          <div style={{ fontSize:9, color:'#6b7280', marginBottom:6, lineHeight:1.5 }}>
+            Analog Telephone Adapters connect legacy fax machines and analog phones to the hosted PBX.
+            Hardware is a one-time purchase; service is billed monthly per device.
+          </div>
+
+          {(v.ataItems||[]).map((ata, i) => (
+            <div key={i} style={{ padding:'8px', background:'#f0f9ff', border:'1px solid #bae6fd', borderRadius:5, marginBottom:6 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr auto', gap:6, alignItems:'end' }}>
+                <div>
+                  <div style={{ fontSize:8, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3 }}>Model</div>
+                  <select value={ata.modelId||'ht802'} onChange={e=>{
+                    const model = ATA_MODELS.find(m=>m.id===e.target.value);
+                    const items = [...(v.ataItems||[])];
+                    items[i] = { ...items[i], modelId: e.target.value, label: model?.label||e.target.value, hardware_nrc: model?.hardware_nrc??items[i].hardware_nrc, monthly: model?.monthly??items[i].monthly, ports: model?.ports||1 };
+                    set('ataItems', items);
+                  }} style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:10, background:'white', outline:'none' }}>
+                    {ATA_MODELS.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div style={{ fontSize:8, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3 }}>Qty</div>
+                  <input type="number" min="1" value={ata.qty||1}
+                    onChange={e=>{const items=[...(v.ataItems||[])];items[i]={...items[i],qty:+e.target.value};set('ataItems',items);}}
+                    style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, textAlign:'center', outline:'none' }}/>
+                </div>
+                <div>
+                  <div style={{ fontSize:8, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3 }}>HW NRC</div>
+                  <input type="number" min="0" step="5" value={ata.hardware_nrc??65}
+                    onChange={e=>{const items=[...(v.ataItems||[])];items[i]={...items[i],hardware_nrc:+e.target.value};set('ataItems',items);}}
+                    style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, textAlign:'center', outline:'none' }}/>
+                </div>
+                <div>
+                  <div style={{ fontSize:8, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3 }}>/mo</div>
+                  <input type="number" min="0" step="1" value={ata.monthly??15}
+                    onChange={e=>{const items=[...(v.ataItems||[])];items[i]={...items[i],monthly:+e.target.value};set('ataItems',items);}}
+                    style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, textAlign:'center', outline:'none' }}/>
+                </div>
+                <button onClick={()=>set('ataItems',(v.ataItems||[]).filter((_,j)=>j!==i))}
+                  style={{ padding:'4px 7px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:4, color:'#dc2626', fontSize:12, cursor:'pointer', marginBottom:1 }}>×</button>
+              </div>
+              {ata.ports > 1 && <div style={{ fontSize:8, color:'#0369a1', marginTop:4 }}>⚡ {ata.ports}-port device — supports {ata.ports} analog lines</div>}
+            </div>
+          ))}
+
+          <button onClick={()=>{
+            const def = ATA_MODELS[0];
+            set('ataItems',[...(v.ataItems||[]),{modelId:def.id,label:def.label,qty:1,hardware_nrc:def.hardware_nrc,monthly:def.monthly,ports:def.ports}]);
+          }} style={{ padding:'5px 10px', background:'white', border:'1px dashed #93c5fd', borderRadius:4, fontSize:10, color:'#0369a1', cursor:'pointer', width:'100%', textAlign:'left' }}>
+            + Add ATA Device
+          </button>
+
+          {(v.ataItems||[]).length > 0 && (() => {
+            const totalNRC = (v.ataItems||[]).reduce((s,a)=>s+(parseFloat(a.hardware_nrc||0)*parseInt(a.qty||1)),0);
+            const totalMRR = (v.ataItems||[]).reduce((s,a)=>s+(parseFloat(a.monthly||0)*parseInt(a.qty||1)),0);
+            return (
+              <div style={{ marginTop:6, display:'flex', gap:8 }}>
+                {totalNRC > 0 && <div style={{ fontSize:9, padding:'3px 8px', background:'#ecfeff', border:'1px solid #a5f3fc', borderRadius:3, color:'#0e7490', fontFamily:'DM Mono, monospace' }}>Hardware NRC: ${totalNRC.toFixed(0)}</div>}
+                {totalMRR > 0 && <div style={{ fontSize:9, padding:'3px 8px', background:'#ecfeff', border:'1px solid #a5f3fc', borderRadius:3, color:'#0e7490', fontFamily:'DM Mono, monospace' }}>Service MRR: ${totalMRR.toFixed(2)}/mo</div>}
+              </div>
+            );
+          })()}
         </Sec>
 
         {/* Add-ons */}
