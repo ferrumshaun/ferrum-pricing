@@ -5,7 +5,7 @@ import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 import { calcQuote, lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
 import { calcFlexBlock } from '../lib/flexTime';
-import { searchDeals, getDealFull, createDeal, updateDeal, updateDealDescription } from '../lib/hubspot';
+import { writeQuoteUrlToDeal, searchDeals, getDealFull, createDeal, updateDeal, updateDealDescription } from '../lib/hubspot';
 import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
@@ -332,6 +332,17 @@ export default function QuotePage() {
 
     await logActivity({ action: existingQuote ? 'UPDATE' : 'CREATE', entityType: 'quote', entityId: data.id, entityName: recipientBiz,
       changes: { status: quoteStatus, mrr: totals.finalMRR, package: selectedPkg?.name } });
+    // Write quote URL back to HubSpot deal if a field is configured
+    if (hubDealId && data?.id) {
+      try {
+        const { data: fieldData } = await supabase.from('pricing_settings').select('value').eq('key','hubspot_quote_url_field').single();
+        const fieldKey = fieldData?.value;
+        if (fieldKey) {
+          const quoteUrl = `${window.location.origin}/quotes/${data.id}`;
+          await writeQuoteUrlToDeal(hubDealId, quoteUrl, fieldKey);
+        }
+      } catch (e) { console.warn('HubSpot quote URL write failed:', e.message); }
+    }
 
     // Save version snapshot
     await saveQuoteVersion({

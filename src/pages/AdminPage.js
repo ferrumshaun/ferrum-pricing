@@ -678,12 +678,17 @@ function diffObjects(oldObj, newObj) {
 
 // ─── INTEGRATIONS ADMIN ───────────────────────────────────────────────────────
 export function IntegrationsAdmin() {
-  const [token,      setToken]      = useState('');
-  const [saved,      setSaved]      = useState(false);
-  const [loading,    setLoading]    = useState(true);
-  const [saving,     setSaving]     = useState(false);
-  const [testing,    setTesting]    = useState(false);
-  const [testMsg,    setTestMsg]    = useState('');
+  const [token,         setToken]         = useState('');
+  const [saved,         setSaved]         = useState(false);
+  const [loading,       setLoading]       = useState(true);
+  const [saving,        setSaving]        = useState(false);
+  const [testing,       setTesting]       = useState(false);
+  const [testMsg,       setTestMsg]       = useState('');
+  const [quoteUrlField, setQuoteUrlField] = useState('');
+  const [urlFieldSaved, setUrlFieldSaved] = useState(false);
+  const [hsProps,       setHsProps]       = useState([]);
+  const [loadingProps,  setLoadingProps]  = useState(false);
+  const [propsError,    setPropsError]    = useState('');
   const [logoUrl,    setLogoUrl]    = useState('');
   const [logoSaving, setLogoSaving] = useState(false);
   const [logoMsg,    setLogoMsg]    = useState('');
@@ -694,6 +699,8 @@ export function IntegrationsAdmin() {
   useEffect(() => {
     supabase.from('pricing_settings').select('value').eq('key','hubspot_token').single()
       .then(({ data }) => { if (data?.value) setToken(data.value); setLoading(false); });
+    supabase.from('pricing_settings').select('value').eq('key','hubspot_quote_url_field').single()
+      .then(({ data }) => { if (data?.value) setQuoteUrlField(data.value); });
     supabase.from('pricing_settings').select('value').eq('key','company_logo_url').single()
       .then(({ data }) => { if (data?.value) setLogoUrl(data.value); });
   }, []);
@@ -744,6 +751,32 @@ export function IntegrationsAdmin() {
       setSaved(true);
     }
     setSaving(false);
+  }
+
+  async function saveQuoteUrlField() {
+    await supabase.from('pricing_settings').upsert({
+      key: 'hubspot_quote_url_field', value: quoteUrlField,
+      description: 'HubSpot deal property name to write the Ferrum IQ quote URL into',
+    }, { onConflict: 'key' });
+    setUrlFieldSaved(true);
+    setTimeout(() => setUrlFieldSaved(false), 2500);
+  }
+
+  async function loadHsProperties() {
+    if (!token) { setPropsError('Save your HubSpot token first'); return; }
+    setLoadingProps(true); setPropsError(''); setHsProps([]);
+    try {
+      const res = await fetch('/.netlify/functions/hubspot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get_deal_properties', token }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load properties');
+      setHsProps(data.properties || []);
+      if ((data.properties || []).length === 0) setPropsError('No string/text properties found on deals');
+    } catch(e) { setPropsError('✗ ' + e.message); }
+    setLoadingProps(false);
   }
 
   async function testConnection() {
@@ -868,6 +901,51 @@ export function IntegrationsAdmin() {
             border: `1px solid ${testMsg.startsWith('✓') ? '#bbf7d0' : '#fecaca'}` }}>
             {testMsg}
           </div>
+
+        {/* ── Quote URL field mapping ── */}
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#0f1e3c', marginBottom: 4 }}>Quote URL Field Mapping</div>
+          <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 12, lineHeight: 1.6 }}>
+            Select which HubSpot deal property should receive the Ferrum IQ quote URL when a quote is saved.
+            This lets anyone in HubSpot click directly into the quote. Only string/text properties are shown.
+          </p>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
+            <select value={quoteUrlField} onChange={e => { setQuoteUrlField(e.target.value); setUrlFieldSaved(false); }}
+              style={{ flex: 1, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 11, background: 'white', outline: 'none', color: quoteUrlField ? '#0f1e3c' : '#9ca3af' }}>
+              <option value="">— select a HubSpot deal property —</option>
+              {hsProps.map(p => (
+                <option key={p.name} value={p.name}>
+                  {p.label} ({p.name}){p.groupName === 'dealinformation' ? '' : ` · ${p.groupName}`}
+                </option>
+              ))}
+              {quoteUrlField && !hsProps.find(p => p.name === quoteUrlField) && (
+                <option value={quoteUrlField}>{quoteUrlField} (previously saved)</option>
+              )}
+            </select>
+            <button onClick={loadHsProperties} disabled={loadingProps || !token}
+              style={{ padding: '6px 12px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', opacity: (!token || loadingProps) ? 0.6 : 1 }}>
+              {loadingProps ? 'Loading…' : 'Load Fields'}
+            </button>
+            <button onClick={saveQuoteUrlField} disabled={!quoteUrlField}
+              style={{ padding: '6px 12px', background: '#0f1e3c', color: 'white', border: 'none', borderRadius: 5, fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: !quoteUrlField ? 0.6 : 1 }}>
+              {urlFieldSaved ? '✓ Saved' : 'Save'}
+            </button>
+          </div>
+
+          {propsError && <div style={{ fontSize: 11, color: '#dc2626', marginBottom: 6 }}>{propsError}</div>}
+
+          {quoteUrlField && (
+            <div style={{ fontSize: 10, color: '#166534', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 4, padding: '5px 9px' }}>
+              ✓ Active: quote URL will be written to <strong>{quoteUrlField}</strong> on every save
+            </div>
+          )}
+          {!quoteUrlField && (
+            <div style={{ fontSize: 10, color: '#9ca3af' }}>
+              Click "Load Fields" to fetch your HubSpot deal properties, then pick the URL field.
+            </div>
+          )}
+        </div>
         )}
       </div>
 
@@ -922,6 +1000,32 @@ function SignWellIntegration() {
     await logActivity({ action: 'UPDATE', entityType: 'setting', entityId: null, entityName: 'signwell_api_key', changes: { updated: true } });
     setSaved(true); setSaving(false);
     setTimeout(() => setSaved(false), 2500);
+  }
+
+  async function saveQuoteUrlField() {
+    await supabase.from('pricing_settings').upsert({
+      key: 'hubspot_quote_url_field', value: quoteUrlField,
+      description: 'HubSpot deal property name to write the Ferrum IQ quote URL into',
+    }, { onConflict: 'key' });
+    setUrlFieldSaved(true);
+    setTimeout(() => setUrlFieldSaved(false), 2500);
+  }
+
+  async function loadHsProperties() {
+    if (!token) { setPropsError('Save your HubSpot token first'); return; }
+    setLoadingProps(true); setPropsError(''); setHsProps([]);
+    try {
+      const res = await fetch('/.netlify/functions/hubspot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get_deal_properties', token }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load properties');
+      setHsProps(data.properties || []);
+      if ((data.properties || []).length === 0) setPropsError('No string/text properties found on deals');
+    } catch(e) { setPropsError('✗ ' + e.message); }
+    setLoadingProps(false);
   }
 
   async function testConnection() {

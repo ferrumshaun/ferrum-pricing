@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { supabase, logActivity } from '../lib/supabase';
+import { writeQuoteUrlToDeal } from '../lib/hubspot';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfig } from '../contexts/ConfigContext';
 import { lookupZip, lookupZipFromUSPS } from '../lib/pricing';
@@ -215,6 +216,13 @@ export default function FlexITQuotePage() {
         setExistingQuote(data);
         qId = data.id;
         navigate(`/flexIT/${data.id}`, { replace: true });
+        // Write quote URL back to HubSpot
+        if (hubDealId) {
+          try {
+            const { data: fd } = await supabase.from('pricing_settings').select('value').eq('key','hubspot_quote_url_field').single();
+            if (fd?.value) await writeQuoteUrlToDeal(hubDealId, `${window.location.origin}/flexIT/${data.id}`, fd.value);
+          } catch(e) { console.warn('HubSpot URL write failed:', e.message); }
+        }
       } else {
         const { error } = await supabase.from('quotes').update(payload).eq('id', qId);
         if (error) throw error;

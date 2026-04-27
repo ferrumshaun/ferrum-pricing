@@ -44,3 +44,18 @@ export async function updateDealDescription(dealId, description) {
 export async function createHubspotNote(dealId, body) {
   return callProxy('create_note', { dealId, body });
 }
+
+export async function getDealProperties() {
+  return callProxy('get_deal_properties');
+}
+
+// Write quote URL into a configured HubSpot deal field.
+// fieldKey comes from pricing_settings.hubspot_quote_url_field (loaded by caller).
+export async function writeQuoteUrlToDeal(dealId, quoteUrl, fieldKey) {
+  if (!dealId || !quoteUrl || !fieldKey) return null;
+  return callProxy('update_deal_property', {
+    dealId,
+    propertyName:  fieldKey,
+    propertyValue: quoteUrl,
+  });
+}

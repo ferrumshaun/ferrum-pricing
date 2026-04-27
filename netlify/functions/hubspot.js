@@ -287,6 +287,41 @@ exports.handler = async (event) => {
         break;
       }
 
+      // ── Fetch all deal property definitions ──────────────────────────────────
+      case 'get_deal_properties': {
+        const propsRes = await hs(token, 'GET', '/crm/v3/properties/deals');
+        if (propsRes.status !== 200) {
+          return { statusCode: propsRes.status, body: JSON.stringify(propsRes.data) };
+        }
+        // Return only the fields useful for URL mapping — all string/text fields
+        // plus any explicitly typed as url. Filter out internal HubSpot system fields.
+        const props = (propsRes.data.results || [])
+          .filter(p => !p.hidden && !p.calculated && p.type === 'string')
+          .map(p => ({
+            name:        p.name,
+            label:       p.label,
+            fieldType:   p.fieldType,
+            groupName:   p.groupName,
+            description: p.description || '',
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+        result = { properties: props };
+        break;
+      }
+
+      // ── Write a single property value to a deal ────────────────────────────
+      case 'update_deal_property': {
+        const { dealId: upDealId, propertyName, propertyValue } = payload;
+        if (!upDealId || !propertyName) {
+          return { statusCode: 400, body: JSON.stringify({ error: 'dealId and propertyName required' }) };
+        }
+        const upRes = await hs(token, 'PATCH', `/crm/v3/objects/deals/${upDealId}`, {
+          properties: { [propertyName]: propertyValue }
+        });
+        result = { success: upRes.status < 300, status: upRes.status, data: upRes.data };
+        break;
+      }
+
       default:
         return { statusCode: 400, body: JSON.stringify({ error: `Unknown action: ${action}` }) };
     }
