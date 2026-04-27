@@ -828,11 +828,12 @@ export default function VoiceQuotePage() {
                       onClose={() => setShowIntlWaiver(false)}
                       quoteId={existingQuote?.id}
                       quoteNumber={existingQuote?.quote_number}
+                      proposalName={proposalName || recipientBiz}
                       clientName={recipientBiz}
                       recipientContact={recipientContact}
+                      recipientEmail={recipientEmail}
                       recipientAddress={recipientAddress}
                       settings={settings}
-                      sptApiKey={settings?.spt_api_key}
                       selectedTier={v.internationalDialing !== 'none' ? v.internationalDialing : 'standard'}
                     />
                   )}

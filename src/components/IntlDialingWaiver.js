@@ -14,7 +14,7 @@ const STATUS_BADGE = {
   declined:  { label:'✗ Declined',           bg:'#fee2e2', color:'#991b1b' },
 };
 
-export default function IntlDialingWaiver({ onClose, quoteId, quoteNumber, clientName, recipientContact, recipientEmail: initialEmail, settings, selectedTier, existingDoc, onDocSaved }) {
+export default function IntlDialingWaiver({ onClose, quoteId, quoteNumber, proposalName, clientName, recipientContact, recipientEmail: initialEmail, settings, selectedTier, existingDoc, onDocSaved }) {
   const [tier,         setTier]         = useState(selectedTier || existingDoc?.tier || 'standard');
   const [entityName,   setEntityName]   = useState(clientName || '');
   const [contactName,  setContactName]  = useState(recipientContact || existingDoc?.clientName || '');
@@ -55,7 +55,7 @@ export default function IntlDialingWaiver({ onClose, quoteId, quoteNumber, clien
     try {
       const templateId = settings?.signwell_intl_waiver_template_id;
       if (!templateId) { notify('✗ SignWell template ID not configured — add it in Admin → Integrations → SignWell', 'err'); setSending(false); return; }
-      const record = await sendIntlDialingWaiver({ clientName: entityName, clientEmail: contactEmail, contactName, entityName, title: jobTitle, tier, tierLabel: tierInfo.label, tierDesc: tierInfo.desc, quoteNumber, templateId, testMode });
+      const record = await sendIntlDialingWaiver({ clientName: entityName, clientEmail: contactEmail, contactName, entityName, title: jobTitle, tier, tierLabel: tierInfo.label, tierDesc: tierInfo.desc, quoteNumber, proposalName, scope, templateId, testMode });
       setDocRecord(record);
       await saveDocToQuote(record);
       notify(testMode

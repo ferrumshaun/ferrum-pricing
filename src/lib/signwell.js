@@ -26,6 +26,8 @@ export async function sendIntlDialingWaiver({
   tierLabel,
   tierDesc,
   quoteNumber,
+  proposalName,
+  scope,
   templateId,
   testMode = false,
 }) {
@@ -107,8 +109,33 @@ function buildWaiverHtml({ contactName, entityName, title, tier, tierLabel, tier
 
 <h1>International Dialing Authorization &amp; Liability Waiver</h1>
 <div class="subtitle">
-  Ferrum Technology Services, LLC${quoteNumber ? ` &nbsp;·&nbsp; ${quoteNumber}` : ''} &nbsp;·&nbsp; ${today}
+  Ferrum Technology Services, LLC &nbsp;·&nbsp; ${today}
 </div>
+
+${(proposalName || quoteNumber || scope) ? `
+<table style="width:100%; border-collapse:collapse; margin:0 0 24px 0; background:#f8fafc; border:1px solid #e5e7eb; border-radius:6px; overflow:hidden;">
+  <thead>
+    <tr style="background:#0f1e3c;">
+      <td colspan="2" style="padding:8px 14px; font-size:11px; font-weight:bold; color:white; letter-spacing:0.04em;">
+        DOCUMENT REFERENCE
+      </td>
+    </tr>
+  </thead>
+  <tbody>
+    ${proposalName ? `<tr style="border-bottom:1px solid #e5e7eb;">
+      <td style="padding:7px 14px; font-size:9px; font-weight:bold; color:#6b7280; text-transform:uppercase; width:30%;">Proposal</td>
+      <td style="padding:7px 14px; font-size:11px; color:#0f1e3c;">${proposalName}</td>
+    </tr>` : ''}
+    ${quoteNumber ? `<tr style="border-bottom:1px solid #e5e7eb;">
+      <td style="padding:7px 14px; font-size:9px; font-weight:bold; color:#6b7280; text-transform:uppercase;">Reference #</td>
+      <td style="padding:7px 14px; font-size:11px; font-family:monospace; color:#0f1e3c;">${quoteNumber}</td>
+    </tr>` : ''}
+    ${scope ? `<tr>
+      <td style="padding:7px 14px; font-size:9px; font-weight:bold; color:#6b7280; text-transform:uppercase;">Authorized Scope</td>
+      <td style="padding:7px 14px; font-size:11px; color:#0f1e3c;">${scope}</td>
+    </tr>` : ''}
+  </tbody>
+</table>` : ''}
 
 <p>This International Dialing Authorization (&ldquo;Authorization&rdquo;) is entered into as of <strong>${today}</strong>, by and between <strong>Ferrum Technology Services, LLC</strong> (&ldquo;Provider&rdquo;) and <strong>${entityName || '[Client Name]'}</strong> (&ldquo;Client&rdquo;).</p>
 
