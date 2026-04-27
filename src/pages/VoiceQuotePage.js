@@ -791,6 +791,7 @@ export default function VoiceQuotePage() {
                   <MarketRateCard
                     quoteId={existingQuote?.id}
                     clientZip={clientZip}
+                    fallbackMarket={selectedMkt}
                     onRatesAccepted={(rates, suggestedTier) => {
                       if (suggestedTier && marketTiers.length) {
                         const tier = marketTiers.find(t => t.tier_key === suggestedTier);

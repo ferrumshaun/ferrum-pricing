@@ -10,7 +10,7 @@ import {
 const fmt$ = n => n != null ? `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '—';
 const fmtPct = n => n != null ? `${n > 0 ? '+' : ''}${Math.round(n * 100)}%` : '';
 
-export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted }) {
+export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted, fallbackMarket }) {
   const { profile } = useAuth();
 
   const [analysis,    setAnalysis]    = useState(null);
@@ -31,7 +31,22 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted }) 
     setLoading(true); setError(''); setStatusMsg('');
     try {
       const res = await getOrAnalyzeMarket(clientZip, force, undefined, undefined, readOnly);
-      if (!res) { setLoading(false); return; } // no data in DB yet (readOnly + no record)
+      if (!res) {
+        // No DB record — use fallbackMarket from parent (the locked market tier) for display
+        if (fallbackMarket && !analysis) {
+          const synthetic = {
+            city: '', state: '',
+            market_tier: fallbackMarket.tier_key,
+            pricing_multiplier: fallbackMarket.pricing_multiplier || 1,
+            rates: fallbackMarket.rates || {},
+            analyzed_at: null,
+          };
+          setAnalysis(synthetic);
+          setWorkingRates({ ...synthetic.rates });
+        }
+        setLoading(false);
+        return;
+      }
       const { analysis: result, wasRefreshed } = res;
       setAnalysis(result);
       // Only reset working rates if no accepted rate sheet exists

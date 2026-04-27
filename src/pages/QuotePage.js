@@ -1115,6 +1115,7 @@ export default function QuotePage() {
                   <MarketRateCard
                     quoteId={existingQuote?.id}
                     clientZip={clientZip}
+                    fallbackMarket={selectedMkt}
                     onRatesAccepted={(rates, suggestedTier, analysis) => {
                       if (analysis?.pricing_multiplier != null) {
                         setPendingMultiplier({
