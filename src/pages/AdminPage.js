@@ -4,7 +4,7 @@ import { BASE_RATES, RATE_LABELS, RATE_UNITS, getRating, isStale, getOrAnalyzeMa
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 
-const TABS = ['Products', 'Packages', 'Market Tiers', 'Pricing Settings', 'Users', 'Integrations'];
+const TABS = ['Products', 'Packages', 'Market Tiers', 'Pricing Settings', 'Voice Hardware', 'Users', 'Integrations'];
 
 const QTY_DRIVERS = ['user','mailbox','workstation','location','server','flat','mixed','mobile_device'];
 const CATEGORIES = [
@@ -43,6 +43,7 @@ export default function AdminPage() {
         {tab === 'Products'         && <ProductsAdmin />}
         {tab === 'Packages'         && <PackagesAdmin />}
         {tab === 'Market Tiers'     && <MarketTiersAdmin />}
+        {tab === 'Voice Hardware'    && <VoiceHardwareAdmin />}
         {tab === 'Pricing Settings' && <SettingsAdmin />}
         {tab === 'Users'            && <UsersAdmin />}
         {tab === 'Integrations'     && <IntegrationsAdmin />}
@@ -1003,6 +1004,207 @@ function SignWellIntegration() {
             The key is stored in Pricing Settings and used server-side only. You can also set SIGNWELL_API_KEY in Netlify environment variables (env var takes precedence).
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+
+// ─── Voice Hardware Catalog ───────────────────────────────────────────────────
+function VoiceHardwareAdmin() {
+  const [devices,  setDevices]  = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [search,   setSearch]   = useState('');
+  const [filter,   setFilter]   = useState('all'); // all | preferred | supported | legacy | inactive
+  const [editing,  setEditing]  = useState(null);
+  const [saving,   setSaving]   = useState(false);
+
+  const BLANK = { manufacturer:'', model:'', category:'preferred', compatibility:'compatible', auto_provision:true, firmware_notes:'', notes:'', active:true };
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase.from('voice_hardware').select('*').order('manufacturer').order('model');
+    setDevices(data || []);
+    setLoading(false);
+  }
+
+  async function save() {
+    setSaving(true);
+    const payload = { ...editing, updated_at: new Date().toISOString() };
+    if (editing.id) {
+      await supabase.from('voice_hardware').update(payload).eq('id', editing.id);
+    } else {
+      await supabase.from('voice_hardware').insert(payload);
+    }
+    await load();
+    setEditing(null);
+    setSaving(false);
+  }
+
+  async function toggleActive(device) {
+    await supabase.from('voice_hardware').update({ active: !device.active, updated_at: new Date().toISOString() }).eq('id', device.id);
+    setDevices(prev => prev.map(d => d.id === device.id ? { ...d, active: !d.active } : d));
+  }
+
+  async function deleteDevice(id) {
+    if (!window.confirm('Delete this device permanently?')) return;
+    await supabase.from('voice_hardware').delete().eq('id', id);
+    setDevices(prev => prev.filter(d => d.id !== id));
+  }
+
+  const COMPAT_COLORS = { compatible:'#166534', limited:'#92400e', manual_only:'#9a3412', not_compatible:'#991b1b' };
+  const COMPAT_LABELS = { compatible:'Preferred', limited:'Limited', manual_only:'Legacy', not_compatible:'Not Compatible' };
+
+  const filtered = devices.filter(d => {
+    if (filter === 'inactive' && d.active) return false;
+    if (filter !== 'all' && filter !== 'inactive' && d.category !== filter) return false;
+    if (filter !== 'inactive' && !d.active) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return d.manufacturer.toLowerCase().includes(q) || d.model.toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  const counts = { all: devices.filter(d=>d.active).length, preferred: devices.filter(d=>d.active&&d.category==='preferred').length, supported: devices.filter(d=>d.active&&d.category==='supported').length, legacy: devices.filter(d=>d.active&&d.category==='legacy').length, inactive: devices.filter(d=>!d.active).length };
+
+  return (
+    <div>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+        <div>
+          <h2 style={{ fontSize:14, fontWeight:700, color:'#0f1e3c', margin:0 }}>Voice Hardware Catalog</h2>
+          <div style={{ fontSize:10, color:'#6b7280', marginTop:2 }}>3CX-compatible phone and device compatibility database. Drives BYOH validation on Voice quotes.</div>
+        </div>
+        <button onClick={() => setEditing({...BLANK})}
+          style={{ padding:'7px 14px', background:'#7c3aed', color:'white', border:'none', borderRadius:5, fontSize:11, fontWeight:700, cursor:'pointer' }}>
+          + Add Device
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div style={{ display:'flex', gap:6, marginBottom:10, flexWrap:'wrap', alignItems:'center' }}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search manufacturer or model..."
+          style={{ padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none', width:220 }}/>
+        {[['all','All Active'], ['preferred','Preferred'], ['supported','Supported'], ['legacy','Legacy'], ['inactive','Inactive']].map(([k,l]) => (
+          <button key={k} onClick={()=>setFilter(k)}
+            style={{ padding:'4px 10px', borderRadius:4, border:`1px solid ${filter===k?'#7c3aed':'#e5e7eb'}`, background:filter===k?'#f5f3ff':'white', color:filter===k?'#6d28d9':'#374151', fontSize:10, fontWeight:filter===k?700:400, cursor:'pointer' }}>
+            {l} {counts[k] != null ? `(${counts[k]})` : ''}
+          </button>
+        ))}
+      </div>
+
+      {loading ? <div style={{ fontSize:11, color:'#9ca3af' }}>Loading...</div> : (
+        <div style={{ border:'1px solid #e5e7eb', borderRadius:6, overflow:'hidden' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
+            <thead>
+              <tr style={{ background:'#f8fafc' }}>
+                {['Manufacturer','Model','Category','Compatibility','Auto-Provision','Notes','Status',''].map(h => (
+                  <th key={h} style={{ padding:'7px 10px', textAlign:'left', fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#6b7280', letterSpacing:'.05em', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((d, i) => (
+                <tr key={d.id} style={{ borderBottom:'1px solid #f1f5f9', background: i%2===0 ? 'white' : '#fafafa', opacity: d.active ? 1 : 0.5 }}>
+                  <td style={{ padding:'6px 10px', fontWeight:600, color:'#0f1e3c' }}>{d.manufacturer}</td>
+                  <td style={{ padding:'6px 10px' }}>{d.model}</td>
+                  <td style={{ padding:'6px 10px', textTransform:'capitalize' }}>{d.category}</td>
+                  <td style={{ padding:'6px 10px' }}>
+                    <span style={{ fontSize:9, fontWeight:700, color: COMPAT_COLORS[d.compatibility]||'#374151' }}>
+                      {COMPAT_LABELS[d.compatibility]||d.compatibility}
+                    </span>
+                  </td>
+                  <td style={{ padding:'6px 10px', textAlign:'center' }}>{d.auto_provision ? '✓' : '—'}</td>
+                  <td style={{ padding:'6px 10px', color:'#6b7280', fontSize:10, maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                    {d.firmware_notes && <span style={{ color:'#d97706', marginRight:4 }}>⚠ {d.firmware_notes}</span>}
+                    {d.notes}
+                  </td>
+                  <td style={{ padding:'6px 10px' }}>
+                    <button onClick={()=>toggleActive(d)}
+                      style={{ fontSize:9, padding:'2px 7px', borderRadius:3, border:'1px solid #e5e7eb', background: d.active?'#f0fdf4':'#f9fafb', color:d.active?'#166534':'#6b7280', cursor:'pointer' }}>
+                      {d.active ? 'Active' : 'Inactive'}
+                    </button>
+                  </td>
+                  <td style={{ padding:'6px 10px' }}>
+                    <div style={{ display:'flex', gap:4 }}>
+                      <button onClick={()=>setEditing({...d})} style={{ padding:'2px 7px', fontSize:9, background:'white', border:'1px solid #d1d5db', borderRadius:3, cursor:'pointer' }}>Edit</button>
+                      <button onClick={()=>deleteDevice(d.id)} style={{ padding:'2px 7px', fontSize:9, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:3, cursor:'pointer', color:'#dc2626' }}>Del</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr><td colSpan={8} style={{ padding:'20px', textAlign:'center', color:'#9ca3af', fontSize:11 }}>No devices match current filter</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Edit modal */}
+      {editing && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:500 }}>
+          <div style={{ background:'white', borderRadius:8, padding:24, width:520, boxShadow:'0 8px 32px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ fontSize:14, fontWeight:700, color:'#0f1e3c', margin:'0 0 16px' }}>{editing.id ? 'Edit Device' : 'Add Device'}</h3>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+              {[['Manufacturer', 'manufacturer'], ['Model', 'model']].map(([lbl, key]) => (
+                <div key={key}>
+                  <label style={{ display:'block', fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3 }}>{lbl} *</label>
+                  <input value={editing[key]||''} onChange={e=>setEditing(p=>({...p,[key]:e.target.value}))}
+                    style={{ width:'100%', padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none' }}/>
+                </div>
+              ))}
+              <div>
+                <label style={{ display:'block', fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3 }}>Category</label>
+                <select value={editing.category} onChange={e=>setEditing(p=>({...p,category:e.target.value}))}
+                  style={{ width:'100%', padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, background:'white', outline:'none' }}>
+                  {['preferred','supported','doorphone','gateway','headset','legacy'].map(c=>(
+                    <option key={c} value={c} style={{textTransform:'capitalize'}}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ display:'block', fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3 }}>Compatibility</label>
+                <select value={editing.compatibility} onChange={e=>setEditing(p=>({...p,compatibility:e.target.value}))}
+                  style={{ width:'100%', padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, background:'white', outline:'none' }}>
+                  <option value="compatible">Preferred — full support</option>
+                  <option value="limited">Supported — limited / 3rd party</option>
+                  <option value="manual_only">Legacy — manual config only</option>
+                  <option value="not_compatible">Not Compatible</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ marginBottom:10 }}>
+              <label style={{ display:'block', fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3 }}>Firmware / EOL Notes</label>
+              <input value={editing.firmware_notes||''} onChange={e=>setEditing(p=>({...p,firmware_notes:e.target.value}))} placeholder="e.g. EOL — no new firmware, 3rd-party supported only..."
+                style={{ width:'100%', padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none' }}/>
+            </div>
+            <div style={{ marginBottom:14 }}>
+              <label style={{ display:'block', fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3 }}>Notes</label>
+              <textarea value={editing.notes||''} onChange={e=>setEditing(p=>({...p,notes:e.target.value}))} rows={2} placeholder="Router phone, DECT, hotel series, etc."
+                style={{ width:'100%', padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, resize:'vertical', outline:'none' }}/>
+            </div>
+            <div style={{ display:'flex', gap:8, marginBottom:14 }}>
+              <label style={{ display:'flex', alignItems:'center', gap:5, cursor:'pointer' }}>
+                <input type="checkbox" checked={editing.auto_provision} onChange={e=>setEditing(p=>({...p,auto_provision:e.target.checked}))} style={{ accentColor:'#7c3aed' }}/>
+                <span style={{ fontSize:11 }}>Auto-provisioned by 3CX</span>
+              </label>
+              <label style={{ display:'flex', alignItems:'center', gap:5, cursor:'pointer' }}>
+                <input type="checkbox" checked={editing.active} onChange={e=>setEditing(p=>({...p,active:e.target.checked}))} style={{ accentColor:'#7c3aed' }}/>
+                <span style={{ fontSize:11 }}>Active (visible to reps)</span>
+              </label>
+            </div>
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+              <button onClick={()=>setEditing(null)} style={{ padding:'7px 16px', background:'white', border:'1px solid #d1d5db', borderRadius:5, fontSize:12, cursor:'pointer' }}>Cancel</button>
+              <button onClick={save} disabled={saving||!editing.manufacturer||!editing.model}
+                style={{ padding:'7px 18px', background:'#7c3aed', color:'white', border:'none', borderRadius:5, fontSize:12, fontWeight:700, cursor:'pointer', opacity:saving?0.7:1 }}>
+                {saving?'Saving...':'Save Device'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

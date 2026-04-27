@@ -12,6 +12,7 @@ import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
 import IntlDialingWaiver       from '../components/IntlDialingWaiver';
 import VoiceAssumptionsModal  from '../components/VoiceAssumptionsModal';
+import ByohPicker             from '../components/ByohPicker';
 import RateSheetModalComp     from '../components/RateSheetModal';
 import HubSpotConnect from '../components/HubSpotConnect';
 import SPTConnect    from '../components/SPTConnect';
@@ -499,26 +500,15 @@ export default function VoiceQuotePage() {
 
           {/* BYOH */}
           {v.hardwareType==='byoh' && (
-            <Fld lbl="BYOH Devices — enter model and quantity">
-              <div style={{ fontSize:9, color:'#6b7280', marginBottom:6, lineHeight:1.5 }}>
-                Devices must be 3CX-supported. Each device will be wiped and registered at the applicable per-handset fee (${parseFloat(settings?.voice_byoh_fee||20).toFixed(0)}/device).
+            <Fld lbl="BYOH Devices">
+              <div style={{ fontSize:9, color:'#6b7280', marginBottom:8, lineHeight:1.5 }}>
+                Search the 3CX compatibility database below. Each device will be wiped and registered at ${parseFloat(settings?.voice_byoh_fee||20).toFixed(0)}/device NRC.
+                Devices not in the database are flagged as unverified.
               </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                {(v.byohItems||[]).map((item,i) => (
-                  <div key={i} style={{ display:'flex', gap:5, alignItems:'center' }}>
-                    <input value={item.model||''} onChange={e=>{const items=[...(v.byohItems||[])];items[i]={...items[i],model:e.target.value};set('byohItems',items);}}
-                      placeholder="e.g. Yealink T42U, Polycom VVX300..." style={{ flex:1, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:10, outline:'none' }}/>
-                    <input type="number" min="1" value={item.qty||1} onChange={e=>{const items=[...(v.byohItems||[])];items[i]={...items[i],qty:+e.target.value};set('byohItems',items);}}
-                      style={{ width:52, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, fontFamily:'DM Mono, monospace', textAlign:'center', outline:'none' }}/>
-                    <button onClick={()=>{const items=(v.byohItems||[]).filter((_,j)=>j!==i);set('byohItems',items);}}
-                      style={{ padding:'3px 6px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:3, color:'#dc2626', fontSize:12, cursor:'pointer' }}>×</button>
-                  </div>
-                ))}
-                <button onClick={()=>set('byohItems',[...(v.byohItems||[]),{model:'',qty:1}])}
-                  style={{ padding:'4px 8px', background:'white', border:'1px dashed #d1d5db', borderRadius:4, fontSize:10, color:'#6b7280', cursor:'pointer', textAlign:'left' }}>
-                  + Add device
-                </button>
-              </div>
+              <ByohPicker
+                devices={v.byohItems||[]}
+                onChange={items => set('byohItems', items)}
+              />
               {(v.byohItems||[]).reduce((s,i)=>s+parseInt(i.qty||0),0) > 0 && (
                 <div style={{ marginTop:6, padding:'5px 8px', background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:4, fontSize:9, color:'#1e40af' }}>
                   Total BYOH fee: {(v.byohItems||[]).reduce((s,i)=>s+parseInt(i.qty||0),0)} devices × ${parseFloat(settings?.voice_byoh_fee||20).toFixed(0)} = ${((v.byohItems||[]).reduce((s,i)=>s+parseInt(i.qty||0),0) * parseFloat(settings?.voice_byoh_fee||20)).toFixed(0)} NRC
