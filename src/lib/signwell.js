@@ -132,7 +132,42 @@ function buildWaiverHtml({ contactName, entityName, title, tier, tierLabel, tier
 <h2>6. Indemnification</h2>
 <p>Client agrees to indemnify, defend, and hold harmless Ferrum Technology Services, LLC and its officers, employees, and agents from and against any and all claims, liabilities, damages, costs, and expenses (including reasonable attorneys&rsquo; fees) arising from or related to international calling activity on Client&rsquo;s account.</p>
 
-<p style="margin-top:32px; font-size:10px; color:#6b7280; text-align:center; border-top:1px solid #e5e7eb; padding-top:16px;">
+<hr style="margin:32px 0; border:none; border-top:1px solid #e5e7eb;"/>
+
+<table style="width:100%; border-collapse:collapse; margin-top:8px;">
+  <tr>
+    <td style="width:48%; vertical-align:top; padding-right:4%;">
+      <div style="font-size:11px; font-weight:bold; margin-bottom:14px;">Client</div>
+
+      <div style="margin-bottom:12px;">
+        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:3px;">Full Legal Name</div>
+        <div style="font-size:11px; border-bottom:1px solid #374151; padding-bottom:4px; min-height:18px;">${contactName || ''}</div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:3px;">Company Name</div>
+        <div style="font-size:11px; border-bottom:1px solid #374151; padding-bottom:4px; min-height:18px;">${entityName || ''}</div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:3px;">Title / Role</div>
+        <div style="font-size:11px; border-bottom:1px solid #374151; padding-bottom:4px; min-height:18px;">${title || ''}</div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:3px;">Signature</div>
+        <div style="min-height:48px; border-bottom:1px solid #374151;">[[sig|1]]</div>
+      </div>
+
+      <div>
+        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:3px;">Date</div>
+        <div style="font-size:11px; border-bottom:1px solid #374151; padding-bottom:4px; min-height:18px;">[[date|1]]</div>
+      </div>
+    </td>
+  </tr>
+</table>
+
+<p style="margin-top:28px; font-size:9px; color:#6b7280; text-align:center;">
   Electronic signatures are legally binding pursuant to E-SIGN and UETA. &nbsp;·&nbsp; Ferrum Technology Services, LLC &nbsp;·&nbsp; ferrumit.com
 </p>
 
