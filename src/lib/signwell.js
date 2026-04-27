@@ -139,29 +139,39 @@ function buildWaiverHtml({ contactName, entityName, title, tier, tierLabel, tier
     <td style="width:48%; vertical-align:top; padding-right:4%;">
       <div style="font-size:11px; font-weight:bold; margin-bottom:14px;">Client</div>
 
-      <div style="margin-bottom:12px;">
-        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:3px;">Full Legal Name</div>
-        <div style="font-size:11px; border-bottom:1px solid #374151; padding-bottom:4px; min-height:18px;">${contactName || ''}<span style="color:white;font-size:1px;">{{autofill_name}}</span></div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:4px;">Full Legal Name</div>
+        <div style="border-bottom:1px solid #374151; min-height:24px; padding-bottom:2px;">
+          <span style="color:white; display:inline-block; width:400px; height:20px; font-size:14px;">{{autofill_name}}</span>
+        </div>
       </div>
 
-      <div style="margin-bottom:12px;">
-        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:3px;">Company Name</div>
-        <div style="font-size:11px; border-bottom:1px solid #374151; padding-bottom:4px; min-height:18px;">${entityName || ''}<span style="color:white;font-size:1px;">{{autofill_company}}</span></div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:4px;">Company Name</div>
+        <div style="border-bottom:1px solid #374151; min-height:24px; padding-bottom:2px;">
+          <span style="color:white; display:inline-block; width:400px; height:20px; font-size:14px;">{{autofill_company}}</span>
+        </div>
       </div>
 
-      <div style="margin-bottom:12px;">
-        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:3px;">Title / Role</div>
-        <div style="font-size:11px; border-bottom:1px solid #374151; padding-bottom:4px; min-height:18px;">${title || ''}<span style="color:white;font-size:1px;">{{autofill_title}}</span></div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:4px;">Title / Role</div>
+        <div style="border-bottom:1px solid #374151; min-height:24px; padding-bottom:2px;">
+          <span style="color:white; display:inline-block; width:400px; height:20px; font-size:14px;">{{autofill_title}}</span>
+        </div>
       </div>
 
-      <div style="margin-bottom:12px;">
-        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:3px;">Signature</div>
-        <div style="min-height:48px; border-bottom:1px solid #374151;"><span style="color:white;font-size:1px;">{{signature}}</span></div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:4px;">Signature</div>
+        <div style="border-bottom:1px solid #374151; min-height:64px; padding-bottom:2px;">
+          <span style="color:white; display:inline-block; width:400px; height:60px; font-size:14px;">{{signature}}</span>
+        </div>
       </div>
 
-      <div>
-        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:3px;">Date</div>
-        <div style="font-size:11px; border-bottom:1px solid #374151; padding-bottom:4px; min-height:18px;"><span style="color:white;font-size:1px;">{{date}}</span></div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:4px;">Date</div>
+        <div style="border-bottom:1px solid #374151; min-height:24px; padding-bottom:2px;">
+          <span style="color:white; display:inline-block; width:200px; height:20px; font-size:14px;">{{date}}</span>
+        </div>
       </div>
     </td>
   </tr>
