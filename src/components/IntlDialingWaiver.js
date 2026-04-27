@@ -211,16 +211,8 @@ export default function IntlDialingWaiver({ onClose, quoteId, quoteNumber, clien
                 <p><strong>3. Security Responsibility.</strong> Client is solely responsible for telephony security — extension passwords, SIP credentials, call routing, and network access controls.</p>
                 <p><strong>4. Right to Suspend.</strong> Provider may disable international calling immediately without notice upon suspected fraud, unusual call patterns, or non-payment.</p>
                 <p><strong>5. Indemnification.</strong> Client agrees to indemnify Ferrum Technology Services, LLC from all claims, liabilities, costs, and expenses arising from international calling on Client's account.</p>
-                <div style={{ marginTop:14, display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, fontSize:10 }}>
-                  {[['Client', `${contactName||'________________________'}\n${jobTitle||'________________________'}\n${entityName||'________________________'}`],
-                    ['Ferrum Technology Services, LLC', 'Shaun Lang\nChief Experience Officer\nFerrum Technology Services, LLC']
-                  ].map(([title, details]) => (
-                    <div key={title} style={{ borderTop:'1px solid #374151', paddingTop:8 }}>
-                      <strong>{title}</strong>
-                      <pre style={{ fontFamily:'inherit', margin:'4px 0', fontSize:10, whiteSpace:'pre-wrap' }}>{details}</pre>
-                      Signature: ________________________<br/>Date: ________________________
-                    </div>
-                  ))}
+                <div style={{ marginTop:14, padding:'8px 10px', background:'#eff6ff', borderRadius:4, border:'1px solid #bfdbfe', fontSize:9, color:'#1e40af' }}>
+                  ✍ Signature page is handled by SignWell — the client will sign electronically when they receive the document by email.
                 </div>
               </div>
             )}
