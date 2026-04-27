@@ -12,6 +12,7 @@ import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
 import IntlDialingWaiver       from '../components/IntlDialingWaiver';
 import VoiceAssumptionsModal  from '../components/VoiceAssumptionsModal';
+import RateSheetModalComp     from '../components/RateSheetModal';
 import HubSpotConnect from '../components/HubSpotConnect';
 import SPTConnect    from '../components/SPTConnect';
 import MarketRateCard from '../components/MarketRateCard';
@@ -74,7 +75,9 @@ export default function VoiceQuotePage() {
   const [clientZip,    setClientZip]    = useState('');
   const [zipResult,    setZipResult]    = useState(null);
   const [zipApplied,   setZipApplied]   = useState(false);
-  const [selectedMkt,  setSelectedMkt]  = useState(null);
+  const [selectedMkt,    setSelectedMkt]    = useState(null);
+  const [marketAnalysis, setMarketAnalysis] = useState(null);
+  const [showRateSheet,  setShowRateSheet]  = useState(false);
   const [marketCity,   setMarketCity]   = useState('');
   const [marketState, setMarketState] = useState('');
   const [dealDescription, setDealDescription]           = useState('');
@@ -126,12 +129,29 @@ export default function VoiceQuotePage() {
       if (data.rep_id) setRepId(data.rep_id);
       if (data.pricing_snapshot) { setPricingSnapshot(data.pricing_snapshot); setPriceLockDate(data.price_locked_at); }
       if (data.spt_proposal_id) setSptProposalId(data.spt_proposal_id);
+      // Refetch market analysis for rate card
+      if (data.client_zip) handleZipChange(data.client_zip);
     });
   }, [id, configLoading]);
 
-  function handleZipChange(val) {
+  async function handleZipChange(val) {
     setClientZip(val);
-    setZipResult(val.length >= 3 ? lookupZip(val) : null);
+    const zr = val.length >= 3 ? lookupZip(val) : null;
+    setZipResult(zr);
+    if (val.length === 5) {
+      try {
+        const { data } = await supabase
+          .from('market_rate_analyses')
+          .select('*')
+          .or(`zip.eq.${val},zip_codes.cs.{${val}}`)
+          .maybeSingle();
+        if (data) setMarketAnalysis(data);
+        else if (zr && selectedMkt) {
+          // Build synthetic analysis from market tier
+          setMarketAnalysis({ city: zr.name?.split(',')[0] || '', state: zr.state || '', market_tier: selectedMkt.tier_key, pricing_multiplier: selectedMkt.pricing_multiplier || 1, rates: selectedMkt.rates || {} });
+        }
+      } catch {}
+    }
   }
 
   // HubSpot
@@ -806,6 +826,18 @@ export default function VoiceQuotePage() {
                   <div style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:6, padding:'10px 12px', marginBottom:10 }}>
                     <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'#6b7280', marginBottom:8 }}>📄 Documents</div>
                     <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                      {/* Rate Sheet — Out-of-Scope Rates */}
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#f8fafc', borderRadius:4, border:'1px solid #e5e7eb' }}>
+                        <div>
+                          <div style={{ fontSize:11, fontWeight:600, color:'#0f1e3c' }}>💲 Out-of-Scope Rate Schedule</div>
+                          <div style={{ fontSize:9, color:'#9ca3af', marginTop:1 }}>Market-adjusted T&M rates — applies to all labor outside contracted scope</div>
+                        </div>
+                        <button onClick={() => setShowRateSheet(true)}
+                          style={{ padding:'4px 10px', background:'#0f1e3c', color:'white', border:'none', borderRadius:4, fontSize:10, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+                          View / Export
+                        </button>
+                      </div>
+
                       {/* Assumptions & Exclusions */}
                       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#faf5ff', borderRadius:4, border:'1px solid #e9d5ff' }}>
                         <div>
@@ -836,6 +868,20 @@ export default function VoiceQuotePage() {
                       )}
                     </div>
                   </div>
+
+                  {showRateSheet && (
+                    <RateSheetModalComp
+                      onClose={() => setShowRateSheet(false)}
+                      analysis={marketAnalysis}
+                      settings={settings}
+                      clientName={recipientBiz}
+                      recipientContact={recipientContact}
+                      quoteId={existingQuote?.id}
+                      quoteNumber={existingQuote?.quote_number}
+                      sptProposalId={sptProposalId}
+                      onSPTLinked={(pid) => { setSptProposalId(pid); if (pid && existingQuote?.id) supabase.from('quotes').update({ spt_proposal_id: pid }).eq('id', existingQuote.id); }}
+                    />
+                  )}
 
                   {showVoiceAssumptions && (
                     <VoiceAssumptionsModal
