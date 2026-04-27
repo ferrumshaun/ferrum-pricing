@@ -240,9 +240,10 @@ export function calcVoice(v, settings) {
   }
 
   // ── PROGRAMMING FEE ────────────────────────────────────────────────────────
-  if (v.programmingFee > 0) {
-    const pf = v.programmingFee * progFee;
-    lines.push({ label: `Programming Fee (${v.programmingFee} seats × $${progFee})`, mrr: 0, nrc: pf, cost: pf * 0.4, section: 'onetime' });
+  const programmableSeats = v.seats || 0;
+  if (programmableSeats > 0 && !v.waiveProgrammingFee) {
+    const pf = programmableSeats * progFee;
+    lines.push({ label: `Programming & Configuration (${programmableSeats} seats × $${progFee})`, mrr: 0, nrc: pf, cost: pf * 0.4, section: 'onetime' });
     nrc += pf;
   }
 

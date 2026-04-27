@@ -14,6 +14,7 @@ import IntlDialingWaiver       from '../components/IntlDialingWaiver';
 import VoiceAssumptionsModal  from '../components/VoiceAssumptionsModal';
 import ByohPicker             from '../components/ByohPicker';
 import LOAModal               from '../components/LOAModal';
+import OnboardingIncentive    from '../components/OnboardingIncentive';
 import RateSheetModalComp     from '../components/RateSheetModal';
 import HubSpotConnect from '../components/HubSpotConnect';
 import SPTConnect    from '../components/SPTConnect';
@@ -30,7 +31,7 @@ const DEF = {
   callRecording: false,
   smsEnabled: false, smsNewRegistration: true, smsCampaigns: 1,
   hardwareType: 'none', hardwareItems: [], hardwareDiscount50: false, byohItems: [],
-  programmingFee: 0, portingNumbers: 0,
+  waiveProgrammingFee: false, portingNumbers: 0,
   contractTerm: 24,
   internationalDialing: 'none',
 };
@@ -65,6 +66,7 @@ export default function VoiceQuotePage() {
   const [showIntlWaiver,      setShowIntlWaiver]      = useState(false);
   const [showVoiceAssumptions, setShowVoiceAssumptions] = useState(false);
   const [showLOA,              setShowLOA]              = useState(false);
+  const [voiceProgIncentive,   setVoiceProgIncentive]   = useState(null);
   const [pricingSnapshot, setPricingSnapshot] = useState(null);
   const [priceLockDate,   setPriceLockDate]   = useState(null);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
@@ -836,19 +838,6 @@ export default function VoiceQuotePage() {
                       </div>
                     </div>
                   )}
-
-                  {/* Market Rate Analysis */}
-                  <MarketRateCard
-                    quoteId={existingQuote?.id}
-                    clientZip={clientZip}
-                    fallbackMarket={selectedMkt}
-                    onRatesAccepted={(rates, suggestedTier) => {
-                      if (suggestedTier && marketTiers.length) {
-                        const tier = marketTiers.find(t => t.tier_key === suggestedTier);
-                        if (tier) setSelectedMkt(tier);
-                      }
-                    }}
-                  />
 
                   {/* Deal summary — matches QuotePage position */}
                   <div style={{ background:'#0f1e3c', borderRadius:6, padding:11 }}>
