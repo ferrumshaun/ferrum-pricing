@@ -298,6 +298,42 @@ export default function VoiceQuotePage() {
           </Fld>
         </Sec>
 
+        {/* Market Tier — shown as soon as a ZIP is entered */}
+        {clientZip.length >= 5 && (
+          <div style={{ marginBottom:6 }}>
+            <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'#6b7280', marginBottom:5 }}>Market Tier</div>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:6 }}>
+              {marketTiers.map(t => (
+                <div key={t.id} onClick={() => setSelectedMkt(t)}
+                  style={{ padding:'4px 10px', borderRadius:4, cursor:'pointer', fontSize:9, fontWeight:700,
+                    border:`${selectedMkt?.id===t.id?'2':'1'}px solid ${selectedMkt?.id===t.id?'#2563eb':'#e5e7eb'}`,
+                    background:selectedMkt?.id===t.id?'#eff6ff':'white',
+                    color:selectedMkt?.id===t.id?'#1e40af':'#374151' }}>
+                  {t.name}
+                </div>
+              ))}
+            </div>
+            {selectedMkt && (
+              <div style={{ fontSize:9, color:'#6b7280', padding:'3px 6px', background:'#f8fafc', borderRadius:3, border:'1px solid #e5e7eb' }}>
+                {selectedMkt.name} &middot; {Math.round((selectedMkt.pricing_multiplier||1)*100)}% pricing index
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Market Rate Analysis card */}
+        <MarketRateCard
+          quoteId={existingQuote?.id}
+          clientZip={clientZip}
+          fallbackMarket={selectedMkt}
+          onRatesAccepted={(rates, suggestedTier) => {
+            if (suggestedTier && marketTiers.length) {
+              const tier = marketTiers.find(t => t.tier_key === suggestedTier);
+              if (tier) setSelectedMkt(tier);
+            }
+          }}
+        />
+
         {/* Contract & Status — just under Proposal Details */}
         <Sec t="Contract & Status" c="#374151">
           <Grid2>
