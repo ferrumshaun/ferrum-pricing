@@ -4,7 +4,7 @@ import { supabase, logActivity } from '../lib/supabase';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 import { lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
-import { calcVoice, calcHybridMRR, getRecommendedTier, CX_TIERS, FAX_PACKAGES, YEALINK_MODELS } from '../lib/voicePricing';
+import { calcVoice, calcHybridMRR, getRecommendedTier, CX_TIERS, FAX_PACKAGES, ATA_MODELS, suggestFaxPackage, YEALINK_MODELS } from '../lib/voicePricing';
 import { searchDeals, getDealFull, updateDealDescription } from '../lib/hubspot';
 import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
