@@ -49,16 +49,13 @@ exports.handler = async (event) => {
           method: 'POST',
           headers,
           body: JSON.stringify({
-            test_mode:            payload.test_mode || false,
-            name:                 payload.name,
-            subject:              payload.subject || payload.name,
-            message:              payload.message || 'Please review and sign the attached document.',
-            reminders:            true,
-            apply_signing_order:  true,
-            text_tags:            payload.text_tags || false,
-            files:                payload.files,
-            recipients:           payload.recipients,
-            ...(payload.fields?.length ? { fields: payload.fields } : {}),
+            test_mode:  payload.test_mode  || false,
+            name:       payload.name,
+            subject:    payload.subject    || payload.name,
+            message:    payload.message    || 'Please review and sign the attached document.',
+            text_tags:  payload.text_tags  || false,
+            files:      payload.files,
+            recipients: payload.recipients,
           }),
         });
         const data = await res.json();
