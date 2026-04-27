@@ -43,28 +43,25 @@ export async function sendIntlDialingWaiver({
     name: `International Dialing Authorization — ${entityName}${quoteNumber ? ` (${quoteNumber})` : ''}`,
     subject: `Action Required — International Dialing Authorization · ${entityName}`,
     message: `Please review and sign the International Dialing Authorization for your Ferrum Technology Services account. This document enables ${tierLabel} on your hosted SIP trunk. By signing, you acknowledge and accept the terms outlined including full financial responsibility for all international calling charges.`,
+    text_tags: true,
     files: [{
       name: 'International_Dialing_Authorization.html',
       file_base64: base64Content,
     }],
     recipients: [
-      // Client signer (signer 1)
       {
-        id: 1,
+        id: '1',
         name: contactName || clientName,
         email: clientEmail,
         send_email: true,
       },
-      // Ferrum signer (signer 2) — placeholder, Shaun signs in SignWell dashboard
       {
-        id: 2,
+        id: '2',
         name: 'Shaun Lang',
         email: 'slang@ferrumit.com',
         send_email: true,
       },
     ],
-    // Signature fields — SignWell text tags in the document itself handle placement
-    fields: [],
   });
 
   return {
