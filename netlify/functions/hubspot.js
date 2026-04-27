@@ -225,6 +225,68 @@ exports.handler = async (event) => {
         break;
       }
 
+      // ── Upload signed document PDF to HubSpot ────────────────────────────────
+      // 1. Fetch PDF bytes from SignWell completed_pdf_url
+      // 2. Upload to HubSpot Files API → get file ID
+      // 3. Create a note with attachment on the deal
+      case 'upload_signed_document': {
+        const { pdfUrl, dealId, docLabel, quoteNumber } = payload;
+        if (!pdfUrl)  return { statusCode: 400, body: JSON.stringify({ error: 'pdfUrl is required' }) };
+        if (!dealId)  return { statusCode: 400, body: JSON.stringify({ error: 'dealId is required' }) };
+
+        // Step 1 — Fetch the PDF from SignWell
+        let pdfBuffer;
+        try {
+          const pdfRes = await fetch(pdfUrl);
+          if (!pdfRes.ok) throw new Error(`Failed to fetch PDF: ${pdfRes.status}`);
+          pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+        } catch (err) {
+          return { statusCode: 502, body: JSON.stringify({ error: 'Could not retrieve signed PDF: ' + err.message }) };
+        }
+
+        // Step 2 — Upload to HubSpot Files API
+        const filename = `${(docLabel || 'Signed Document').replace(/[^a-z0-9]/gi, '_')}_${quoteNumber || Date.now()}.pdf`;
+        const FormData = (await import('form-data')).default;
+        const form = new FormData();
+        form.append('file', pdfBuffer, { filename, contentType: 'application/pdf' });
+        form.append('folderPath', '/Ferrum IQ Signed Documents');
+        form.append('options', JSON.stringify({ access: 'PRIVATE', overwrite: false }));
+
+        const fileRes = await fetch(`https://api.hubapi.com/files/v3/files`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, ...form.getHeaders() },
+          body: form,
+        });
+        const fileData = await fileRes.json();
+        if (!fileRes.ok) {
+          console.error('HubSpot file upload error:', JSON.stringify(fileData));
+          return { statusCode: fileRes.status, body: JSON.stringify({ error: fileData.message || 'File upload failed', detail: fileData }) };
+        }
+        const fileId = fileData.id;
+
+        // Step 3 — Create a note with the file attached and associate with the deal
+        const noteBody = `📄 <strong>${docLabel || 'Signed Document'}</strong>${quoteNumber ? ` — ${quoteNumber}` : ''}<br/>Electronically signed via SignWell. Full audit trail available in SignWell dashboard.`;
+        const noteRes = await hs(token, 'POST', '/crm/v3/objects/notes', {
+          properties: {
+            hs_note_body:      noteBody,
+            hs_attachment_ids: fileId.toString(),
+            hs_timestamp:      Date.now().toString(),
+          }
+        });
+        if (noteRes.status !== 201) {
+          return { statusCode: noteRes.status, body: JSON.stringify({ error: 'Note creation failed', detail: noteRes.data }) };
+        }
+        const noteId = noteRes.data.id;
+
+        // Associate note with deal
+        await hs(token, 'PUT',
+          `/crm/v3/objects/notes/${noteId}/associations/deals/${dealId}/note_to_deal`, {}
+        );
+
+        result = { success: true, fileId, noteId, filename };
+        break;
+      }
+
       default:
         return { statusCode: 400, body: JSON.stringify({ error: `Unknown action: ${action}` }) };
     }

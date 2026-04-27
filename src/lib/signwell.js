@@ -373,3 +373,31 @@ function buildLOAHtml({ contactName, entityName, title, quoteNumber, proposalNam
 </body>
 </html>`;
 }
+
+// ── Upload signed document to HubSpot deal ────────────────────────────────────
+export async function uploadSignedDocToHubSpot({ documentId, dealId, docLabel, quoteNumber }) {
+  // 1. Get completed PDF URL from SignWell
+  const status = await getSignwellDocStatus(documentId);
+  let pdfUrl = status.completedPdfUrl;
+
+  // If not on status, fetch directly
+  if (!pdfUrl) {
+    const direct = await swCall('getCompletedPdf', { documentId });
+    pdfUrl = direct?.url || direct?.download_url || null;
+  }
+
+  if (!pdfUrl) throw new Error('Signed PDF not yet available — document may still be processing.');
+
+  // 2. Upload to HubSpot via proxy
+  const res = await fetch('/.netlify/functions/hubspot', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'upload_signed_document',
+      payload: { pdfUrl, dealId, docLabel, quoteNumber },
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `Upload failed: ${res.status}`);
+  return data; // { success, fileId, noteId, filename }
+}

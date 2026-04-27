@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { sendLOA, getSignwellDocStatus, sendReminder } from '../lib/signwell';
+import { uploadSignedDocToHubSpot } from '../lib/signwell';
+import {  sendLOA, getSignwellDocStatus, sendReminder } from '../lib/signwell';
 
 const STATUS_BADGE = {
   draft:     { label: 'Draft',             bg: '#eff6ff', color: '#1e40af' },
@@ -22,6 +23,7 @@ export default function LOAModal({
   settings,
   existingDoc,
   onDocSaved,
+  hubDealId,
 }) {
   // ── Signer / recipient ────────────────────────────────────────────────────
   const [contactName,  setContactName]  = useState(recipientContact || existingDoc?.clientName || '');
@@ -137,6 +139,21 @@ export default function LOAModal({
     setChecking(false);
   }
 
+  async function handleUploadToHubSpot() {
+    if (!docRecord?.documentId) return;
+    setUploading(true); setUploadMsg('');
+    try {
+      await uploadSignedDocToHubSpot({
+        documentId: docRecord.documentId,
+        dealId:     hubDealId,
+        docLabel:   'Letter of Authorization',
+        quoteNumber,
+      });
+      setUploadMsg('✓ Uploaded to HubSpot deal — visible in Attachments');
+    } catch(e) { setUploadMsg('✗ ' + e.message); }
+    setUploading(false);
+  }
+
   async function handleRemind() {
     if (!docRecord?.documentId) return;
     setReminding(true);
@@ -213,6 +230,15 @@ export default function LOAModal({
                     style={{ padding:'5px 12px', background:'#dcfce7', border:'1px solid #bbf7d0', borderRadius:4, fontSize:11, fontWeight:600, color:'#166534', textDecoration:'none' }}>
                     ↓ Download Signed LOA
                   </a>
+                )}
+                {isSigned && hubDealId && (
+                  <button onClick={handleUploadToHubSpot} disabled={uploading}
+                    style={{ padding:'5px 12px', background:'#ff7a59', color:'white', border:'none', borderRadius:4, fontSize:11, fontWeight:600, cursor:'pointer', opacity:uploading?0.6:1 }}>
+                    {uploading ? 'Uploading...' : '↗ Upload to HubSpot'}
+                  </button>
+                )}
+                {uploadMsg && (
+                  <span style={{ fontSize:10, fontWeight:600, color:uploadMsg.startsWith('✓')?'#166534':'#dc2626' }}>{uploadMsg}</span>
                 )}
                 <button onClick={()=>setDocRecord(null)}
                   style={{ padding:'5px 12px', background:'white', border:'1px solid #fecaca', borderRadius:4, fontSize:11, color:'#dc2626', cursor:'pointer' }}>

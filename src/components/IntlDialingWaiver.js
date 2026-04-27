@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { sendIntlDialingWaiver, getSignwellDocStatus, sendReminder } from '../lib/signwell';
+import { uploadSignedDocToHubSpot } from '../lib/signwell';
+import {  sendIntlDialingWaiver, getSignwellDocStatus, sendReminder } from '../lib/signwell';
 
 const INTL_TIERS = {
   standard: { label:'Standard International',       desc:'Canada, Mexico, Western Europe, Australia',           risk:'Moderate', color:'#0f766e' },
@@ -23,6 +24,8 @@ export default function IntlDialingWaiver({ onClose, quoteId, quoteNumber, propo
   const [sending,      setSending]      = useState(false);
   const [checking,     setChecking]     = useState(false);
   const [reminding,    setReminding]    = useState(false);
+  const [uploading,    setUploading]    = useState(false);
+  const [uploadMsg,    setUploadMsg]    = useState('');
   const [msg,          setMsg]          = useState('');
   const [msgType,      setMsgType]      = useState('ok');
   const [docRecord,    setDocRecord]    = useState(existingDoc || null);
@@ -80,6 +83,21 @@ export default function IntlDialingWaiver({ onClose, quoteId, quoteNumber, propo
       }
     } catch(e) { notify('✗ ' + e.message, 'err'); }
     setChecking(false);
+  }
+
+  async function handleUploadToHubSpot() {
+    if (!docRecord?.documentId) return;
+    setUploading(true); setUploadMsg('');
+    try {
+      await uploadSignedDocToHubSpot({
+        documentId: docRecord.documentId,
+        dealId:     hubDealId,
+        docLabel:   'International Dialing Authorization',
+        quoteNumber,
+      });
+      setUploadMsg('✓ Uploaded to HubSpot deal — visible in Attachments');
+    } catch(e) { setUploadMsg('✗ ' + e.message); }
+    setUploading(false);
   }
 
   async function handleRemind() {
@@ -146,6 +164,15 @@ export default function IntlDialingWaiver({ onClose, quoteId, quoteNumber, propo
                   <a href={docRecord.completedPdfUrl} target="_blank" rel="noopener noreferrer" style={{ padding:'5px 12px', background:'#dcfce7', border:'1px solid #bbf7d0', borderRadius:4, fontSize:11, fontWeight:600, color:'#166534', textDecoration:'none' }}>
                     ↓ Download Signed PDF
                   </a>
+                )}
+                {isSigned && hubDealId && (
+                  <button onClick={handleUploadToHubSpot} disabled={uploading}
+                    style={{ padding:'5px 12px', background:'#ff7a59', color:'white', border:'none', borderRadius:4, fontSize:11, fontWeight:600, cursor:'pointer', opacity:uploading?0.6:1 }}>
+                    {uploading ? 'Uploading...' : '↗ Upload to HubSpot'}
+                  </button>
+                )}
+                {uploadMsg && (
+                  <span style={{ fontSize:10, fontWeight:600, color:uploadMsg.startsWith('✓')?'#166534':'#dc2626' }}>{uploadMsg}</span>
                 )}
 
                 <button onClick={()=>setDocRecord(null)} style={{ padding:'5px 12px', background:'white', border:'1px solid #fecaca', borderRadius:4, fontSize:11, color:'#dc2626', cursor:'pointer' }}>

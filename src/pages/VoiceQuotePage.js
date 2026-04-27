@@ -1220,6 +1220,7 @@ export default function VoiceQuotePage() {
                       serviceAddress={recipientAddress}
                       portingDIDList={v.portingDIDList || ''}
                       settings={settings}
+                      hubDealId={hubDealId}
                       onDocSaved={() => setShowLOA(false)}
                     />
                   )}
@@ -1249,6 +1250,7 @@ export default function VoiceQuotePage() {
                       recipientEmail={recipientEmail}
                       recipientAddress={recipientAddress}
                       settings={settings}
+                      hubDealId={hubDealId}
                       selectedTier={v.internationalDialing !== 'none' ? v.internationalDialing : 'standard'}
                     />
                   )}
