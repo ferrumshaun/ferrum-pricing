@@ -4,7 +4,7 @@ import { BASE_RATES, RATE_LABELS, RATE_UNITS, getRating, isStale, getOrAnalyzeMa
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 
-const TABS = ['Products', 'Packages', 'Market Tiers', 'Pricing Settings', 'Voice Hardware', 'Users', 'Integrations'];
+const TABS = ['Products', 'Packages', 'Market Tiers', 'Pricing Settings', 'Voice Hardware', 'Voice Fax Packages', 'Users', 'Integrations'];
 
 const QTY_DRIVERS = ['user','mailbox','workstation','location','server','flat','mixed','mobile_device'];
 // Product categories are stored in pricing_settings key 'product_categories'
@@ -46,6 +46,7 @@ export default function AdminPage() {
         {tab === 'Packages'         && <PackagesAdmin />}
         {tab === 'Market Tiers'     && <MarketTiersAdmin />}
         {tab === 'Voice Hardware'    && <VoiceHardwareAdmin />}
+        {tab === 'Voice Fax Packages'&& <VoiceFaxPackagesAdmin />}
         {tab === 'Pricing Settings' && <SettingsAdmin />}
         {tab === 'Users'            && <UsersAdmin />}
         {tab === 'Integrations'     && <IntegrationsAdmin />}
@@ -1433,4 +1434,249 @@ function SPTIntegration() {
       )}
     </div>
   );
+}
+
+
+// ─── Voice Fax Packages ──────────────────────────────────────────────────────
+function VoiceFaxPackagesAdmin() {
+  const [pkgs,    setPkgs]    = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(null);
+  const [saving,  setSaving]  = useState(false);
+
+  const BLANK = {
+    package_key: '', label: '', sell_mrr: 0, cost_mrr: 0,
+    included_users: 1, included_pages: null, included_dids: 1,
+    overage_sell_per_page: null, overage_cost_per_page: 0,
+    extra_user_sell: null, extra_user_cost: 0,
+    extra_did_sell: null,  extra_did_cost: 0,
+    description: '', sort_order: 999, active: true,
+  };
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase.from('voice_fax_packages').select('*').order('sort_order').order('package_key');
+    setPkgs(data || []);
+    setLoading(false);
+  }
+
+  async function save() {
+    setSaving(true);
+    const payload = { ...editing, updated_at: new Date().toISOString() };
+    // Coerce numeric fields
+    ['sell_mrr','cost_mrr','overage_cost_per_page','extra_user_cost','extra_did_cost'].forEach(k => {
+      payload[k] = parseFloat(payload[k] || 0);
+    });
+    ['overage_sell_per_page','extra_user_sell','extra_did_sell'].forEach(k => {
+      payload[k] = payload[k] === '' || payload[k] == null ? null : parseFloat(payload[k]);
+    });
+    ['included_users','included_pages','included_dids','sort_order'].forEach(k => {
+      payload[k] = payload[k] === '' || payload[k] == null ? null : parseInt(payload[k]);
+    });
+    if (editing.id) {
+      await supabase.from('voice_fax_packages').update(payload).eq('id', editing.id);
+    } else {
+      delete payload.id;
+      await supabase.from('voice_fax_packages').insert(payload);
+    }
+    await load();
+    setEditing(null);
+    setSaving(false);
+  }
+
+  async function toggleActive(pkg) {
+    await supabase.from('voice_fax_packages').update({ active: !pkg.active, updated_at: new Date().toISOString() }).eq('id', pkg.id);
+    setPkgs(prev => prev.map(p => p.id === pkg.id ? { ...p, active: !p.active } : p));
+  }
+
+  async function deletePkg(id) {
+    if (!window.confirm('Delete this fax package permanently?')) return;
+    await supabase.from('voice_fax_packages').delete().eq('id', id);
+    setPkgs(prev => prev.filter(p => p.id !== id));
+  }
+
+  function gmFor(p) {
+    const sell = parseFloat(p.sell_mrr || 0);
+    const cost = parseFloat(p.cost_mrr || 0);
+    if (sell <= 0) return null;
+    return ((sell - cost) / sell) * 100;
+  }
+
+  return (
+    <div>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+        <div>
+          <h2 style={{ fontSize:14, fontWeight:700, color:'#0f1e3c', margin:0 }}>Voice Fax Packages</h2>
+          <div style={{ fontSize:10, color:'#6b7280', marginTop:2 }}>
+            mFax / Documo virtual fax pricing — sell + cost split for accurate gross margin on Voice and Bundle quotes.
+            Replaces the hardcoded <code>FAX_PACKAGES</code> constant from <code>lib/voicePricing.js</code>.
+          </div>
+        </div>
+        <button onClick={() => setEditing({...BLANK})}
+          style={{ padding:'7px 14px', background:'#0891b2', color:'white', border:'none', borderRadius:5, fontSize:11, fontWeight:700, cursor:'pointer' }}>
+          + Add Package
+        </button>
+      </div>
+
+      {loading ? <div style={{ fontSize:11, color:'#9ca3af' }}>Loading...</div> : (
+        <div style={{ border:'1px solid #e5e7eb', borderRadius:6, overflow:'hidden' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
+            <thead>
+              <tr style={{ background:'#f8fafc' }}>
+                {['Key','Label','Sell MRR','Cost MRR','GM %','Users','Pages','DIDs','Overage Sell/pg','Status',''].map(h => (
+                  <th key={h} style={{ padding:'7px 10px', textAlign:'left', fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#6b7280', letterSpacing:'.05em', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {pkgs.map((p, i) => {
+                const gm = gmFor(p);
+                const gmCol = gm == null ? '#6b7280' : gm >= 50 ? '#065f46' : gm >= 25 ? '#92400e' : '#991b1b';
+                const noCost = !parseFloat(p.cost_mrr || 0);
+                return (
+                  <tr key={p.id} style={{ borderBottom:'1px solid #f1f5f9', background: i%2===0 ? 'white' : '#fafafa', opacity: p.active ? 1 : 0.5 }}>
+                    <td style={{ padding:'6px 10px', fontFamily:'DM Mono, monospace', fontSize:10, color:'#374151' }}>{p.package_key}</td>
+                    <td style={{ padding:'6px 10px', fontWeight:600, color:'#0f1e3c' }}>{p.label}</td>
+                    <td style={{ padding:'6px 10px', fontFamily:'DM Mono, monospace' }}>${parseFloat(p.sell_mrr||0).toFixed(2)}</td>
+                    <td style={{ padding:'6px 10px', fontFamily:'DM Mono, monospace', color: noCost ? '#92400e' : '#374151' }}>
+                      ${parseFloat(p.cost_mrr||0).toFixed(2)} {noCost && <span style={{ fontSize:8, marginLeft:3 }}>⚠ unset</span>}
+                    </td>
+                    <td style={{ padding:'6px 10px', fontWeight:700, color:gmCol, fontFamily:'DM Mono, monospace' }}>
+                      {gm == null ? '—' : `${gm.toFixed(0)}%`}
+                    </td>
+                    <td style={{ padding:'6px 10px' }}>{p.included_users}</td>
+                    <td style={{ padding:'6px 10px' }}>{p.included_pages ?? '—'}</td>
+                    <td style={{ padding:'6px 10px' }}>{p.included_dids}</td>
+                    <td style={{ padding:'6px 10px', fontFamily:'DM Mono, monospace', fontSize:10 }}>
+                      {p.overage_sell_per_page == null ? '—' : `$${parseFloat(p.overage_sell_per_page).toFixed(4)}`}
+                    </td>
+                    <td style={{ padding:'6px 10px' }}>
+                      <button onClick={()=>toggleActive(p)}
+                        style={{ fontSize:9, padding:'2px 7px', borderRadius:3, border:'1px solid #e5e7eb', background: p.active?'#f0fdf4':'#f9fafb', color:p.active?'#166534':'#6b7280', cursor:'pointer' }}>
+                        {p.active ? 'Active' : 'Inactive'}
+                      </button>
+                    </td>
+                    <td style={{ padding:'6px 10px' }}>
+                      <div style={{ display:'flex', gap:4 }}>
+                        <button onClick={()=>setEditing({...p})} style={{ padding:'2px 7px', fontSize:9, background:'white', border:'1px solid #d1d5db', borderRadius:3, cursor:'pointer' }}>Edit</button>
+                        <button onClick={()=>deletePkg(p.id)} style={{ padding:'2px 7px', fontSize:9, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:3, cursor:'pointer', color:'#dc2626' }}>Del</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {pkgs.length === 0 && (
+                <tr><td colSpan={11} style={{ padding:'20px', textAlign:'center', color:'#9ca3af', fontSize:11 }}>No fax packages yet — run supabase_voice_fax_packages.sql to seed, or click + Add Package</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Edit modal */}
+      {editing && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:500 }}>
+          <div style={{ background:'white', borderRadius:8, padding:24, width:640, maxHeight:'90vh', overflow:'auto', boxShadow:'0 8px 32px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ fontSize:14, fontWeight:700, color:'#0f1e3c', margin:'0 0 4px' }}>{editing.id ? 'Edit Fax Package' : 'Add Fax Package'}</h3>
+            <div style={{ fontSize:10, color:'#6b7280', marginBottom:14 }}>Sell prices appear on quotes. Cost values flow into gross margin calculations.</div>
+
+            {/* Identity */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 2fr', gap:10, marginBottom:10 }}>
+              <FaxFld label="Package Key *" hint="lowercase identifier, e.g. solo, team, business">
+                <input value={editing.package_key||''} onChange={e=>setEditing(p=>({...p, package_key:e.target.value.toLowerCase().replace(/[^a-z0-9_]/g,'_')}))} disabled={!!editing.id}
+                  style={faxInputStyle(!!editing.id)}/>
+              </FaxFld>
+              <FaxFld label="Label *" hint="Customer-facing name shown on the quote">
+                <input value={editing.label||''} onChange={e=>setEditing(p=>({...p, label:e.target.value}))} style={faxInputStyle()}/>
+              </FaxFld>
+            </div>
+
+            {/* Pricing — sell + cost side by side */}
+            <div style={{ background:'#f8fafc', border:'1px solid #e5e7eb', borderRadius:6, padding:10, marginBottom:10 }}>
+              <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#6b7280', marginBottom:8, letterSpacing:'.05em' }}>Pricing</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
+                <FaxFld label="Sell MRR ($)"><input type="number" step="0.01" min="0" value={editing.sell_mrr??0} onChange={e=>setEditing(p=>({...p, sell_mrr:e.target.value}))} style={faxInputStyle()}/></FaxFld>
+                <FaxFld label="Cost MRR ($)"><input type="number" step="0.01" min="0" value={editing.cost_mrr??0} onChange={e=>setEditing(p=>({...p, cost_mrr:e.target.value}))} style={faxInputStyle()}/></FaxFld>
+                <FaxFld label="Live GM %">
+                  <div style={{ padding:'5px 8px', fontSize:11, fontWeight:700, fontFamily:'DM Mono, monospace',
+                    color: parseFloat(editing.sell_mrr)>0 ? (((editing.sell_mrr-editing.cost_mrr)/editing.sell_mrr*100)>=50?'#065f46':((editing.sell_mrr-editing.cost_mrr)/editing.sell_mrr*100)>=25?'#92400e':'#991b1b') : '#9ca3af' }}>
+                    {parseFloat(editing.sell_mrr)>0 ? `${((editing.sell_mrr-editing.cost_mrr)/editing.sell_mrr*100).toFixed(0)}%` : '—'}
+                  </div>
+                </FaxFld>
+              </div>
+            </div>
+
+            {/* Included */}
+            <div style={{ background:'#f8fafc', border:'1px solid #e5e7eb', borderRadius:6, padding:10, marginBottom:10 }}>
+              <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#6b7280', marginBottom:8, letterSpacing:'.05em' }}>Included in base price</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
+                <FaxFld label="Users"><input type="number" min="0" value={editing.included_users??1} onChange={e=>setEditing(p=>({...p, included_users:e.target.value}))} style={faxInputStyle()}/></FaxFld>
+                <FaxFld label="Pages/mo (blank = unlimited / N-A)"><input type="number" min="0" value={editing.included_pages??''} onChange={e=>setEditing(p=>({...p, included_pages:e.target.value}))} style={faxInputStyle()}/></FaxFld>
+                <FaxFld label="DIDs"><input type="number" min="0" value={editing.included_dids??0} onChange={e=>setEditing(p=>({...p, included_dids:e.target.value}))} style={faxInputStyle()}/></FaxFld>
+              </div>
+            </div>
+
+            {/* Overage */}
+            <div style={{ background:'#f8fafc', border:'1px solid #e5e7eb', borderRadius:6, padding:10, marginBottom:10 }}>
+              <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#6b7280', marginBottom:8, letterSpacing:'.05em' }}>Per-page overage</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <FaxFld label="Overage Sell ($/page)"><input type="number" step="0.0001" min="0" value={editing.overage_sell_per_page??''} onChange={e=>setEditing(p=>({...p, overage_sell_per_page:e.target.value}))} style={faxInputStyle()}/></FaxFld>
+                <FaxFld label="Overage Cost ($/page)"><input type="number" step="0.0001" min="0" value={editing.overage_cost_per_page??0} onChange={e=>setEditing(p=>({...p, overage_cost_per_page:e.target.value}))} style={faxInputStyle()}/></FaxFld>
+              </div>
+            </div>
+
+            {/* Extras */}
+            <div style={{ background:'#f8fafc', border:'1px solid #e5e7eb', borderRadius:6, padding:10, marginBottom:10 }}>
+              <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#6b7280', marginBottom:8, letterSpacing:'.05em' }}>Per-extra add-ons</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:8 }}>
+                <FaxFld label="Extra User Sell ($/mo)"><input type="number" step="0.01" min="0" value={editing.extra_user_sell??''} onChange={e=>setEditing(p=>({...p, extra_user_sell:e.target.value}))} style={faxInputStyle()}/></FaxFld>
+                <FaxFld label="Extra User Cost ($/mo)"><input type="number" step="0.01" min="0" value={editing.extra_user_cost??0} onChange={e=>setEditing(p=>({...p, extra_user_cost:e.target.value}))} style={faxInputStyle()}/></FaxFld>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <FaxFld label="Extra DID Sell ($/mo)"><input type="number" step="0.01" min="0" value={editing.extra_did_sell??''} onChange={e=>setEditing(p=>({...p, extra_did_sell:e.target.value}))} style={faxInputStyle()}/></FaxFld>
+                <FaxFld label="Extra DID Cost ($/mo)"><input type="number" step="0.01" min="0" value={editing.extra_did_cost??0} onChange={e=>setEditing(p=>({...p, extra_did_cost:e.target.value}))} style={faxInputStyle()}/></FaxFld>
+              </div>
+            </div>
+
+            {/* Meta */}
+            <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:10, marginBottom:10 }}>
+              <FaxFld label="Description"><input value={editing.description||''} onChange={e=>setEditing(p=>({...p, description:e.target.value}))} style={faxInputStyle()}/></FaxFld>
+              <FaxFld label="Sort Order"><input type="number" value={editing.sort_order??999} onChange={e=>setEditing(p=>({...p, sort_order:e.target.value}))} style={faxInputStyle()}/></FaxFld>
+            </div>
+
+            <label style={{ display:'flex', alignItems:'center', gap:6, marginBottom:14, fontSize:11, color:'#374151', cursor:'pointer' }}>
+              <input type="checkbox" checked={!!editing.active} onChange={e=>setEditing(p=>({...p, active:e.target.checked}))}/>
+              Active (show in quote pickers)
+            </label>
+
+            {/* Footer */}
+            <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
+              <button onClick={()=>setEditing(null)}
+                style={{ padding:'7px 14px', background:'white', color:'#374151', border:'1px solid #d1d5db', borderRadius:5, fontSize:11, fontWeight:600, cursor:'pointer' }}>Cancel</button>
+              <button onClick={save} disabled={saving || !editing.package_key || !editing.label}
+                style={{ padding:'7px 14px', background:'#0891b2', color:'white', border:'none', borderRadius:5, fontSize:11, fontWeight:700, cursor: saving || !editing.package_key || !editing.label ? 'not-allowed' : 'pointer', opacity: saving || !editing.package_key || !editing.label ? 0.5 : 1 }}>
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Compact field wrapper for the fax package edit modal
+function FaxFld({ label, hint, children }) {
+  return (
+    <div>
+      <label style={{ display:'block', fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3, letterSpacing:'.03em' }}>{label}</label>
+      {children}
+      {hint && <div style={{ fontSize:8, color:'#9ca3af', marginTop:2 }}>{hint}</div>}
+    </div>
+  );
+}
+function faxInputStyle(disabled) {
+  return { width:'100%', padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none', background: disabled ? '#f3f4f6' : 'white', color: disabled ? '#9ca3af' : '#0f1e3c' };
 }

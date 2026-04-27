@@ -45,13 +45,42 @@ export function getRecommendedTier(seats, licenseType, settings) {
 }
 
 // ─── FAX PACKAGES ────────────────────────────────────────────────────────────
+// Fallback constant — used when DB rows aren't available (initial mount, error, etc.).
+// Cost values default to 0 here so margins reflect "unknown cost" rather than guessed cost.
+// Real values come from voice_fax_packages table via getFaxPackages(rows).
 export const FAX_PACKAGES = {
-  email_only: { label: 'Email-Only Fax',         price: 9.95,   users: 1,   pages: null, dids: 0, overage_page: null, extra_did: null, extra_user: null, desc: 'Fax to email only — no portal, no DID' },
-  solo:       { label: 'Virtual Fax — Solo',      price: 12.00,  users: 1,   pages: 50,   dids: 1, overage_page: 0.10, extra_did: null, extra_user: null, desc: '1 user · 50 pages/mo · 1 DID · $0.10/page overage' },
-  team:       { label: 'Virtual Fax — Team',      price: 29.00,  users: 5,   pages: 500,  dids: 1, overage_page: 0.08, extra_did: null, extra_user: null, desc: '5 users · 500 pages/mo · 1 DID · $0.08/page overage' },
-  business:   { label: 'Virtual Fax — Business',  price: 59.00,  users: 15,  pages: 1000, dids: 1, overage_page: 0.06, extra_did: 3.00, extra_user: 3.00, desc: '15 users · 1,000 pages/mo · 1 DID + $3/extra DID or user' },
-  infinity:   { label: 'Virtual Fax — Infinity',  price: 119.00, users: 50,  pages: 2500, dids: 1, overage_page: 0.05, extra_did: 2.00, extra_user: 2.00, desc: '50 users · 2,500 pages/mo · 1 DID + $2/extra DID or user' },
+  email_only: { label: 'Email-Only Fax',         price: 9.95,   cost: 0, users: 1,   pages: null, dids: 0, overage_page: null, overage_cost: 0, extra_did: null, extra_did_cost: 0, extra_user: null, extra_user_cost: 0, desc: 'Fax to email only — no portal, no DID' },
+  solo:       { label: 'Virtual Fax — Solo',      price: 12.00,  cost: 0, users: 1,   pages: 50,   dids: 1, overage_page: 0.10, overage_cost: 0, extra_did: null, extra_did_cost: 0, extra_user: null, extra_user_cost: 0, desc: '1 user · 50 pages/mo · 1 DID · $0.10/page overage' },
+  team:       { label: 'Virtual Fax — Team',      price: 29.00,  cost: 0, users: 5,   pages: 500,  dids: 1, overage_page: 0.08, overage_cost: 0, extra_did: null, extra_did_cost: 0, extra_user: null, extra_user_cost: 0, desc: '5 users · 500 pages/mo · 1 DID · $0.08/page overage' },
+  business:   { label: 'Virtual Fax — Business',  price: 59.00,  cost: 0, users: 15,  pages: 1000, dids: 1, overage_page: 0.06, overage_cost: 0, extra_did: 3.00, extra_did_cost: 0, extra_user: 3.00, extra_user_cost: 0, desc: '15 users · 1,000 pages/mo · 1 DID + $3/extra DID or user' },
+  infinity:   { label: 'Virtual Fax — Infinity',  price: 119.00, cost: 0, users: 50,  pages: 2500, dids: 1, overage_page: 0.05, overage_cost: 0, extra_did: 2.00, extra_did_cost: 0, extra_user: 2.00, extra_user_cost: 0, desc: '50 users · 2,500 pages/mo · 1 DID + $2/extra DID or user' },
 };
+
+// Convert voice_fax_packages DB rows into the same shape as the FAX_PACKAGES constant,
+// keyed by package_key. Falls back to the constant for any package_key not in the rows.
+export function getFaxPackages(dbRows) {
+  if (!Array.isArray(dbRows) || dbRows.length === 0) return FAX_PACKAGES;
+  const out = {};
+  for (const r of dbRows) {
+    if (!r.active) continue;
+    out[r.package_key] = {
+      label:           r.label,
+      price:           parseFloat(r.sell_mrr || 0),
+      cost:            parseFloat(r.cost_mrr || 0),
+      users:           parseInt(r.included_users || 1),
+      pages:           r.included_pages == null ? null : parseInt(r.included_pages),
+      dids:            parseInt(r.included_dids || 0),
+      overage_page:    r.overage_sell_per_page == null ? null : parseFloat(r.overage_sell_per_page),
+      overage_cost:    parseFloat(r.overage_cost_per_page || 0),
+      extra_user:      r.extra_user_sell == null ? null : parseFloat(r.extra_user_sell),
+      extra_user_cost: parseFloat(r.extra_user_cost || 0),
+      extra_did:       r.extra_did_sell  == null ? null : parseFloat(r.extra_did_sell),
+      extra_did_cost:  parseFloat(r.extra_did_cost  || 0),
+      desc:            r.description || '',
+    };
+  }
+  return Object.keys(out).length > 0 ? out : FAX_PACKAGES;
+}
 
 // ─── ATA MODELS ─────────────────────────────────────────────────────────────
 // Hardware + monthly fee are separate line items
@@ -87,7 +116,9 @@ export const YEALINK_MODELS = [
 export const BYOH_NOTE = 'Client-owned devices must be supported by 3CX. Ferrum will wipe and register each device at the applicable per-handset fee.';
 
 // ─── VOICE PRICING ENGINE ─────────────────────────────────────────────────────
-export function calcVoice(v, settings) {
+// `faxPackages` is optional — pass DB rows from voice_fax_packages for accurate cost.
+// When omitted, falls back to the FAX_PACKAGES constant ($0 cost = unknown margin).
+export function calcVoice(v, settings, faxPackages) {
   const s = settings || {};
   const taxRate  = parseFloat(s.voice_tax_estimate || 0.25);
   const hosting  = parseFloat(s.voice_hosting_cost || 24);   // AWS Lightsail base
@@ -228,21 +259,34 @@ export function calcVoice(v, settings) {
   // ── FAX ───────────────────────────────────────────────────────────────────
   // ── Virtual Fax Package ───────────────────────────────────────────────────
   if (v.faxType && v.faxType !== 'none') {
-    const fp = FAX_PACKAGES[v.faxType];
+    const faxCatalog = getFaxPackages(faxPackages);
+    const fp = faxCatalog[v.faxType];
     if (fp) {
       const faxUsers   = parseInt(v.faxUsers || 1);
       const faxDIDs    = parseInt(v.faxDIDs  || 1);
-      let faxMRR = fp.price;
+      let faxMRR  = fp.price;
+      let faxCost = fp.cost || 0;
 
-      // Extra users/DIDs beyond base package
-      const extraUsers = fp.extra_user && faxUsers > fp.users ? (faxUsers - fp.users) * fp.extra_user : 0;
-      const extraDIDs  = fp.extra_did  && faxDIDs  > fp.dids  ? (faxDIDs  - fp.dids)  * fp.extra_did  : 0;
-      faxMRR += extraUsers + extraDIDs;
+      // Extra users/DIDs beyond base package — sell + cost tracked separately
+      const extraUserCount = fp.extra_user && faxUsers > fp.users ? (faxUsers - fp.users) : 0;
+      const extraDIDCount  = fp.extra_did  && faxDIDs  > fp.dids  ? (faxDIDs  - fp.dids)  : 0;
+      const extraUsersSell = extraUserCount * (fp.extra_user || 0);
+      const extraDIDsSell  = extraDIDCount  * (fp.extra_did  || 0);
+      const extraUsersCost = extraUserCount * (fp.extra_user_cost || 0);
+      const extraDIDsCost  = extraDIDCount  * (fp.extra_did_cost  || 0);
+      faxMRR  += extraUsersSell + extraDIDsSell;
+      faxCost += extraUsersCost + extraDIDsCost;
 
-      lines.push({ label: fp.label, mrr: faxMRR, cost: faxMRR * 0.6, section: 'fax', desc: fp.desc });
-      mrr += faxMRR; costMrr += faxMRR * 0.6;
-      if (extraUsers > 0) lines.push({ label: `Fax Extra Users (${faxUsers - fp.users} × $${fp.extra_user})`, mrr: extraUsers, cost: extraUsers * 0.6, section: 'fax' });
-      if (extraDIDs  > 0) lines.push({ label: `Fax Extra DIDs (${faxDIDs - fp.dids} × $${fp.extra_did})`,    mrr: extraDIDs,  cost: extraDIDs  * 0.6, section: 'fax' });
+      lines.push({ label: fp.label, mrr: fp.price, cost: fp.cost || 0, section: 'fax', desc: fp.desc });
+      mrr += fp.price; costMrr += (fp.cost || 0);
+      if (extraUsersSell > 0) {
+        lines.push({ label: `Fax Extra Users (${extraUserCount} × $${fp.extra_user})`, mrr: extraUsersSell, cost: extraUsersCost, section: 'fax' });
+        mrr += extraUsersSell; costMrr += extraUsersCost;
+      }
+      if (extraDIDsSell > 0) {
+        lines.push({ label: `Fax Extra DIDs (${extraDIDCount} × $${fp.extra_did})`, mrr: extraDIDsSell, cost: extraDIDsCost, section: 'fax' });
+        mrr += extraDIDsSell; costMrr += extraDIDsCost;
+      }
       if (fp.overage_page) lines.push({ label: 'Fax Overage Rate', mrr: 0, cost: 0, section: 'fax', note: `$${fp.overage_page}/page over ${fp.pages} pages`, metered: true });
 
       if (false) { // placeholder so old ATA block closes cleanly

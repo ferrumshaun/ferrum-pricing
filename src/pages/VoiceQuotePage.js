@@ -4,7 +4,7 @@ import { supabase, logActivity } from '../lib/supabase';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 import { lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
-import { calcVoice, calcHybridMRR, getRecommendedTier, getCXTiers, getLightsailCost, getLightsailLabel, CX_TIERS, FAX_PACKAGES, ATA_MODELS, suggestFaxPackage, YEALINK_MODELS } from '../lib/voicePricing';
+import { calcVoice, calcHybridMRR, getRecommendedTier, getCXTiers, getLightsailCost, getLightsailLabel, CX_TIERS, FAX_PACKAGES, ATA_MODELS, suggestFaxPackage, YEALINK_MODELS, getFaxPackages } from '../lib/voicePricing';
 import { writeQuoteUrlToDeal, searchDeals, getDealFull, updateDealDescription } from '../lib/hubspot';
 import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
@@ -69,6 +69,7 @@ export default function VoiceQuotePage() {
   const [showLOA,              setShowLOA]              = useState(false);
   const [loaDocRecord,         setLoaDocRecord]         = useState(null);
   const [intlWaiverDocRecord,  setIntlWaiverDocRecord]  = useState(null);
+  const [faxPackagesDB,        setFaxPackagesDB]        = useState([]);
   const [voiceProgIncentive,   setVoiceProgIncentive]   = useState(null);
   const [pricingSnapshot, setPricingSnapshot] = useState(null);
   const [priceLockDate,   setPriceLockDate]   = useState(null);
@@ -106,6 +107,12 @@ export default function VoiceQuotePage() {
   useEffect(() => {
     supabase.from('profiles').select('id, full_name, email, commission_rate').order('full_name')
       .then(({ data }) => setTeamMembers(data || []));
+  }, []);
+
+  // ── Voice Fax Packages — DB-loaded once on mount, drives sell + cost ─────────
+  useEffect(() => {
+    supabase.from('voice_fax_packages').select('*').eq('active', true).order('sort_order')
+      .then(({ data }) => setFaxPackagesDB(data || []));
   }, []);
   useEffect(() => {
     if (!repId && profile?.id && !id) setRepId(profile.id);
@@ -177,7 +184,7 @@ export default function VoiceQuotePage() {
     if (!recipientBiz.trim()) { setSaveMsg('Please enter a client name.'); return; }
     setSaving(true); setSaveMsg('');
     const allInputs = { proposalName, recipientContact, recipientEmail, recipientAddress, hubspotDealName: hubDealName, voice: v };
-    const r = configLoading ? null : calcVoice(v, settings);
+    const r = configLoading ? null : calcVoice(v, settings, faxPackagesDB);
     const totals = r ? { finalMRR: r.finalMRR, nrc: r.nrc, gm: r.gm, estTax: r.estTax } : {};
     const payload = {
       client_name: recipientBiz, client_zip: clientZip,
@@ -230,7 +237,7 @@ export default function VoiceQuotePage() {
     if (!existingQuote) navigate(`/voice/${data.id}`, { replace: true });
   }
 
-  const result = configLoading ? null : calcVoice(v, settings);
+  const result = configLoading ? null : calcVoice(v, settings, faxPackagesDB);
 
   // Crossover analysis for hosted seats
   const crossover = v.quoteType === 'hosted' && v.seats > 0 && result
@@ -578,39 +585,62 @@ export default function VoiceQuotePage() {
             </Fld>
           </div>
 
-          {/* Step 2 — package picker with auto-suggested badge */}
+          {/* Step 2 — package picker with auto-suggested badge — DB-driven from voice_fax_packages */}
           <Fld lbl="Fax Package">
             <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-              {[{v:'none',l:'No Fax',p:null,d:''},
-                {v:'email_only',l:'Email-Only Fax',p:'$9.95/mo',d:'Fax to email only — no portal, no DID'},
-                {v:'solo',l:'Virtual Fax — Solo',p:'$12/mo',d:'1 user · 50 pages · 1 DID · $0.10/pg overage'},
-                {v:'team',l:'Virtual Fax — Team',p:'$29/mo',d:'5 users · 500 pages · 1 DID · $0.08/pg overage'},
-                {v:'business',l:'Virtual Fax — Business',p:'$59/mo',d:'15 users · 1,000 pages · +$3/extra DID or user'},
-                {v:'infinity',l:'Virtual Fax — Infinity',p:'$119/mo',d:'50 users · 2,500 pages · +$2/extra DID or user'},
-              ].map(opt => {
-                const suggested = opt.v !== 'none' && opt.v !== 'email_only' && suggestFaxPackage(v.faxUsers||1, v.faxDIDs||1) === opt.v;
-                const selected  = v.faxType === opt.v;
-                return (
-                  <div key={opt.v} onClick={()=>set('faxType',opt.v)}
-                    style={{ padding:'6px 8px', borderRadius:4, cursor:'pointer',
-                      border:`${selected?'2':'1'}px solid ${selected?'#0891b2':'#e5e7eb'}`,
-                      background:selected?'#ecfeff':'white',
-                      display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <div>
-                      <span style={{ fontSize:10, fontWeight:700, color:selected?'#0e7490':'#374151' }}>{opt.l}</span>
-                      {suggested && !selected && <span style={{ fontSize:8, marginLeft:5, padding:'1px 5px', background:'#d1fae5', color:'#065f46', borderRadius:3, fontWeight:700 }}>suggested</span>}
-                      {opt.d && <div style={{ fontSize:8, color:'#6b7280', marginTop:1 }}>{opt.d}</div>}
+              {(() => {
+                const faxCatalog = getFaxPackages(faxPackagesDB);
+                const opts = [{ v:'none', l:'No Fax', sell:null, cost:null, d:'' }];
+                Object.entries(faxCatalog).forEach(([key, pkg]) => {
+                  opts.push({ v:key, l:pkg.label, sell:pkg.price, cost:pkg.cost||0, d:pkg.desc });
+                });
+                return opts.map(opt => {
+                  const suggested = opt.v !== 'none' && opt.v !== 'email_only' && suggestFaxPackage(v.faxUsers||1, v.faxDIDs||1) === opt.v;
+                  const selected  = v.faxType === opt.v;
+                  const gm = opt.sell > 0 ? ((opt.sell - opt.cost) / opt.sell) * 100 : null;
+                  const gmColor = gm == null ? '#6b7280' : gm >= 50 ? '#065f46' : gm >= 25 ? '#92400e' : '#991b1b';
+                  return (
+                    <div key={opt.v} onClick={()=>set('faxType',opt.v)}
+                      style={{ padding:'6px 8px', borderRadius:4, cursor:'pointer',
+                        border:`${selected?'2':'1'}px solid ${selected?'#0891b2':'#e5e7eb'}`,
+                        background:selected?'#ecfeff':'white',
+                        display:'flex', justifyContent:'space-between', alignItems:'center', gap:6 }}>
+                      <div style={{ minWidth:0, flex:1 }}>
+                        <span style={{ fontSize:10, fontWeight:700, color:selected?'#0e7490':'#374151' }}>{opt.l}</span>
+                        {suggested && !selected && <span style={{ fontSize:8, marginLeft:5, padding:'1px 5px', background:'#d1fae5', color:'#065f46', borderRadius:3, fontWeight:700 }}>suggested</span>}
+                        {opt.d && <div style={{ fontSize:8, color:'#6b7280', marginTop:1 }}>{opt.d}</div>}
+                      </div>
+                      {opt.sell != null && (
+                        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', flexShrink:0, gap:1 }}>
+                          <span style={{ fontSize:9, fontFamily:'DM Mono, monospace', color:'#6b7280' }}>${opt.sell.toFixed(2)}/mo</span>
+                          {gm != null && (
+                            <span style={{ fontSize:8, fontFamily:'DM Mono, monospace', color:gmColor, fontWeight:700 }}>
+                              cost ${opt.cost.toFixed(2)} · {gm.toFixed(0)}% GM
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {opt.p && <span style={{ fontSize:9, fontFamily:'DM Mono, monospace', color:'#6b7280', flexShrink:0 }}>{opt.p}</span>}
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
           </Fld>
 
+          {/* $0 cost warning — visible on the selected package when cost hasn't been entered yet */}
+          {v.faxType && v.faxType !== 'none' && (() => {
+            const fp = getFaxPackages(faxPackagesDB)[v.faxType];
+            if (!fp || (fp.cost && fp.cost > 0)) return null;
+            return (
+              <div style={{ padding:'5px 8px', background:'#fef3c7', border:'1px solid #fde68a', borderRadius:4, fontSize:9, color:'#92400e', marginTop:4 }}>
+                ⚠ No cost configured for this package — gross margin will read as 100%. Set the wholesale cost in Admin → Voice Fax Packages.
+              </div>
+            );
+          })()}
+
           {/* Extra user/DID cost when over package limits */}
           {v.faxType && !['none','email_only','solo','team'].includes(v.faxType) && (() => {
-            const fp = FAX_PACKAGES[v.faxType];
+            const fp = getFaxPackages(faxPackagesDB)[v.faxType];
             const eu = fp?.extra_user && (v.faxUsers||1) > fp.users ? (v.faxUsers - fp.users) : 0;
             const ed = fp?.extra_did  && (v.faxDIDs||1)  > fp.dids  ? (v.faxDIDs  - fp.dids)  : 0;
             if (!eu && !ed) return null;

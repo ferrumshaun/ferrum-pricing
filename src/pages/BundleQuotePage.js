@@ -4,7 +4,7 @@ import { supabase, logActivity } from '../lib/supabase';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 import { calcQuote, lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
-import { calcVoice, calcBundleDiscount, YEALINK_MODELS, FAX_PACKAGES, CX_TIERS, getRecommendedTier } from '../lib/voicePricing';
+import { calcVoice, calcBundleDiscount, YEALINK_MODELS, FAX_PACKAGES, CX_TIERS, getRecommendedTier, getFaxPackages } from '../lib/voicePricing';
 import { writeQuoteUrlToDeal, searchDeals, getDealFull, updateDealDescription } from '../lib/hubspot';
 import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
@@ -50,6 +50,14 @@ export default function BundleQuotePage() {
   const location  = useLocation();
   const [showUnbundle, setShowUnbundle] = useState(false);
   const [unbundling,   setUnbundling]   = useState(false);
+  const [faxPackagesDB, setFaxPackagesDB] = useState([]);
+
+  // ── Voice Fax Packages — DB-loaded once on mount, drives sell + cost ─────────
+  useEffect(() => {
+    supabase.from('voice_fax_packages').select('*').eq('active', true).order('sort_order')
+      .then(({ data }) => setFaxPackagesDB(data || []));
+  }, []);
+
 
   // Shared client fields
   const [proposalName,     setProposalName]     = useState('');
@@ -280,7 +288,7 @@ export default function BundleQuotePage() {
   // Bundle discount based on IT contract term
   const contractTerm = itInputs.contractTerm;
   const voiceForCalc = { ...v, isManagedIT: false }; // calc voice without its own bundle discount
-  const voiceResult = configLoading ? null : calcVoice(voiceForCalc, settings);
+  const voiceResult = configLoading ? null : calcVoice(voiceForCalc, settings, faxPackagesDB);
   const bundle = voiceResult ? calcBundleDiscount(contractTerm, itBaseMRR, voiceResult.finalMRR) : null;
 
   // Free phones — apply to voice hardware if qualified
@@ -668,14 +676,25 @@ export default function BundleQuotePage() {
               <select value={v.faxType} onChange={e=>setVoice('faxType',e.target.value)}
                 style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:10, background:'white', outline:'none' }}>
                 <option value="none">No Fax</option>
-                <option value="email_only">Email-Only — $9.95/mo</option>
-                <option value="solo">Solo — $12/mo</option>
-                <option value="team">Team — $29/mo</option>
-                <option value="business">Business — $59/mo</option>
-                <option value="infinity">Infinity — $119/mo</option>
-                <option value="ata">ATA Device — $15/mo + $150</option>
+                {Object.entries(getFaxPackages(faxPackagesDB)).map(([key, pkg]) => (
+                  <option key={key} value={key}>{pkg.label} — ${pkg.price.toFixed(2)}/mo</option>
+                ))}
               </select>
             </Fld>
+            {/* Live GM display for the selected fax package */}
+            {v.faxType && v.faxType !== 'none' && (() => {
+              const fp = getFaxPackages(faxPackagesDB)[v.faxType];
+              if (!fp) return null;
+              const gm = fp.price > 0 ? ((fp.price - (fp.cost || 0)) / fp.price) * 100 : 0;
+              const gmCol = gm >= 50 ? '#065f46' : gm >= 25 ? '#92400e' : '#991b1b';
+              const noCost = !fp.cost || fp.cost === 0;
+              return (
+                <div style={{ marginTop:4, padding:'4px 7px', background: noCost ? '#fef3c7' : '#f0fdf4', border:`1px solid ${noCost ? '#fde68a' : '#a7f3d0'}`, borderRadius:4, fontSize:9, color: noCost ? '#92400e' : '#065f46', display:'flex', justifyContent:'space-between' }}>
+                  <span>Sell ${fp.price.toFixed(2)} · Cost ${(fp.cost||0).toFixed(2)}</span>
+                  <span style={{ fontWeight:700, color:gmCol }}>{gm.toFixed(0)}% GM{noCost ? ' (cost not set)' : ''}</span>
+                </div>
+              );
+            })()}
             <Tog on={v.callRecording} set={val=>setVoice('callRecording',val)} lbl="Call Recording" sub="$15/mo"/>
             <Tog on={v.smsEnabled} set={val=>setVoice('smsEnabled',val)} lbl="SMS/MMS" sub="10DLC + metered"/>
           </Sec>

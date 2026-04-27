@@ -1,5 +1,30 @@
 [
   {
+    "version": "3.4.6",
+    "date": "2026-04-27",
+    "summary": "Virtual Fax pricing — DB-backed sell + cost split, accurate gross margin on Voice and Bundle quotes",
+    "audience": "all",
+    "categories": {
+      "fixed": [
+        "calcVoice() in lib/voicePricing.js was computing fax cost as a hardcoded 60% of sell price (cost: faxMRR * 0.6) — every fax line on every voice and bundle quote had a fictional cost that distorted gross margin",
+        "Same 60% placeholder was applied to extra-user and extra-DID lines, compounding the error on Business and Infinity packages where extras are common"
+      ],
+      "new": [
+        "voice_fax_packages table — full sell + cost split per tier: sell_mrr, cost_mrr, included_users/pages/dids, overage_sell_per_page, overage_cost_per_page, extra_user_sell/cost, extra_did_sell/cost, description, sort_order, active. RLS read for all authed, write for admin only",
+        "Admin → Voice Fax Packages tab — full CRUD mirroring the Voice Hardware tab UX. Sell + cost columns side-by-side with live GM% in the row, edit modal with grouped sections (Pricing / Included / Overage / Extras), live GM% recalculates as cost is typed",
+        "Live cost + GM display on Voice quote fax picker — each option shows sell · cost · GM% next to the suggested badge so reps can see margin before clicking",
+        "Live cost + GM strip under Bundle quote fax selector — same shape as the 3CX/Lightsail breakdown already present on the seat configuration",
+        "$0 cost warning callout on quote pages when a fax package has been selected but its cost has not been configured — directs admins to Admin → Voice Fax Packages"
+      ],
+      "improved": [
+        "FAX_PACKAGES constant in lib/voicePricing.js retained as a fallback (now with cost: 0 defaults) when DB rows aren't yet loaded — quote pages stay functional during initial mount or DB error",
+        "calcVoice() signature extended to calcVoice(v, settings, faxPackages) — third arg optional, defaults to fallback constant. Existing callers without the third arg keep working",
+        "New getFaxPackages(dbRows) helper in voicePricing.js merges DB rows into the FAX_PACKAGES shape, keyed by package_key",
+        "Bundle quote fax picker is now driven from the same DB rows — adding or removing a package in Admin reflects immediately on both Voice and Bundle quotes without code changes"
+      ]
+    }
+  },
+  {
     "version": "3.4.5",
     "date": "2026-04-27",
     "summary": "International Dialing Waiver — status parity with LOA on Voice Documents panel",
