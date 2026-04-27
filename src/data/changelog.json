@@ -1,5 +1,87 @@
 [
   {
+    "version": "3.4.4",
+    "date": "2026-04-27",
+    "summary": "UX fixes \u2014 SPT button blue, product categories editable, voice LOA document card",
+    "audience": "all",
+    "categories": {
+      "fixed": [
+        "Smart Pricing Table S button was orange (#f97316) \u2014 now matches the blue (#2563eb) used in Admin \u2192 Integrations \u2192 Smart Pricing Table. Consistent across all quote pages",
+        "LOA document card in Voice Documents panel was missing its Open button \u2014 setShowLOA was never called. Card now correctly opens the LOA drawer",
+        "Product categories were hardcoded in AdminPage.js \u2014 'Cloud & Email Security', 'Endpoint Security', etc. with no way to add more without a code change"
+      ],
+      "new": [
+        "Product categories are now editable in Admin \u2192 Products \u2014 click \u2699 Categories button to expand the manager. Add new categories (Enter or click Add), remove existing ones with \u00d7. Sorted alphabetically, saved to pricing_settings",
+        "First load uses the hardcoded defaults. Any changes persist to the DB and load from there on all subsequent visits. Removing a category doesn't affect existing products"
+      ]
+    }
+  },
+  {
+    "version": "3.4.3",
+    "date": "2026-04-27",
+    "summary": "HubSpot quote URL write-back \u2014 field picker in Admin, auto-updates on every save",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Admin \u2192 Integrations \u2192 HubSpot: new Quote URL Field Mapping section. Click Load Fields to fetch all string/text deal properties from HubSpot, select the custom URL field, save \u2014 takes effect immediately",
+        "On every quote save, if a HubSpot deal is connected and the field is configured, the full Ferrum IQ quote URL is written to the selected deal property via HubSpot PATCH API",
+        "Works across all quote types: Managed IT (/quotes/), Voice (/voice/), Bundle (/bundle/), FlexIT (/flexIT/)",
+        "Anyone in HubSpot can click the URL field on the deal to open the quote directly in Ferrum IQ",
+        "Fails silently with console warning \u2014 never blocks a quote save if HubSpot write-back fails"
+      ]
+    }
+  },
+  {
+    "version": "3.4.2",
+    "date": "2026-04-27",
+    "summary": "MarketRateCard \u2014 fixed acceptance state persistence, yellow for non-baseline rates",
+    "audience": "all",
+    "categories": {
+      "fixed": [
+        "Race condition on saved quote load \u2014 getRateSheet() and loadAnalysis() fired in parallel. If loadAnalysis resolved last it would reset accepted=false, stomping the DB-restored accepted state. Fixed with a rateSheetChecked gate \u2014 loadAnalysis now waits for the DB check to complete before running. If a rate sheet exists, analysis never runs at all",
+        "Accepted state now persists correctly on all pages \u2014 IT, Voice, Bundle, FlexIT \u2014 when reopening a saved quote the card shows green ACCEPTED as expected"
+      ],
+      "new": [
+        "Yellow state \u2014 when market rates differ from baseline and haven't been accepted yet, the card shows a yellow border and \u26a0 RATES DIFFER FROM BASELINE \u2014 REVIEW badge",
+        "Three clear visual states: grey = baseline rates (no action needed), yellow = non-baseline or pending review, green = accepted and in use on the rate schedule"
+      ]
+    }
+  },
+  {
+    "version": "3.4.1",
+    "date": "2026-04-27",
+    "summary": "Signed documents upload to HubSpot \u2014 LOA and International Dialing Waiver",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "After a document is signed via SignWell, an orange '\u2197 Upload to HubSpot' button appears in the status panel (only visible when a HubSpot deal is connected)",
+        "One click: fetches signed PDF bytes from SignWell server-side, uploads to HubSpot Files API under /Ferrum IQ Signed Documents, creates a Note with file attachment on the deal",
+        "Works for both the International Dialing Waiver and the Letter of Authorization",
+        "Signed documents visible in HubSpot under Deal \u2192 Notes and Attachments tabs"
+      ]
+    }
+  },
+  {
+    "version": "3.4.0",
+    "date": "2026-04-27",
+    "summary": "Port Document Readiness \u2014 secure client upload portal, LOA + Invoice + CSR tracking",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Port Readiness Card added to Voice quote right column \u2014 appears automatically when portingNumbers > 0. Three-item checklist: LOA (from SignWell status), Phone Bill/Invoice, Customer Service Record (CSR). Shows green/red per item with a running count",
+        "Send Upload Link \u2014 rep enters client email and optional message, system generates a secure 7-day token and emails a branded link. Client receives a link with no login required",
+        "Public upload portal at /portal/upload/:token \u2014 branded Ferrum page, mobile-friendly, upload slots per document type, client can replace documents if wrong version uploaded",
+        "Secure token system \u2014 7-day expiring tokens stored in portal_upload_tokens table. Validates doc type, enforces 10MB file size limit, accepts PDF/Word/JPG/PNG/TIFF",
+        "Documents stored in Supabase Storage (port-documents bucket) \u2014 separate from general quote data, appropriate for legal porting artifacts",
+        "Rep notification email sent on each upload. Auto-marks token completed when all requested docs received",
+        "Per-document actions in Port Readiness Card: download via signed URL, sync to HubSpot deal (uploads file + creates attached note), delete/replace",
+        "HubSpot sync \u2014 uploads file to HubSpot Files API under /Ferrum IQ Signed Documents folder, creates a note with attachment on the deal",
+        "All three documents (LOA + Invoice + CSR) must be green before port submission to Telnyx/Skyetel \u2014 foundation for future port submission integration",
+        "supabase_port_documents.sql migration creates: port-documents storage bucket, port_documents table, portal_upload_tokens table. Requires SUPABASE_SERVICE_ROLE_KEY in Netlify env vars"
+      ]
+    }
+  },
+  {
     "version": "3.3.7",
     "date": "2026-04-27",
     "summary": "Bug fixes \u2014 voice quote blank screen, import errors, LOA document card",
