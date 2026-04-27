@@ -42,28 +42,43 @@ exports.handler = async (event) => {
   try {
     switch (action) {
 
-      // ── Create document FROM TEMPLATE (preferred) ──────────────────────────
-      // Template already has signature fields placed — just pass file + recipients
+      // ── Create document with auto signature page ──────────────────────────
+      // with_signature_page: true — SignWell appends its own signature page.
+      // signing_elements must still be present (as []) on each recipient.
       case 'createDocumentFromTemplate': {
-        const res = await fetch(`${BASE}/document_templates/${payload.templateId}/documents/`, {
+        const recipients = (payload.recipients || []).map(r => ({
+          id:               r.id,
+          name:             r.name,
+          email:            r.email,
+          signing_elements: [],
+        }));
+        const res = await fetch(`${BASE}/documents/`, {
           method: 'POST',
           headers,
           body: JSON.stringify({
-            test_mode:  payload.test_mode || false,
-            name:       payload.name,
-            subject:    payload.subject || payload.name,
-            message:    payload.message || 'Please review and sign the attached document.',
-            files:    payload.files,
-            signees:  payload.recipients,
+            test_mode:           payload.test_mode || false,
+            name:                payload.name,
+            subject:             payload.subject || payload.name,
+            message:             payload.message || 'Please review and sign the attached document.',
+            with_signature_page: true,
+            reminders:           true,
+            files:               payload.files,
+            recipients,
           }),
         });
         const data = await res.json();
-        if (!res.ok) console.error('SignWell template error:', JSON.stringify(data));
+        if (!res.ok) console.error('SignWell error:', JSON.stringify(data));
         return { statusCode: res.status, body: JSON.stringify(data) };
       }
 
-      // ── Create document (raw, no template) ───────────────────────────────
+      // ── Create document (raw) ─────────────────────────────────────────────
       case 'createDocument': {
+        const recipients = (payload.recipients || []).map(r => ({
+          id:               r.id,
+          name:             r.name,
+          email:            r.email,
+          signing_elements: r.signing_elements || [],
+        }));
         const res = await fetch(`${BASE}/documents/`, {
           method: 'POST',
           headers,
@@ -72,8 +87,8 @@ exports.handler = async (event) => {
             name:       payload.name,
             subject:    payload.subject || payload.name,
             message:    payload.message || 'Please review and sign the attached document.',
-            files:    payload.files,
-            signees:  payload.recipients,
+            files:      payload.files,
+            recipients,
           }),
         });
         const data = await res.json();
