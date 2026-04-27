@@ -169,9 +169,10 @@ function buildWaiverHtml({ contactName, entityName, title, tier, tierLabel, tier
 
       <div style="margin-bottom:14px;">
         <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:4px;">Date</div>
-        <div style="border-bottom:1px solid #374151; min-height:24px; padding-bottom:2px;">
-          <span style="color:white; background:white; display:inline-block; width:260px; height:26px; font-size:18px;">&nbsp;{{date}}</span>
+        <div style="font-size:12px; color:#374151; border-bottom:1px solid #374151; padding:4px 0 6px 0;">
+          ${today}
         </div>
+        <div style="font-size:8px; color:#9ca3af; margin-top:3px;">Exact signing date and time recorded in audit trail</div>
       </div>
     </td>
   </tr>
