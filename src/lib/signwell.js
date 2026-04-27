@@ -31,25 +31,22 @@ export async function sendIntlDialingWaiver({
 }) {
   const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-  // Page 1: waiver content as HTML
+  // Build waiver content as HTML (page 1)
   const waiverHtml    = buildWaiverHtml({ contactName, entityName, title, tier, tierLabel, tierDesc, today, quoteNumber });
   const base64Content = btoa(unescape(encodeURIComponent(waiverHtml)));
 
-  // Create document from template — template (page 2) has signature fields pre-placed
-  // The waiver content (page 1) is passed as the file; SignWell appends the template page
+  // with_signature_page: true tells SignWell to append its own signature page
+  // automatically — no template, no field coordinates needed
   const result = await swCall('createDocumentFromTemplate', {
-    templateId: templateId,
     test_mode:  testMode,
-    name:    `International Dialing Authorization — ${entityName}${quoteNumber ? ` (${quoteNumber})` : ''}`,
-    subject: `Action Required — International Dialing Authorization · ${entityName}`,
-    message: `Please review and sign the International Dialing Authorization for your Ferrum Technology Services account. This document enables ${tierLabel} on your hosted SIP trunk. By signing, you acknowledge and accept full financial responsibility for all international calling charges.`,
+    name:       `International Dialing Authorization — ${entityName}${quoteNumber ? ` (${quoteNumber})` : ''}`,
+    subject:    `Action Required — International Dialing Authorization · ${entityName}`,
+    message:    `Please review and sign the International Dialing Authorization for your Ferrum Technology Services account. This document enables ${tierLabel} on your hosted SIP trunk. By signing, you acknowledge and accept full financial responsibility for all international calling charges.`,
     files: [{
-      name:         'International_Dialing_Authorization.html',
-      file_base64:  base64Content,
+      name:        'International_Dialing_Authorization.html',
+      file_base64: base64Content,
     }],
-    recipients: [
-      { id: '1', name: contactName || clientName, email: clientEmail },
-    ],
+    recipients: [{ id: '1', name: contactName || clientName, email: clientEmail }],
   });
 
   return {

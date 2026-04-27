@@ -81,6 +81,14 @@ exports.handler = async (event) => {
         return { statusCode: res.status, body: JSON.stringify(data) };
       }
 
+      // ── Get template (to retrieve field IDs) ─────────────────────────────
+      case 'getTemplate': {
+        const res = await fetch(`${BASE}/document_templates/${payload.templateId}/`, { headers });
+        const data = await res.json();
+        if (!res.ok) console.error('SignWell getTemplate error:', JSON.stringify(data));
+        return { statusCode: res.status, body: JSON.stringify(data) };
+      }
+
       // ── Get document status ───────────────────────────────────────────────
       case 'getDocument': {
         const res = await fetch(`${BASE}/documents/${payload.documentId}/`, { headers });
