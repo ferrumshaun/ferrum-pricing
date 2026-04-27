@@ -30,7 +30,7 @@ export const RATE_UNITS = {
   pc_setup:          '/ea',
 };
 
-const STALE_MONTHS = 6;
+const STALE_MONTHS = 3;
 
 // ── Rate comparison rating ─────────────────────────────────────────────────
 export function getRating(ferrumRate, marketRate) {

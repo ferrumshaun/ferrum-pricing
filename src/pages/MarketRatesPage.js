@@ -131,7 +131,7 @@ function MarketRatesContent({ isAdmin }) {
         <div>
           <h2 style={{ fontSize: 14, fontWeight: 700, color: '#0f1e3c', margin: 0 }}>Market Intelligence</h2>
           <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
-            {markets.length} markets · {staleCount > 0 && <span style={{ color: '#d97706', fontWeight: 600 }}>{staleCount} stale (6+ months)</span>}
+            {markets.length} markets · {staleCount > 0 && <span style={{ color: '#d97706', fontWeight: 600 }}>{staleCount} stale (3+ months — refresh needed)</span>}
             {staleCount === 0 && markets.length > 0 && <span style={{ color: '#166534' }}>All analyses current</span>}
           </div>
         </div>

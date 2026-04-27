@@ -66,12 +66,35 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted }) 
     });
   }, [quoteId]);
 
-  // Trigger analysis when zip is ready
+  // Trigger analysis when zip is ready — only for new quotes (no quoteId)
+  // Saved quotes lock in their analysis; only refresh via explicit button or Market Intelligence tab
   useEffect(() => {
-    if (clientZip && clientZip.length >= 5 && !rateSheet) {
+    if (clientZip && clientZip.length >= 5 && !rateSheet && !quoteId) {
       loadAnalysis(false);
     }
   }, [clientZip]);
+
+  // For saved quotes with no rate sheet: load the stored DB analysis (no AI call)
+  useEffect(() => {
+    if (!clientZip || clientZip.length < 5 || rateSheet || !quoteId) return;
+    // Read from DB only — never trigger AI refresh automatically on a saved quote
+    (async () => {
+      setLoading(true);
+      try {
+        const { data } = await import('../lib/supabase').then(m =>
+          m.supabase.from('market_rate_analyses')
+            .select('*')
+            .or(`zip.eq.${clientZip},zip_codes.cs.{${clientZip}}`)
+            .maybeSingle()
+        );
+        if (data) {
+          setAnalysis(data);
+          setWorkingRates({ ...data.rates });
+        }
+      } catch {}
+      setLoading(false);
+    })();
+  }, [clientZip, quoteId, rateSheet]);
 
   async function handleRefresh() {
     setRefreshing(true);
