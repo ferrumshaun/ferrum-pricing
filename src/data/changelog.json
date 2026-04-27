@@ -1,5 +1,205 @@
 [
   {
+    "version": "3.3.7",
+    "date": "2026-04-27",
+    "summary": "Bug fixes \u2014 voice quote blank screen, import errors, LOA document card",
+    "audience": "all",
+    "categories": {
+      "fixed": [
+        "Voice quote blank screen \u2014 suggestFaxPackage and ATA_MODELS were used in JSX but missing from the import statement",
+        "LOA document card was missing Open button \u2014 setShowLOA was never called from the Documents panel. Card now appears when portingNumbers > 0",
+        "Previous voice page deploys were overwriting the import fix \u2014 consolidated into a single clean file"
+      ]
+    }
+  },
+  {
+    "version": "3.3.6",
+    "date": "2026-04-27",
+    "summary": "Voice quote \u2014 true cost model with 3CX licensing + AWS Lightsail, multi-term TCV",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Hosted Voice now auto-calculates true Ferrum costs: 3CX license (annual \u00f7 12 amortized) + AWS Lightsail instance cost (small/medium/large tier by seat count)",
+        "Cost breakdown shown inline in Seat Configuration: 3CX tier, Lightsail instance, total monthly cost, implied gross margin \u2014 updates live as you change seat count and sell price",
+        "Multi-term TCV strip: 12/24/36 month cards showing total contract value and gross margin for each term. Current contract term highlighted",
+        "3CX license tiers now configurable in Admin \u2192 Pricing Settings (cx_license_pro_8, cx_license_pro_16, etc.) \u2014 update when 3CX changes annual pricing without a code deploy",
+        "Lightsail instance tiers configurable: voice_lightsail_small ($24, \u226420 seats), voice_lightsail_medium ($48, \u226450 seats), voice_lightsail_large ($96, 51+ seats)",
+        "supabase_voice_costs.sql seeds all new settings keys"
+      ],
+      "fixed": [
+        "seatCost was defaulting to 0 \u2014 no 3CX or Lightsail cost was being applied to hosted voice quotes, making gross margin appear artificially high",
+        "CX_TIERS were hardcoded with no way to update license costs without a code change"
+      ]
+    }
+  },
+  {
+    "version": "3.3.5",
+    "date": "2026-04-27",
+    "summary": "Voice market tier on left, programming fee auto-computed, incentive component",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Market Tier section added to Voice quote left column \u2014 matches IT quote design with color-coded full-width rows per tier and pricing multiplier shown on right",
+        "market_tier now saves and restores on Voice quotes \u2014 was previously not persisted to the database",
+        "Programming & Configuration fee auto-computed from seats \u00d7 voice_programming_fee rate \u2014 no more manual entry",
+        "OnboardingIncentive component added to Voice programming fee \u2014 market-aware recommendations: major metro = full fee, mid market = split/modest discount, regional = 20-30% off, secondary/rural = 50-100% waive (competitors rarely charge setup in rural markets)"
+      ],
+      "fixed": [
+        "Manual programmingFee field removed from Contract & Status section",
+        "marketTiers not destructured from useConfig in Voice \u2014 caused crash when HubSpot connected a deal with a ZIP code",
+        "selectedMkt state missing from VoiceQuotePage \u2014 crashed onConnect handler before contact name/email could populate",
+        "MarketRateCard moved to right column (consistent with IT/Bundle) \u2014 was incorrectly placed in left column"
+      ]
+    }
+  },
+  {
+    "version": "3.3.4",
+    "date": "2026-04-27",
+    "summary": "Voice SMS/10DLC auto-required + call recording extended storage",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "SMS / 10DLC section moved up the card list \u2014 now its own dedicated section above call recording",
+        "SMS auto-enables when SMS-Enabled DIDs > 0 \u2014 toggle is locked on, cannot be disabled while SMS DIDs are active. Yellow warning badge in Numbers section when DIDs are set",
+        "Campaigns are now a named list (+ Add Campaign) \u2014 each has a description field (e.g. Customer Notifications, Marketing, Support) for 10DLC compliance documentation. Replaces simple count field",
+        "Call recording section separated from add-ons \u2014 base $35/mo includes 30-day retention",
+        "Extended recording retention selector: 30/60/90/180/365 days at $35/$50/$65/$110/$195/mo respectively. Base $35 + $15 per additional 30-day period"
+      ],
+      "fixed": [
+        "SMS toggle was in generic Add-ons section \u2014 separated into dedicated section for clarity"
+      ]
+    }
+  },
+  {
+    "version": "3.3.3",
+    "date": "2026-04-27",
+    "summary": "Voice fax & ATA redesign \u2014 package selector + separate ATA section",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Fax section rebuilt: enter fax users + DID numbers, system auto-suggests the right package with a green 'suggested' badge",
+        "Fax packages displayed as selectable rows (not dropdown) \u2014 name, price, and description visible at a glance",
+        "Extra user/DID charges calculated automatically when count exceeds package base (Business + Infinity tiers)",
+        "ATA Devices section completely separate from fax packages \u2014 add/remove individual ATA units each with model, quantity, hardware NRC, and monthly service fee",
+        "ATA model dropdown: Grandstream HT802/812/814/818 and BYOD ATA \u2014 hardware NRC and monthly fee pre-filled, fully editable per row",
+        "Running NRC and MRR totals shown at bottom of ATA section",
+        "ATA removed from fax packages list \u2014 fax packages now cover virtual fax only, ATAs are standalone"
+      ]
+    }
+  },
+  {
+    "version": "3.3.2",
+    "date": "2026-04-27",
+    "summary": "Letter of Authorization \u2014 number porting e-signature via SignWell",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Letter of Authorization (LOA) document in Voice Documents panel \u2014 appears automatically when portingNumbers > 0",
+        "LOA drawer collects: current carrier name, account number, billing name, account type (business/residential/wireless), wireless PIN if applicable, service address (pre-filled from quote), numbers to port (pre-filled from porting DID list)",
+        "Service address pre-populated from quote billing address with smart parsing",
+        "Important reminders callout in drawer: info must match phone bill exactly, no disconnect before port completes, no account changes, balance must be paid",
+        "Document includes Ferrum authorization statement, carrier account details, service address, full number list, DSL/alarm disclaimer, and SignWell signature block",
+        "Sends via SignWell same as International Dialing Waiver \u2014 client receives email link, signs electronically, audit trail stored",
+        "Admin \u2192 Integrations \u2192 SignWell now shows both Intl Dialing Waiver and LOA template ID fields (both configurable independently)",
+        "Document preview toggle shows full LOA before sending",
+        "Status tracking: Check Status, Send Reminder, Download Signed PDF buttons appear after sending"
+      ]
+    }
+  },
+  {
+    "version": "3.3.1",
+    "date": "2026-04-27",
+    "summary": "Voice quote \u2014 port fee label, toll-free rate override, porting DID list",
+    "audience": "all",
+    "categories": {
+      "fixed": [
+        "Numbers to Port label was hardcoded $25 \u2014 now reads voice_port_fee from Pricing Settings (correct value: $6)",
+        "Toll-free per-minute rate was display-only \u2014 added editable rate input with $0.019/min floor and contextual labels (Floor rate / Custom rate / Standard rate)",
+        "Pricing engine now uses tollFreePerMinRate override instead of the boolean flag"
+      ],
+      "new": [
+        "Porting DID list \u2014 when portingNumbers > 0, a callout section appears with a textarea for listing specific numbers to port (one per line). Stored on the quote and feeds directly into the LOA document",
+        "Validation warning shown if more numbers are entered than the port quantity"
+      ]
+    }
+  },
+  {
+    "version": "3.3.0",
+    "date": "2026-04-27",
+    "summary": "Voice hardware compatibility catalog \u2014 3CX BYOH validation",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Voice Hardware Catalog \u2014 Admin \u2192 Voice Hardware tab with full 3CX compatibility database pre-loaded (100+ devices from 3CX sip-phones page)",
+        "Four compatibility tiers: Preferred (green \u2014 Fanvil, Snom, Yealink current), Supported/Limited (amber \u2014 3rd party or EOL firmware), Legacy/Manual Config (orange \u2014 Cisco, Avaya, old Polycom), Not Compatible (red \u2014 not in database)",
+        "BYOH picker replaces free-form text entry \u2014 rep searches by manufacturer or model, dropdown shows compatibility badge, notes, firmware warnings, and auto-provisioning flag",
+        "Unverified devices (not in database) still addable but flagged red with explicit warning",
+        "Admin can add, edit, toggle active/inactive, or delete devices. Filter by category or search by name",
+        "Warnings shown at bottom of BYOH section when manual config or unverified devices are present"
+      ],
+      "fixed": [
+        "supabase_voice_hardware.sql migration ships with the release \u2014 run once in Supabase SQL Editor to seed the catalog"
+      ]
+    }
+  },
+  {
+    "version": "3.2.3",
+    "date": "2026-04-27",
+    "summary": "Market rate locking \u2014 saved quotes never auto-refresh, 3-month stale threshold",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Market rates now LOCK on saved quotes \u2014 opening a saved IT, Voice, or Bundle quote reads the existing DB analysis only. No AI call, no rate change. Rates stay at what was pulled when the quote was created",
+        "readOnly mode added to getOrAnalyzeMarket() \u2014 fifth parameter, passes through the entire call chain. Guaranteed no AI will fire in readOnly mode regardless of staleness",
+        "fallbackMarket prop on MarketRateCard \u2014 if no DB record exists for the quote's ZIP, the card builds a synthetic display from the locked market tier on the quote. Card never disappears"
+      ],
+      "improved": [
+        "STALE_MONTHS changed from 6 \u2192 3 months \u2014 market analyses are considered stale after 3 months. Market Intelligence tab shows updated badge: '3+ months \u2014 refresh needed'",
+        "MarketRateCard shows 'Rate locked' instead of epoch date (12/31/1969) when analyzed_at is null on fallback object",
+        "Stale badge suppressed when analyzed_at is null \u2014 fallback display objects are not incorrectly flagged as stale",
+        "MultiSiteQuotePage uses readOnly=true when loading saved quotes \u2014 per-location market analyses read DB only",
+        "getMarketByZip() now searches both the zip column AND the zip_codes array \u2014 previously only searched primary ZIP, causing misses for markets with multiple associated ZIPs (root cause of blank rates and epoch date on FIT-2026-1000)"
+      ],
+      "fixed": [
+        "MarketRateCard was re-fetching and potentially calling AI every time a saved quote was opened \u2014 clientZip being restored from saved data triggered the useEffect unconditionally",
+        "FIT-2026-1000 showing 12/31/1969 stale + blank rates \u2014 ZIP 61081 is a secondary ZIP in zip_codes array, not the primary zip column. getMarketByZip was returning null causing fallback synthetic object with no rates to display",
+        "Market Intelligence admin controls confirmed intact: per-market Refresh and Delete buttons, Analyze new market, stale badge at correct 3-month threshold"
+      ]
+    }
+  },
+  {
+    "version": "3.2.2",
+    "date": "2026-04-27",
+    "summary": "HubSpot Voice fixes \u2014 contact population and crash on connect",
+    "audience": "all",
+    "categories": {
+      "fixed": [
+        "marketTiers was not destructured from useConfig() in VoiceQuotePage \u2014 caused crash when HubSpot connected a deal with a ZIP code on file",
+        "selectedMkt state was missing entirely from VoiceQuotePage \u2014 setSelectedMkt() call in onConnect handler crashed mid-execution, preventing contact name and email from populating",
+        "Contact Name and Contact Email now populate correctly from HubSpot on Voice quotes \u2014 these were blank because the onConnect handler was crashing before reaching those lines",
+        "All 15 state setters in Voice onConnect handler audited and verified \u2014 no further undeclared state variables"
+      ]
+    }
+  },
+  {
+    "version": "3.2.1",
+    "date": "2026-04-27",
+    "summary": "Hosted Voice \u2014 Assumptions & Exclusions document + out-of-scope rate schedule",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Voice Assumptions & Exclusions modal \u2014 voice-specific document separate from Managed IT assumptions. Covers: customer story/discovery notes, current provider, why switching, seats/DIDs/locations, number porting (none/partial/full with DID list), feature flags (auto-attendant, voicemail, call recording), fax lines, internet notes, hardware notes, current PBX type, network/firewall notes, compliance requirements (HIPAA/SOC2, PCI/CMMC)",
+        "10 pre-populated standard voice exclusions: end-user training, cabling, internet connectivity, third-party integrations, number porting limits, international calling, on-site support, off-scope config changes, hardware procurement, fax beyond agreed scope",
+        "Out-of-scope rate schedule added to Voice Documents panel \u2014 same market-adjusted T&M rate card as IT/Bundle/FlexIT quotes. Applies to all labor outside contracted voice scope",
+        "Voice Documents panel now shows three cards in order: Out-of-Scope Rate Schedule, Assumptions & Exclusions, International Dialing Waiver",
+        "Bundle strategy: IT assumptions and Voice assumptions are permanently separate documents \u2014 each quote type owns its own. Bundle will stack both independently"
+      ],
+      "improved": [
+        "Voice quote fetches market_rate_analyses on ZIP entry to power the rate sheet \u2014 synthetic fallback built from selectedMkt if no DB record exists"
+      ]
+    }
+  },
+  {
     "version": "3.2.0",
     "date": "2026-04-27",
     "summary": "SignWell e-signature integration \u2014 International Dialing Waiver",
@@ -26,63 +226,6 @@
         "SignWell was rejecting requests due to wrong field names (signees vs recipients, fields vs signing_elements, [[]] vs {{}} text tag format)",
         "Documents going to drafts instead of sending \u2014 signing_elements:[] was overriding text tags; removed, replaced with with_signature_page then text_tags approach",
         "draft:false added explicitly to ensure documents send immediately"
-      ]
-    }
-  },
-  {
-    "version": "3.2.1",
-    "date": "2026-04-27",
-    "summary": "Hosted Voice \u2014 Assumptions & Exclusions document + out-of-scope rate schedule",
-    "audience": "all",
-    "categories": {
-      "new": [
-        "Voice Assumptions & Exclusions modal \u2014 voice-specific document separate from Managed IT assumptions. Covers: customer story/discovery notes, current provider, why switching, seats/DIDs/locations, number porting (none/partial/full with DID list), feature flags (auto-attendant, voicemail, call recording), fax lines, internet notes, hardware notes, current PBX type, network/firewall notes, compliance requirements (HIPAA/SOC2, PCI/CMMC)",
-        "10 pre-populated standard voice exclusions: end-user training, cabling, internet connectivity, third-party integrations, number porting limits, international calling, on-site support, off-scope config changes, hardware procurement, fax beyond agreed scope",
-        "Out-of-scope rate schedule added to Voice Documents panel \u2014 same market-adjusted T&M rate card as IT/Bundle/FlexIT quotes. Applies to all labor outside contracted voice scope",
-        "Voice Documents panel now shows three cards in order: Out-of-Scope Rate Schedule, Assumptions & Exclusions, International Dialing Waiver",
-        "Bundle strategy: IT assumptions and Voice assumptions are permanently separate documents \u2014 each quote type owns its own. Bundle will stack both independently"
-      ],
-      "improved": [
-        "Voice quote fetches market_rate_analyses on ZIP entry to power the rate sheet \u2014 synthetic fallback built from selectedMkt if no DB record exists"
-      ]
-    }
-  },
-  {
-    "version": "3.2.2",
-    "date": "2026-04-27",
-    "summary": "HubSpot Voice fixes \u2014 contact population and crash on connect",
-    "audience": "all",
-    "categories": {
-      "fixed": [
-        "marketTiers was not destructured from useConfig() in VoiceQuotePage \u2014 caused crash when HubSpot connected a deal with a ZIP code on file",
-        "selectedMkt state was missing entirely from VoiceQuotePage \u2014 setSelectedMkt() call in onConnect handler crashed mid-execution, preventing contact name and email from populating",
-        "Contact Name and Contact Email now populate correctly from HubSpot on Voice quotes \u2014 these were blank because the onConnect handler was crashing before reaching those lines",
-        "All 15 state setters in Voice onConnect handler audited and verified \u2014 no further undeclared state variables"
-      ]
-    }
-  },
-  {
-    "version": "3.2.3",
-    "date": "2026-04-27",
-    "summary": "Market rate locking \u2014 saved quotes never auto-refresh, 3-month stale threshold",
-    "audience": "all",
-    "categories": {
-      "new": [
-        "Market rates now LOCK on saved quotes \u2014 opening a saved IT, Voice, or Bundle quote reads the existing DB analysis only. No AI call, no rate change. Rates stay at what was pulled when the quote was created",
-        "readOnly mode added to getOrAnalyzeMarket() \u2014 fifth parameter, passes through the entire call chain. Guaranteed no AI will fire in readOnly mode regardless of staleness",
-        "fallbackMarket prop on MarketRateCard \u2014 if no DB record exists for the quote's ZIP, the card builds a synthetic display from the locked market tier on the quote. Card never disappears"
-      ],
-      "improved": [
-        "STALE_MONTHS changed from 6 \u2192 3 months \u2014 market analyses are considered stale after 3 months. Market Intelligence tab shows updated badge: '3+ months \u2014 refresh needed'",
-        "MarketRateCard shows 'Rate locked' instead of epoch date (12/31/1969) when analyzed_at is null on fallback object",
-        "Stale badge suppressed when analyzed_at is null \u2014 fallback display objects are not incorrectly flagged as stale",
-        "MultiSiteQuotePage uses readOnly=true when loading saved quotes \u2014 per-location market analyses read DB only",
-        "getMarketByZip() now searches both the zip column AND the zip_codes array \u2014 previously only searched primary ZIP, causing misses for markets with multiple associated ZIPs (root cause of blank rates and epoch date on FIT-2026-1000)"
-      ],
-      "fixed": [
-        "MarketRateCard was re-fetching and potentially calling AI every time a saved quote was opened \u2014 clientZip being restored from saved data triggered the useEffect unconditionally",
-        "FIT-2026-1000 showing 12/31/1969 stale + blank rates \u2014 ZIP 61081 is a secondary ZIP in zip_codes array, not the primary zip column. getMarketByZip was returning null causing fallback synthetic object with no rates to display",
-        "Market Intelligence admin controls confirmed intact: per-market Refresh and Delete buttons, Analyze new market, stale badge at correct 3-month threshold"
       ]
     }
   },
