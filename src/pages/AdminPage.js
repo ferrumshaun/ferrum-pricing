@@ -4,7 +4,7 @@ import { BASE_RATES, RATE_LABELS, RATE_UNITS, getRating, isStale, getOrAnalyzeMa
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 
-const TABS = ['Products', 'Packages', 'Market Tiers', 'Pricing Settings', 'Voice Hardware', 'Voice Fax Packages', 'Users', 'Integrations'];
+const TABS = ['IT & Security Products', 'Managed IT Packages', 'Market Tiers', 'Pricing Settings', 'Voice Hardware', 'Voice Fax Packages', 'Users', 'Integrations'];
 
 const QTY_DRIVERS = ['user','mailbox','workstation','location','server','flat','mixed','mobile_device'];
 // Product categories are stored in pricing_settings key 'product_categories'
@@ -15,7 +15,7 @@ const DEFAULT_CATEGORIES = [
 ];
 
 export default function AdminPage() {
-  const [tab, setTab] = useState('Products');
+  const [tab, setTab] = useState('IT & Security Products');
   const [reloading, setReloading] = useState(false);
   const { reload } = useConfig();
 
@@ -42,8 +42,8 @@ export default function AdminPage() {
         </button>
       </div>
       <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-        {tab === 'Products'         && <ProductsAdmin />}
-        {tab === 'Packages'         && <PackagesAdmin />}
+        {tab === 'IT & Security Products' && <ProductsAdmin />}
+        {tab === 'Managed IT Packages'    && <PackagesAdmin />}
         {tab === 'Market Tiers'     && <MarketTiersAdmin />}
         {tab === 'Voice Hardware'    && <VoiceHardwareAdmin />}
         {tab === 'Voice Fax Packages'&& <VoiceFaxPackagesAdmin />}
@@ -265,14 +265,16 @@ function ProductsAdmin() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div>
-          <h2 style={{ fontSize: 14, fontWeight: 700, color: '#0f1e3c' }}>Products & Services</h2>
-          <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Manage all add-on products, sell prices, and costs</p>
+          <h2 style={{ fontSize: 14, fontWeight: 700, color: '#0f1e3c' }}>IT & Security Products</h2>
+          <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Add-on products for Managed IT and Bundle quotes — sell prices, costs, and per-product flags. Voice hardware and fax packages are managed separately under their own tabs.</p>
         </div>
-        <button onClick={startNew} style={{ padding: '6px 14px', background: '#0f1e3c', color: 'white', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600 }}>+ Add Product</button>
-        <button onClick={() => setShowCatMgr(m => !m)}
-          style={{ padding:'6px 12px', background:'white', border:'1px solid #d1d5db', borderRadius:5, fontSize:11, fontWeight:600, cursor:'pointer', color:'#374151' }}>
-          ⚙ Categories ({categories.length})
-        </button>
+        <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
+          <button onClick={() => setShowCatMgr(m => !m)}
+            style={{ padding:'6px 12px', background:'white', border:'1px solid #d1d5db', borderRadius:5, fontSize:11, fontWeight:600, cursor:'pointer', color:'#374151' }}>
+            ⚙ Categories ({categories.length})
+          </button>
+          <button onClick={startNew} style={{ padding: '6px 14px', background: '#0f1e3c', color: 'white', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor:'pointer' }}>+ Add Product</button>
+        </div>
       </div>
       {/* Category manager */}
       {showCatMgr && (

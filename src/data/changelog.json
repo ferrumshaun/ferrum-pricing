@@ -1,5 +1,19 @@
 [
   {
+    "version": "3.4.7",
+    "date": "2026-04-27",
+    "summary": "Admin page UX cleanup — clearer IT vs Voice product separation",
+    "audience": "all",
+    "categories": {
+      "improved": [
+        "Renamed Admin tab Products → IT & Security Products to make clear it does not contain voice catalog items (voice hardware and fax packages live under their own dedicated tabs)",
+        "Renamed Admin tab Packages → Managed IT Packages to align with the IT & Security naming and prevent confusion with Voice Fax Packages",
+        "Updated the IT & Security Products tab header subtitle from generic 'Manage all add-on products' to a clarifying explanation: 'Add-on products for Managed IT and Bundle quotes — sell prices, costs, and per-product flags. Voice hardware and fax packages are managed separately under their own tabs.'",
+        "Fixed the + Add Product button alignment on the IT & Security Products tab — it was floating in the middle of the screen because the flex container was distributing three direct children equally. Now both the + Add Product and ⚙ Categories buttons are grouped on the right side, with Categories appearing first (less prominent) and Add Product as the primary action on the far right"
+      ]
+    }
+  },
+  {
     "version": "3.4.6",
     "date": "2026-04-27",
     "summary": "Virtual Fax pricing — DB-backed sell + cost split, accurate gross margin on Voice and Bundle quotes",
