@@ -42,21 +42,22 @@ exports.handler = async (event) => {
   try {
     switch (action) {
 
-      // ── Create document with auto signature page ──────────────────────────
-      // with_signature_page: true — SignWell appends its own signature page.
-      // signing_elements must still be present (as []) on each recipient.
+      // ── Create document with text tags ────────────────────────────────────
+      // text_tags:true means [[sig|1]] / [[date|1]] in the HTML define fields.
+      // Do NOT pass signing_elements — it overrides text tags and causes drafts.
+      // draft:false ensures the email is sent immediately.
       case 'createDocumentFromTemplate': {
         const recipients = (payload.recipients || []).map(r => ({
-          id:               r.id,
-          name:             r.name,
-          email:            r.email,
-          signing_elements: [],
+          id:    r.id,
+          name:  r.name,
+          email: r.email,
         }));
         const res = await fetch(`${BASE}/documents/`, {
           method: 'POST',
           headers,
           body: JSON.stringify({
             test_mode:  payload.test_mode || false,
+            draft:      false,
             name:       payload.name,
             subject:    payload.subject || payload.name,
             message:    payload.message || 'Please review and sign the attached document.',
