@@ -4,7 +4,7 @@ import { supabase, logActivity } from '../lib/supabase';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 import { lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
-import { calcVoice, calcHybridMRR, getRecommendedTier, CX_TIERS, FAX_PACKAGES, ATA_MODELS, suggestFaxPackage, YEALINK_MODELS } from '../lib/voicePricing';
+import { calcVoice, calcHybridMRR, getRecommendedTier, getCXTiers, getLightsailCost, getLightsailLabel, CX_TIERS, FAX_PACKAGES, ATA_MODELS, suggestFaxPackage, YEALINK_MODELS } from '../lib/voicePricing';
 import { searchDeals, getDealFull, updateDealDescription } from '../lib/hubspot';
 import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
@@ -379,6 +379,40 @@ export default function VoiceQuotePage() {
                 <Fld lbl="Billable Seats" sub="humans only"><NI v={v.seats} s={val=>set('seats',val)}/></Fld>
                 <Fld lbl="Sell Price / Seat ($)"><NI v={v.seatPrice} s={val=>set('seatPrice',val)}/></Fld>
               </Grid2>
+              {v.seats > 0 && settings && (
+                <div style={{ marginTop:6, padding:'6px 9px', background:'#f0f9ff', border:'1px solid #bae6fd', borderRadius:4, fontSize:9, color:'#0369a1' }}>
+                  <div style={{ fontWeight:700, marginBottom:3 }}>Ferrum Cost Breakdown (auto-calculated)</div>
+                  {(() => {
+                    const tier = getRecommendedTier(v.seats, v.licenseType||'pro', settings);
+                    const lsCost = getLightsailCost(v.seats, settings);
+                    const cxMo = tier ? tier.annual_cost / 12 : 0;
+                    const totalCost = cxMo + lsCost;
+                    const margin = v.seatPrice > 0 ? 1 - (totalCost / (v.seats * v.seatPrice)) : null;
+                    return (
+                      <div>
+                        <div style={{ display:'flex', justifyContent:'space-between' }}>
+                          <span>3CX {tier?.label} (${ tier?.annual_cost || 0}/yr ÷ 12)</span>
+                          <span style={{ fontFamily:'DM Mono, monospace' }}>${cxMo.toFixed(2)}/mo</span>
+                        </div>
+                        <div style={{ display:'flex', justifyContent:'space-between' }}>
+                          <span>{getLightsailLabel(v.seats, settings)}</span>
+                          <span style={{ fontFamily:'DM Mono, monospace' }}>${lsCost}/mo</span>
+                        </div>
+                        <div style={{ display:'flex', justifyContent:'space-between', fontWeight:700, borderTop:'1px solid #bae6fd', marginTop:3, paddingTop:3 }}>
+                          <span>Total Ferrum Cost</span>
+                          <span style={{ fontFamily:'DM Mono, monospace' }}>${totalCost.toFixed(2)}/mo</span>
+                        </div>
+                        {margin !== null && (
+                          <div style={{ display:'flex', justifyContent:'space-between', color: margin >= 0.4 ? '#065f46' : margin >= 0.25 ? '#92400e' : '#991b1b', fontWeight:700, marginTop:2 }}>
+                            <span>Implied Gross Margin</span>
+                            <span style={{ fontFamily:'DM Mono, monospace' }}>{(margin*100).toFixed(1)}%</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </Sec>
 
             <Sec t="Non-Billable Devices" c="#6b7280">
@@ -1024,6 +1058,29 @@ export default function VoiceQuotePage() {
                       <span style={{ fontSize:13, fontWeight:700, fontFamily:'DM Mono, monospace', color:gc }}>{fmtPct(result.gm)}</span>
                     </div>
                     {result.gm < 0.35 && <div style={{ marginTop:4, fontSize:9, color:'#92400e', background:'#fef3c7', padding:'3px 5px', borderRadius:3 }}>⚠ Below 35% — review pricing.</div>}
+                  </div>
+
+                  {/* Multi-term Contract Value */}
+                  <div style={{ background:'white', borderRadius:6, border:'1px solid #e5e7eb', padding:11 }}>
+                    <div style={{ fontSize:10, fontWeight:700, color:'#374151', marginBottom:8 }}>Contract Value by Term</div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6 }}>
+                      {[12, 24, 36].map(term => {
+                        const tcv = result.finalMRR * term + result.nrc;
+                        const costTcv = result.totalCost * term + result.nrc;
+                        const termGM = tcv > 0 ? 1 - (costTcv / tcv) : 0;
+                        return (
+                          <div key={term} style={{ padding:'7px 8px', background: (v.contractTerm||12)===term?'#f0f4ff':'#f8fafc', borderRadius:4, border:`1px solid ${(v.contractTerm||12)===term?'#c7d2fe':'#e5e7eb'}` }}>
+                            <div style={{ fontSize:8, fontWeight:700, color:'#6b7280', textTransform:'uppercase', marginBottom:3 }}>{term}mo</div>
+                            <div style={{ fontSize:11, fontWeight:700, fontFamily:'DM Mono, monospace', color:'#0f1e3c' }}>${tcv.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+                            <div style={{ fontSize:8, color:'#9ca3af', marginTop:1 }}>TCV</div>
+                            <div style={{ fontSize:8, color: termGM>=0.40?'#166534':termGM>=0.30?'#92400e':'#991b1b', fontWeight:600, marginTop:2 }}>{(termGM*100).toFixed(1)}% GM</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ fontSize:8, color:'#9ca3af', marginTop:6 }}>
+                      TCV = MRR × term + NRC · includes 3CX license + Lightsail hosting costs in margin
+                    </div>
                   </div>
 
                   {/* International dialing policy */}

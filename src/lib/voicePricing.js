@@ -2,17 +2,46 @@
 // Handles Hosted Seats, Hybrid Hosting, and SIP Trunking quote types
 
 // ─── 3CX LICENSE TIERS ───────────────────────────────────────────────────────
-export const CX_TIERS = [
-  { id: 'pro_8',   label: '3CX Pro — 8 Paths',   paths: 8,  ext_min: 1,   ext_max: 40,  annual_cost: 395,  type: 'pro' },
-  { id: 'pro_16',  label: '3CX Pro — 16 Paths',  paths: 16, ext_min: 41,  ext_max: 80,  annual_cost: 795,  type: 'pro' },
-  { id: 'pro_24',  label: '3CX Pro — 24 Paths',  paths: 24, ext_min: 81,  ext_max: 120, annual_cost: 1095, type: 'pro' },
-  { id: 'ent_8',   label: '3CX Enterprise — 8 Paths',  paths: 8,  ext_min: 1,   ext_max: 40,  annual_cost: 575,  type: 'enterprise' },
-  { id: 'ent_16',  label: '3CX Enterprise — 16 Paths', paths: 16, ext_min: 41,  ext_max: 80,  annual_cost: 1095, type: 'enterprise' },
-  { id: 'ent_24',  label: '3CX Enterprise — 24 Paths', paths: 24, ext_min: 81,  ext_max: 120, annual_cost: 1495, type: 'enterprise' },
+// Base tiers — costs are overridable via pricing_settings
+const CX_TIERS_BASE = [
+  { id: 'pro_8',   label: '3CX Pro — 8 Paths',          paths: 8,  ext_min: 1,   ext_max: 40,  annual_cost: 395,  type: 'pro' },
+  { id: 'pro_16',  label: '3CX Pro — 16 Paths',         paths: 16, ext_min: 41,  ext_max: 80,  annual_cost: 795,  type: 'pro' },
+  { id: 'pro_24',  label: '3CX Pro — 24 Paths',         paths: 24, ext_min: 81,  ext_max: 120, annual_cost: 1095, type: 'pro' },
+  { id: 'ent_8',   label: '3CX Enterprise — 8 Paths',   paths: 8,  ext_min: 1,   ext_max: 40,  annual_cost: 575,  type: 'enterprise' },
+  { id: 'ent_16',  label: '3CX Enterprise — 16 Paths',  paths: 16, ext_min: 41,  ext_max: 80,  annual_cost: 1095, type: 'enterprise' },
+  { id: 'ent_24',  label: '3CX Enterprise — 24 Paths',  paths: 24, ext_min: 81,  ext_max: 120, annual_cost: 1495, type: 'enterprise' },
 ];
 
-export function getRecommendedTier(seats, licenseType) {
-  return CX_TIERS.find(t => t.type === licenseType && seats <= t.ext_max) || CX_TIERS.filter(t => t.type === licenseType).slice(-1)[0];
+// Returns tiers with costs overridden from pricing_settings when available
+export function getCXTiers(settings) {
+  const s = settings || {};
+  return CX_TIERS_BASE.map(t => ({
+    ...t,
+    annual_cost: parseFloat(s[`cx_license_${t.id}`] || t.annual_cost),
+  }));
+}
+
+// Static export for components that don't have settings yet
+export const CX_TIERS = CX_TIERS_BASE;
+
+// Lightsail instance tiers by seat count
+export function getLightsailCost(seats, settings) {
+  const s = settings || {};
+  if (seats <= 20)  return parseFloat(s.voice_lightsail_small  || 24);
+  if (seats <= 50)  return parseFloat(s.voice_lightsail_medium || 48);
+  return parseFloat(s.voice_lightsail_large || 96);
+}
+
+export function getLightsailLabel(seats, settings) {
+  const s = settings || {};
+  if (seats <= 20)  return `Lightsail Small (≤20 seats) — $${parseFloat(s.voice_lightsail_small||24)}/mo`;
+  if (seats <= 50)  return `Lightsail Medium (≤50 seats) — $${parseFloat(s.voice_lightsail_medium||48)}/mo`;
+  return `Lightsail Large (50+ seats) — $${parseFloat(s.voice_lightsail_large||96)}/mo`;
+}
+
+export function getRecommendedTier(seats, licenseType, settings) {
+  const tiers = getCXTiers(settings);
+  return tiers.find(t => t.type === licenseType && seats <= t.ext_max) || tiers.filter(t => t.type === licenseType).slice(-1)[0];
 }
 
 // ─── FAX PACKAGES ────────────────────────────────────────────────────────────
@@ -80,13 +109,33 @@ export function calcVoice(v, settings) {
   if (v.quoteType === 'hosted') {
     const seats     = v.seats || 0;
     const seatPrice = parseFloat(v.seatPrice || 0);
-    const seatCost  = parseFloat(v.seatCost  || 0);
     const seatMRR   = seats * seatPrice;
-    const seatCostMRR = seats * seatCost;
+
+    // 3CX license cost — amortized monthly from annual cost for appropriate tier
+    const cxTiers   = getCXTiers(s);
+    const licType   = v.licenseType || 'pro';
+    const cxTier    = cxTiers.find(t => t.type === licType && seats <= t.ext_max)
+                   || cxTiers.filter(t => t.type === licType).slice(-1)[0];
+    const cxMonthly = cxTier ? cxTier.annual_cost / 12 : 0;
+
+    // Lightsail hosting cost (instance scaled by seat count)
+    const lsCost    = getLightsailCost(seats, s);
+
+    // Total Ferrum cost for hosted voice
+    const hostedCostMRR = cxMonthly + lsCost;
+    const seatCostMRR   = hostedCostMRR; // total cost to deliver hosted voice
+
     if (seatMRR > 0) {
-      lines.push({ label: `${v.licenseType === 'enterprise' ? 'Enterprise' : 'Pro'} Seats (${seats} × $${seatPrice})`, mrr: seatMRR, cost: seatCostMRR, section: 'seats' });
+      lines.push({ label: `${licType === 'enterprise' ? '3CX Enterprise' : '3CX Pro'} Hosted Seats (${seats} × $${seatPrice})`, mrr: seatMRR, cost: seatCostMRR, section: 'seats' });
       mrr += seatMRR; costMrr += seatCostMRR;
     }
+
+    // Show cost breakdown as sub-lines (cost only, no MRR)
+    if (cxTier) {
+      lines.push({ label: `↳ ${cxTier.label} License ($${cxTier.annual_cost}/yr ÷ 12)`, mrr: 0, cost: cxMonthly, section: 'seats', costOnly: true,
+        note: `$${cxMonthly.toFixed(2)}/mo amortized · renews annually` });
+    }
+    lines.push({ label: `↳ ${getLightsailLabel(seats, s)}`, mrr: 0, cost: lsCost, section: 'seats', costOnly: true });
 
     // Free devices — $0 line items for transparency
     const freeDevices = [
