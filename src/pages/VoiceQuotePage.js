@@ -13,6 +13,7 @@ import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
 import IntlDialingWaiver       from '../components/IntlDialingWaiver';
 import VoiceAssumptionsModal  from '../components/VoiceAssumptionsModal';
 import ByohPicker             from '../components/ByohPicker';
+import LOAModal               from '../components/LOAModal';
 import RateSheetModalComp     from '../components/RateSheetModal';
 import HubSpotConnect from '../components/HubSpotConnect';
 import SPTConnect    from '../components/SPTConnect';
@@ -63,6 +64,7 @@ export default function VoiceQuotePage() {
   const [sptProposalId,    setSptProposalId]    = useState(null);
   const [showIntlWaiver,      setShowIntlWaiver]      = useState(false);
   const [showVoiceAssumptions, setShowVoiceAssumptions] = useState(false);
+  const [showLOA,              setShowLOA]              = useState(false);
   const [pricingSnapshot, setPricingSnapshot] = useState(null);
   const [priceLockDate,   setPriceLockDate]   = useState(null);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
@@ -929,6 +931,22 @@ export default function VoiceQuotePage() {
                       quoteNumber={existingQuote?.quote_number}
                       sptProposalId={sptProposalId}
                       onSPTLinked={(pid) => { setSptProposalId(pid); if (pid && existingQuote?.id) supabase.from('quotes').update({ spt_proposal_id: pid }).eq('id', existingQuote.id); }}
+                    />
+                  )}
+
+                  {showLOA && (
+                    <LOAModal
+                      onClose={() => setShowLOA(false)}
+                      quoteId={existingQuote?.id}
+                      quoteNumber={existingQuote?.quote_number}
+                      proposalName={proposalName || recipientBiz}
+                      clientName={recipientBiz}
+                      recipientContact={recipientContact}
+                      recipientEmail={recipientEmail}
+                      serviceAddress={recipientAddress}
+                      portingDIDList={v.portingDIDList || ''}
+                      settings={settings}
+                      onDocSaved={() => setShowLOA(false)}
                     />
                   )}
 
