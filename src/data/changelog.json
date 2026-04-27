@@ -1,23 +1,88 @@
 [
   {
-    "version": "3.1.1",
+    "version": "3.2.0",
     "date": "2026-04-27",
-    "summary": "Hosted Voice assumptions & exclusions + HubSpot fixes",
+    "summary": "SignWell e-signature integration \u2014 International Dialing Waiver",
     "audience": "all",
     "categories": {
       "new": [
-        "\ud83d\udccb Hosted Voice Assumptions & Exclusions document \u2014 separate from Managed IT assumptions, voice-specific fields: seats, DID porting (none/partial/full), auto-attendant/voicemail/call recording, fax lines, hardware notes, current PBX type, network/firewall notes, compliance",
-        "Voice Documents panel now shows both Assumptions & Exclusions and International Dialing Waiver as distinct cards",
-        "Standard voice exclusions pre-populated: end-user training, cabling, internet connectivity, third-party integrations, number porting limits, international calling, on-site support",
-        "Bundle strategy confirmed: IT assumptions and Voice assumptions remain separate documents \u2014 each quote type owns its own, Bundle stacks both"
+        "SignWell e-signature integration \u2014 International Dialing Waiver sent automatically from Voice quote Documents panel with one click",
+        "Admin \u2192 Integrations \u2192 SignWell: API key and International Dialing Waiver Template ID are now configurable in the UI \u2014 no code changes needed when templates are replaced",
+        "Test Connection button on SignWell integration card verifies API key before saving",
+        "Waiver document uses SignWell text tags ({{signature}}, {{text}}, {{date}}) for automatic field placement \u2014 no manual field setup required",
+        "Signature block includes Full Legal Name, Company Name, Title/Role (blank fields for client to complete) and auto-locked signing date from audit trail",
+        "Waiver drawer includes Proposal/Deal Name (auto-populated from quote), Reference # (quote number), and Authorized Scope / Account field \u2014 specifies which location or account the authorization covers",
+        "SignWell webhook handler auto-updates quote status when client signs",
+        "Send Reminder and Check Status buttons on waiver panel for tracking pending signatures",
+        "Preview Document toggle shows full waiver content before sending"
       ],
       "improved": [
-        "International Dialing Waiver now includes Proposal Name, Reference # (auto-populated from quote), and Authorized Scope field \u2014 legally ties the waiver to a specific account/location",
-        "VoiceQuotePage passes proposalName and recipientEmail to the waiver form"
+        "Signature block fields sized to 550\u00d726px (text) and 550\u00d780px (signature) for legible signed output",
+        "Date field replaced with static document date \u2014 actual signing timestamp captured in SignWell audit trail (legally more defensible than client-entered date)",
+        "DOCUMENT REFERENCE table in waiver header ties authorization to a specific proposal, quote number, and account scope \u2014 critical for clients with multiple locations",
+        "Proxy now surfaces full SignWell error JSON instead of generic HTTP status code \u2014 much easier to debug"
       ],
       "fixed": [
-        "Voice quote: marketTiers was not destructured from useConfig \u2014 caused crash when connecting HubSpot if client had a ZIP code on file",
-        "Contact Name and Contact Email were not populating from HubSpot on Voice quotes \u2014 this was a side effect of the marketTiers crash stopping the onConnect handler mid-execution"
+        "SignWell was rejecting requests due to wrong field names (signees vs recipients, fields vs signing_elements, [[]] vs {{}} text tag format)",
+        "Documents going to drafts instead of sending \u2014 signing_elements:[] was overriding text tags; removed, replaced with with_signature_page then text_tags approach",
+        "draft:false added explicitly to ensure documents send immediately"
+      ]
+    }
+  },
+  {
+    "version": "3.2.1",
+    "date": "2026-04-27",
+    "summary": "Hosted Voice \u2014 Assumptions & Exclusions document + out-of-scope rate schedule",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Voice Assumptions & Exclusions modal \u2014 voice-specific document separate from Managed IT assumptions. Covers: customer story/discovery notes, current provider, why switching, seats/DIDs/locations, number porting (none/partial/full with DID list), feature flags (auto-attendant, voicemail, call recording), fax lines, internet notes, hardware notes, current PBX type, network/firewall notes, compliance requirements (HIPAA/SOC2, PCI/CMMC)",
+        "10 pre-populated standard voice exclusions: end-user training, cabling, internet connectivity, third-party integrations, number porting limits, international calling, on-site support, off-scope config changes, hardware procurement, fax beyond agreed scope",
+        "Out-of-scope rate schedule added to Voice Documents panel \u2014 same market-adjusted T&M rate card as IT/Bundle/FlexIT quotes. Applies to all labor outside contracted voice scope",
+        "Voice Documents panel now shows three cards in order: Out-of-Scope Rate Schedule, Assumptions & Exclusions, International Dialing Waiver",
+        "Bundle strategy: IT assumptions and Voice assumptions are permanently separate documents \u2014 each quote type owns its own. Bundle will stack both independently"
+      ],
+      "improved": [
+        "Voice quote fetches market_rate_analyses on ZIP entry to power the rate sheet \u2014 synthetic fallback built from selectedMkt if no DB record exists"
+      ]
+    }
+  },
+  {
+    "version": "3.2.2",
+    "date": "2026-04-27",
+    "summary": "HubSpot Voice fixes \u2014 contact population and crash on connect",
+    "audience": "all",
+    "categories": {
+      "fixed": [
+        "marketTiers was not destructured from useConfig() in VoiceQuotePage \u2014 caused crash when HubSpot connected a deal with a ZIP code on file",
+        "selectedMkt state was missing entirely from VoiceQuotePage \u2014 setSelectedMkt() call in onConnect handler crashed mid-execution, preventing contact name and email from populating",
+        "Contact Name and Contact Email now populate correctly from HubSpot on Voice quotes \u2014 these were blank because the onConnect handler was crashing before reaching those lines",
+        "All 15 state setters in Voice onConnect handler audited and verified \u2014 no further undeclared state variables"
+      ]
+    }
+  },
+  {
+    "version": "3.2.3",
+    "date": "2026-04-27",
+    "summary": "Market rate locking \u2014 saved quotes never auto-refresh, 3-month stale threshold",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Market rates now LOCK on saved quotes \u2014 opening a saved IT, Voice, or Bundle quote reads the existing DB analysis only. No AI call, no rate change. Rates stay at what was pulled when the quote was created",
+        "readOnly mode added to getOrAnalyzeMarket() \u2014 fifth parameter, passes through the entire call chain. Guaranteed no AI will fire in readOnly mode regardless of staleness",
+        "fallbackMarket prop on MarketRateCard \u2014 if no DB record exists for the quote's ZIP, the card builds a synthetic display from the locked market tier on the quote. Card never disappears"
+      ],
+      "improved": [
+        "STALE_MONTHS changed from 6 \u2192 3 months \u2014 market analyses are considered stale after 3 months. Market Intelligence tab shows updated badge: '3+ months \u2014 refresh needed'",
+        "MarketRateCard shows 'Rate locked' instead of epoch date (12/31/1969) when analyzed_at is null on fallback object",
+        "Stale badge suppressed when analyzed_at is null \u2014 fallback display objects are not incorrectly flagged as stale",
+        "MultiSiteQuotePage uses readOnly=true when loading saved quotes \u2014 per-location market analyses read DB only",
+        "getMarketByZip() now searches both the zip column AND the zip_codes array \u2014 previously only searched primary ZIP, causing misses for markets with multiple associated ZIPs (root cause of blank rates and epoch date on FIT-2026-1000)"
+      ],
+      "fixed": [
+        "MarketRateCard was re-fetching and potentially calling AI every time a saved quote was opened \u2014 clientZip being restored from saved data triggered the useEffect unconditionally",
+        "FIT-2026-1000 showing 12/31/1969 stale + blank rates \u2014 ZIP 61081 is a secondary ZIP in zip_codes array, not the primary zip column. getMarketByZip was returning null causing fallback synthetic object with no rates to display",
+        "Market Intelligence admin controls confirmed intact: per-market Refresh and Delete buttons, Analyze new market, stale badge at correct 3-month threshold"
       ]
     }
   },
