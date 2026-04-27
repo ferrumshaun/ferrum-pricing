@@ -171,7 +171,7 @@ export default function SPTConnect({
         {/* Header row */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 10px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:6, minWidth:0, flex:1 }}>
-            <div style={{ width:18, height:18, background:'#f97316', borderRadius:3, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <div style={{ width:18, height:18, background:'#2563eb', borderRadius:3, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <span style={{ color:'white', fontSize:10, fontWeight:700 }}>S</span>
             </div>
             <div style={{ minWidth:0, flex:1 }}>
@@ -199,7 +199,7 @@ export default function SPTConnect({
               </>
             )}
             <button onClick={() => openModal('search')}
-              style={{ fontSize:10, padding:'3px 8px', background:'#f97316', color:'white', border:'none', borderRadius:3, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap' }}>
+              style={{ fontSize:10, padding:'3px 8px', background:'#2563eb', color:'white', border:'none', borderRadius:3, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap' }}>
               {proposalId ? 'Change' : 'Link / Create'}
             </button>
           </div>
@@ -209,7 +209,7 @@ export default function SPTConnect({
         {proposalId && expanded && (
           <div style={{ borderTop:'1px solid #fed7aa', padding:'8px 10px', display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
             <a href={proposalUrl} target="_blank" rel="noopener noreferrer"
-              style={{ fontSize:10, padding:'3px 10px', background:'#f97316', color:'white', borderRadius:3, textDecoration:'none', fontWeight:600 }}>
+              style={{ fontSize:10, padding:'3px 10px', background:'#2563eb', color:'white', borderRadius:3, textDecoration:'none', fontWeight:600 }}>
               Open in Smart Pricing Table →
             </a>
             <button onClick={() => openModal('search')}
@@ -238,7 +238,7 @@ export default function SPTConnect({
             {/* Modal header */}
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <div style={{ width:26, height:26, background:'#f97316', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <div style={{ width:26, height:26, background:'#2563eb', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center' }}>
                   <span style={{ color:'white', fontSize:14, fontWeight:700 }}>S</span>
                 </div>
                 <div style={{ fontSize:14, fontWeight:700, color:'#0f1e3c' }}>Smart Pricing Table</div>
@@ -276,7 +276,7 @@ export default function SPTConnect({
                     style={{ flex:1, padding:'7px 9px', border:'1px solid #d1d5db', borderRadius:5, fontSize:12, outline:'none' }}
                   />
                   <button onClick={doSearch} disabled={loading}
-                    style={{ padding:'7px 14px', background:'#f97316', color:'white', border:'none', borderRadius:5, fontSize:12, fontWeight:700, cursor:'pointer', opacity: loading ? 0.6 : 1 }}>
+                    style={{ padding:'7px 14px', background:'#2563eb', color:'white', border:'none', borderRadius:5, fontSize:12, fontWeight:700, cursor:'pointer', opacity: loading ? 0.6 : 1 }}>
                     {loading ? '...' : 'Search'}
                   </button>
                 </div>
@@ -309,7 +309,7 @@ export default function SPTConnect({
                           }}>
                             {p.status}
                           </span>
-                          <span style={{ fontSize:11, color:'#f97316', fontWeight:600 }}>Link →</span>
+                          <span style={{ fontSize:11, color:'#2563eb', fontWeight:600 }}>Link →</span>
                         </div>
                       </div>
                     </div>
@@ -348,7 +348,7 @@ export default function SPTConnect({
                   <div style={{ fontSize:11, fontWeight:600, color: msgColor, marginBottom:10 }}>{msg}</div>
                 )}
                 <button onClick={doCreate} disabled={creating || !newName.trim() || !sptKey}
-                  style={{ width:'100%', padding:'10px', background: sptKey ? '#f97316' : '#9ca3af', color:'white', border:'none', borderRadius:5, fontSize:12, fontWeight:700, cursor: (creating || !newName.trim() || !sptKey) ? 'not-allowed' : 'pointer' }}>
+                  style={{ width:'100%', padding:'10px', background: sptKey ? '#2563eb' : '#9ca3af', color:'white', border:'none', borderRadius:5, fontSize:12, fontWeight:700, cursor: (creating || !newName.trim() || !sptKey) ? 'not-allowed' : 'pointer' }}>
                   {creating ? 'Creating...' : '✚ Create Proposal in SPT'}
                 </button>
                 {!sptKey && (
