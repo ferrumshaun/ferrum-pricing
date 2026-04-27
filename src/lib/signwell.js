@@ -100,8 +100,6 @@ function buildWaiverHtml({ contactName, entityName, title, tier, tierLabel, tier
   .subtitle { text-align: center; font-size: 11px; color: #6b7280; margin-bottom: 28px; }
   h2 { font-size: 13px; margin-top: 22px; margin-bottom: 6px; }
   p { margin: 0 0 14px; }
-  .sig-block { border-top: 1px solid #374151; padding-top: 12px; width: 48%; display: inline-block; vertical-align: top; margin-top: 28px; font-size: 11px; line-height: 1.9; }
-  .sig-row { display: flex; justify-content: space-between; }
   .warning { background: #fef2f2; border-left: 4px solid #dc2626; padding: 8px 12px; margin: 14px 0; font-weight: bold; }
 </style>
 </head>
@@ -134,27 +132,8 @@ function buildWaiverHtml({ contactName, entityName, title, tier, tierLabel, tier
 <h2>6. Indemnification</h2>
 <p>Client agrees to indemnify, defend, and hold harmless Ferrum Technology Services, LLC and its officers, employees, and agents from and against any and all claims, liabilities, damages, costs, and expenses (including reasonable attorneys&rsquo; fees) arising from or related to international calling activity on Client&rsquo;s account.</p>
 
-<div class="sig-row">
-  <div class="sig-block">
-    <strong>Client</strong><br/>
-    Full Name: ${contactName || '&nbsp;'}<br/>
-    Title: ${title || '&nbsp;'}<br/>
-    Business: ${entityName || '&nbsp;'}<br/>
-    Signature: [[sig|1]]<br/>
-    Date: [[date|1]]
-  </div>
-  <div class="sig-block" style="margin-left:4%">
-    <strong>Ferrum Technology Services, LLC</strong><br/>
-    Full Name: Shaun Lang<br/>
-    Title: Chief Experience Officer<br/>
-    Business: Ferrum Technology Services, LLC<br/>
-    Signature: [[sig|2]]<br/>
-    Date: [[date|2]]
-  </div>
-</div>
-
-<p style="margin-top:40px; font-size:10px; color:#6b7280; text-align:center;">
-  Electronic signatures are legally binding pursuant to E-SIGN and UETA. By signing, all parties agree to the terms above.
+<p style="margin-top:32px; font-size:10px; color:#6b7280; text-align:center; border-top:1px solid #e5e7eb; padding-top:16px;">
+  Electronic signatures are legally binding pursuant to E-SIGN and UETA. &nbsp;·&nbsp; Ferrum Technology Services, LLC &nbsp;·&nbsp; ferrumit.com
 </p>
 
 </body>
