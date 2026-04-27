@@ -144,6 +144,8 @@ function ProductsAdmin() {
   const [saveError,  setSaveError]  = useState('');
   const [showCatMgr, setShowCatMgr] = useState(false);
   const [newCat,     setNewCat]     = useState('');
+  const [search,     setSearch]     = useState('');
+  const [catFilter,  setCatFilter]  = useState('');
   const { profile } = useAuth();
   const { reload } = useConfig();
 
@@ -256,7 +258,18 @@ function ProductsAdmin() {
   }
 
   const margin = p => p.sell_price > 0 ? ((1 - p.cost_price / p.sell_price) * 100).toFixed(0) + '%' : '—';
-  const rows = products.map(p => ({ ...p,
+  const filteredProducts = products.filter(p => {
+    if (catFilter && p.category !== catFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return (p.name || '').toLowerCase().includes(q)
+          || (p.sub_category || '').toLowerCase().includes(q)
+          || (p.category || '').toLowerCase().includes(q)
+          || (p.description || '').toLowerCase().includes(q);
+    }
+    return true;
+  });
+  const rows = filteredProducts.map(p => ({ ...p,
     '$sell': `$${p.sell_price}`, '$cost': `$${p.cost_price}`, 'gm': margin(p),
     'flags': [p.no_discount ? '🔒 No Discount' : '', p.no_commission ? '💼 No Comm' : ''].filter(Boolean).join(' · ') || '—'
   }));
@@ -302,6 +315,32 @@ function ProductsAdmin() {
           <div style={{ fontSize:9, color:'#9ca3af', marginTop:5 }}>Categories are sorted alphabetically. Removing a category doesn't affect existing products — just removes it from the dropdown.</div>
         </div>
       )}
+
+      {/* Search + category filter — consistent with Voice Hardware tab */}
+      <div style={{ display:'flex', gap:6, marginBottom:10, flexWrap:'wrap', alignItems:'center' }}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name, category, or sub-category..."
+          style={{ padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none', width:280 }}/>
+        <button onClick={()=>setCatFilter('')}
+          style={{ padding:'4px 10px', borderRadius:4, border:`1px solid ${catFilter===''?'#2563eb':'#e5e7eb'}`, background:catFilter===''?'#eff6ff':'white', color:catFilter===''?'#1d4ed8':'#374151', fontSize:10, fontWeight:catFilter===''?700:400, cursor:'pointer' }}>
+          All ({products.length})
+        </button>
+        {categories.map(cat => {
+          const count = products.filter(p => p.category === cat).length;
+          if (count === 0) return null;
+          const active = catFilter === cat;
+          return (
+            <button key={cat} onClick={()=>setCatFilter(cat)}
+              style={{ padding:'4px 10px', borderRadius:4, border:`1px solid ${active?'#2563eb':'#e5e7eb'}`, background:active?'#eff6ff':'white', color:active?'#1d4ed8':'#374151', fontSize:10, fontWeight:active?700:400, cursor:'pointer' }}>
+              {cat} ({count})
+            </button>
+          );
+        })}
+        {(search || catFilter) && (
+          <span style={{ fontSize:10, color:'#6b7280', marginLeft:'auto' }}>
+            {filteredProducts.length} of {products.length} shown
+          </span>
+        )}
+      </div>
 
       <AdminTable cols={['name','category','qty_driver','$sell','$cost','gm','flags']} rows={rows} onEdit={r => { setSaveError(''); setEditing(r); }} onToggle={toggle} loading={loading} />
       {editing && (

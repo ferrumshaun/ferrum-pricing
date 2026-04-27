@@ -185,7 +185,7 @@ export default function VoiceQuotePage() {
     setSaving(true); setSaveMsg('');
     const allInputs = { proposalName, recipientContact, recipientEmail, recipientAddress, hubspotDealName: hubDealName, voice: v };
     const r = configLoading ? null : calcVoice(v, settings, faxPackagesDB);
-    const totals = r ? { finalMRR: r.finalMRR, nrc: r.nrc, gm: r.gm, estTax: r.estTax } : {};
+    const totals = r ? { finalMRR: r.finalMRR, nrc: r.nrc, onboarding: r.nrc, gm: r.gm, estTax: r.estTax } : {};
     const payload = {
       client_name: recipientBiz, client_zip: clientZip,
       market_tier: selectedMkt?.tier_key || null,

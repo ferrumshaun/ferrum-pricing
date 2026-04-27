@@ -1,5 +1,23 @@
 [
   {
+    "version": "3.4.8",
+    "date": "2026-04-27",
+    "summary": "Saved Quotes UX — onboarding column fix, unified quote type tags, Products tab search",
+    "audience": "all",
+    "categories": {
+      "fixed": [
+        "Saved Quotes — Onboarding column was reading totals.onboarding which only exists on IT, Bundle, FlexIT, and Multi-Site quotes. Voice quotes save totals.nrc, so the column always rendered $0 for any voice quote regardless of actual one-time fees. Now reads totals.onboarding ?? totals.nrc so the right value shows for every quote type, including all existing voice quotes — no DB migration required",
+        "Voice quote saves now also write totals.onboarding alongside totals.nrc going forward, so the schema is consistent across quote types for HubSpot sync, reporting, and any future integrations"
+      ],
+      "new": [
+        "Quote type tag system on Saved Quotes — every quote now gets a colored tag prefix on the client column (IT was previously unmarked). Five distinct colors mapped to a single source of truth (QUOTE_TYPES taxonomy in QuotesPage): IT = blue (#2563eb), Voice = purple (#7c3aed), Bundle = deep violet (#6d28d9), Multi-Site = teal (#0f766e), FlexIT = orange (#f97316). Same palette as the + New Quote dropdown for visual consistency",
+        "Tag styling unified — all tags now use the same shape (uppercase, 0.02em letter spacing, 46px min-width for alignment), removed the inconsistent linear-gradient on Bundle that didn't match the rest of the system",
+        "Type filter dropdown on Saved Quotes — filter the list to one type (Managed IT, Voice, Bundle, Multi-Site, FlexIT) using the same widget pattern as the Status filter",
+        "Search bar on Admin → IT & Security Products — searches name, category, sub-category, and description. Quick-filter chips below the search bar let admins narrow to a single category. Live count of filtered/total products on the right when a filter is active. Same visual pattern as the Voice Hardware tab so navigation feels consistent across the Admin section"
+      ]
+    }
+  },
+  {
     "version": "3.4.7",
     "date": "2026-04-27",
     "summary": "Admin page UX cleanup — clearer IT vs Voice product separation",
