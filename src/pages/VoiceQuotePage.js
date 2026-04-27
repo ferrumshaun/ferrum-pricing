@@ -14,6 +14,7 @@ import IntlDialingWaiver       from '../components/IntlDialingWaiver';
 import VoiceAssumptionsModal  from '../components/VoiceAssumptionsModal';
 import ByohPicker             from '../components/ByohPicker';
 import LOAModal               from '../components/LOAModal';
+import PortReadinessCard      from '../components/PortReadinessCard';
 import OnboardingIncentive    from '../components/OnboardingIncentive';
 import RateSheetModalComp     from '../components/RateSheetModal';
 import HubSpotConnect from '../components/HubSpotConnect';
@@ -66,6 +67,7 @@ export default function VoiceQuotePage() {
   const [showIntlWaiver,      setShowIntlWaiver]      = useState(false);
   const [showVoiceAssumptions, setShowVoiceAssumptions] = useState(false);
   const [showLOA,              setShowLOA]              = useState(false);
+  const [loaDocRecord,         setLoaDocRecord]         = useState(null);
   const [voiceProgIncentive,   setVoiceProgIncentive]   = useState(null);
   const [pricingSnapshot, setPricingSnapshot] = useState(null);
   const [priceLockDate,   setPriceLockDate]   = useState(null);
@@ -131,6 +133,9 @@ export default function VoiceQuotePage() {
       setHubDealUrl(data.hubspot_deal_url || '');
       setHubDealName(data.inputs?.hubspotDealName || '');
       if (data.inputs?.voice) setV({ ...DEF, ...data.inputs.voice });
+      // Restore LOA doc record for port readiness
+      const loaDocs = (data.inputs?.signwellDocuments || []).filter(d => d.type === 'loa');
+      if (loaDocs.length > 0) setLoaDocRecord(loaDocs[loaDocs.length - 1]);
       if (data.market_tier && marketTiers.length) {
         const t = marketTiers.find(t => t.tier_key === data.market_tier);
         if (t) setSelectedMkt(t);
@@ -1118,6 +1123,20 @@ export default function VoiceQuotePage() {
                     ))}
                   </div>
 
+                  {/* Port Readiness — only shown when porting numbers */}
+                  {(v.portingNumbers || 0) > 0 && (
+                    <PortReadinessCard
+                      quoteId={existingQuote?.id}
+                      quoteNumber={existingQuote?.quote_number}
+                      clientName={recipientBiz}
+                      clientEmail={recipientEmail}
+                      recipientContact={recipientContact}
+                      hubDealId={hubDealId}
+                      loaDocRecord={loaDocRecord}
+                      settings={settings}
+                    />
+                  )}
+
                   {/* Market Rate Analysis — same position as IT/Bundle quotes */}
                   <MarketRateCard
                     quoteId={existingQuote?.id}
@@ -1221,7 +1240,7 @@ export default function VoiceQuotePage() {
                       portingDIDList={v.portingDIDList || ''}
                       settings={settings}
                       hubDealId={hubDealId}
-                      onDocSaved={() => setShowLOA(false)}
+                      onDocSaved={(rec) => { setLoaDocRecord(rec); setShowLOA(false); }}
                     />
                   )}
 
