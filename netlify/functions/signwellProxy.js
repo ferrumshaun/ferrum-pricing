@@ -42,18 +42,36 @@ exports.handler = async (event) => {
   try {
     switch (action) {
 
-      // ── Send a document for signature ─────────────────────────────────────
-      // payload: { name, subject, message, files: [{name, file_base64}], recipients: [{id,name,email}], fields: [[...]] }
+      // ── Create document FROM TEMPLATE (preferred) ──────────────────────────
+      // Template already has signature fields placed — just pass file + recipients
+      case 'createDocumentFromTemplate': {
+        const res = await fetch(`${BASE}/document_templates/${payload.templateId}/documents/`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            test_mode:  payload.test_mode || false,
+            name:       payload.name,
+            subject:    payload.subject || payload.name,
+            message:    payload.message || 'Please review and sign the attached document.',
+            files:      payload.files,
+            recipients: payload.recipients,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) console.error('SignWell template error:', JSON.stringify(data));
+        return { statusCode: res.status, body: JSON.stringify(data) };
+      }
+
+      // ── Create document (raw, no template) ───────────────────────────────
       case 'createDocument': {
         const res = await fetch(`${BASE}/documents/`, {
           method: 'POST',
           headers,
           body: JSON.stringify({
-            test_mode:  payload.test_mode  || false,
+            test_mode:  payload.test_mode || false,
             name:       payload.name,
-            subject:    payload.subject    || payload.name,
-            message:    payload.message    || 'Please review and sign the attached document.',
-            text_tags:  payload.text_tags  || false,
+            subject:    payload.subject || payload.name,
+            message:    payload.message || 'Please review and sign the attached document.',
             files:      payload.files,
             recipients: payload.recipients,
           }),

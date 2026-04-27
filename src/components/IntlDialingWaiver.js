@@ -57,8 +57,8 @@ export default function IntlDialingWaiver({ onClose, quoteId, quoteNumber, clien
       setDocRecord(record);
       await saveDocToQuote(record);
       notify(testMode
-        ? '✓ Draft created in SignWell (test mode). Click "Open in SignWell" to place signature fields, then send.'
-        : '✓ Draft created in SignWell. Click "Open in SignWell" below to place signature fields, then send to client.');
+        ? `✓ Test document sent to SignWell. Check your SignWell dashboard — no email delivered in test mode.`
+        : `✓ Sent to ${contactEmail}. Client will receive a signing link by email shortly.`);
     } catch(e) { notify('✗ ' + e.message, 'err'); }
     setSending(false);
   }
@@ -145,12 +145,7 @@ export default function IntlDialingWaiver({ onClose, quoteId, quoteNumber, clien
                     ↓ Download Signed PDF
                   </a>
                 )}
-                {docRecord.editUrl && (
-                  <a href={docRecord.editUrl} target="_blank" rel="noopener noreferrer"
-                    style={{ padding:'5px 12px', background:'#0f1e3c', color:'white', borderRadius:4, fontSize:11, fontWeight:700, textDecoration:'none' }}>
-                    ✏ Open in SignWell →
-                  </a>
-                )}
+
                 <button onClick={()=>setDocRecord(null)} style={{ padding:'5px 12px', background:'white', border:'1px solid #fecaca', borderRadius:4, fontSize:11, color:'#dc2626', cursor:'pointer' }}>
                   Create New
                 </button>
@@ -242,11 +237,9 @@ export default function IntlDialingWaiver({ onClose, quoteId, quoteNumber, clien
               </>
             )}
             <div style={{ marginTop:10, fontSize:9, color:'#9ca3af', lineHeight:1.7 }}>
-              <strong style={{ color:'#374151' }}>Workflow:</strong><br/>
-              1. Click Send — document is created as a draft in SignWell<br/>
-              2. Click <strong>Open in SignWell →</strong> to place signature fields (drag &amp; drop)<br/>
-              3. Click Send in SignWell — client receives email with signing link (no account needed)<br/>
-              4. Client signs, then Ferrum countersigns. Full audit trail auto-saved.
+              Client receives an email with a signing link — no SignWell account needed.
+              The signed PDF and full audit trail (IP, timestamp, auth method) are stored in SignWell
+              and the quote status updates automatically when signing is complete.
             </div>
           </div>
         </div>
