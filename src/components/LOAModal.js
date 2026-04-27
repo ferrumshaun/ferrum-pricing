@@ -96,9 +96,6 @@ export default function LOAModal({
 
   async function handleSend() {
     if (!isValid) { notify('Please complete all required fields.', 'err'); return; }
-    const templateId = settings?.signwell_loa_template_id;
-    if (!templateId) { notify('✗ LOA Template ID not configured — add it in Admin → Integrations → SignWell', 'err'); return; }
-
     setSending(true);
     notify('Sending via SignWell...', 'info');
     try {
@@ -116,7 +113,6 @@ export default function LOAModal({
         wirelessPin,
         svcStreet, svcCity, svcState, svcZip,
         didList,
-        templateId,
         testMode,
       });
       setDocRecord(record);

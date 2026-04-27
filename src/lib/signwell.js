@@ -220,7 +220,6 @@ export async function sendLOA({
   carrierName, carrierAcctNum, carrierAcctName, acctType, wirelessPin,
   svcStreet, svcCity, svcState, svcZip,
   didList,
-  templateId,
   testMode = false,
 }) {
   const today  = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -229,7 +228,6 @@ export async function sendLOA({
   const base64Content = btoa(unescape(encodeURIComponent(loaHtml)));
 
   const result = await swCall('createDocumentFromTemplate', {
-    templateId,
     test_mode:  testMode,
     name:       `Letter of Authorization — ${entityName}${quoteNumber ? ` (${quoteNumber})` : ''}`,
     subject:    `Action Required — Number Porting Authorization · ${entityName}`,
