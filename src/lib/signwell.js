@@ -141,36 +141,36 @@ function buildWaiverHtml({ contactName, entityName, title, tier, tierLabel, tier
 
       <div style="margin-bottom:14px;">
         <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:4px;">Full Legal Name</div>
-        <div style="border-bottom:1px solid #374151; min-height:24px; padding-bottom:2px;">
-          <span style="color:white; background:white; display:inline-block; width:400px; height:22px; font-size:16px;">&nbsp;{{text}}</span>
+        <div style="border-bottom:1px solid #374151; min-height:28px; padding-bottom:2px;">
+          <span style="color:white; background:white; display:inline-block; width:550px; height:26px; font-size:18px;">&nbsp;{{text}}</span>
         </div>
       </div>
 
       <div style="margin-bottom:14px;">
         <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:4px;">Company Name</div>
-        <div style="border-bottom:1px solid #374151; min-height:24px; padding-bottom:2px;">
-          <span style="color:white; background:white; display:inline-block; width:400px; height:22px; font-size:16px;">&nbsp;{{text:1}}</span>
+        <div style="border-bottom:1px solid #374151; min-height:28px; padding-bottom:2px;">
+          <span style="color:white; background:white; display:inline-block; width:550px; height:26px; font-size:18px;">&nbsp;{{text:1}}</span>
         </div>
       </div>
 
       <div style="margin-bottom:14px;">
         <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:4px;">Title / Role</div>
-        <div style="border-bottom:1px solid #374151; min-height:24px; padding-bottom:2px;">
-          <span style="color:white; background:white; display:inline-block; width:400px; height:22px; font-size:16px;">&nbsp;{{text:1}}</span>
+        <div style="border-bottom:1px solid #374151; min-height:28px; padding-bottom:2px;">
+          <span style="color:white; background:white; display:inline-block; width:550px; height:26px; font-size:18px;">&nbsp;{{text:1}}</span>
         </div>
       </div>
 
       <div style="margin-bottom:14px;">
         <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:4px;">Signature</div>
-        <div style="border-bottom:1px solid #374151; min-height:68px; padding-bottom:2px;">
-          <span style="color:white; background:white; display:inline-block; width:400px; height:64px; font-size:16px;">&nbsp;{{signature}}</span>
+        <div style="border-bottom:1px solid #374151; min-height:84px; padding-bottom:2px;">
+          <span style="color:white; background:white; display:inline-block; width:550px; height:80px; font-size:18px;">&nbsp;{{signature}}</span>
         </div>
       </div>
 
       <div style="margin-bottom:14px;">
         <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:4px;">Date</div>
         <div style="border-bottom:1px solid #374151; min-height:24px; padding-bottom:2px;">
-          <span style="color:white; background:white; display:inline-block; width:200px; height:22px; font-size:16px;">&nbsp;{{date}}</span>
+          <span style="color:white; background:white; display:inline-block; width:260px; height:26px; font-size:18px;">&nbsp;{{date}}</span>
         </div>
       </div>
     </td>
