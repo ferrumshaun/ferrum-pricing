@@ -26,11 +26,13 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted }) 
   const [statusMsg,   setStatusMsg]   = useState('');
 
   // Load market analysis when city/state available
-  const loadAnalysis = useCallback(async (force = false) => {
+  const loadAnalysis = useCallback(async (force = false, readOnly = false) => {
     if (!clientZip || clientZip.length < 5) return;
     setLoading(true); setError(''); setStatusMsg('');
     try {
-      const { analysis: result, wasRefreshed } = await getOrAnalyzeMarket(clientZip, force);
+      const res = await getOrAnalyzeMarket(clientZip, force, undefined, undefined, readOnly);
+      if (!res) { setLoading(false); return; } // no data in DB yet (readOnly + no record)
+      const { analysis: result, wasRefreshed } = res;
       setAnalysis(result);
       // Only reset working rates if no accepted rate sheet exists
       if (!rateSheet) {
@@ -66,35 +68,14 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted }) 
     });
   }, [quoteId]);
 
-  // Trigger analysis when zip is ready — only for new quotes (no quoteId)
-  // Saved quotes lock in their analysis; only refresh via explicit button or Market Intelligence tab
+  // Load market analysis when zip is ready
+  // - New quotes (no quoteId): full flow including AI generation if no DB record found
+  // - Saved quotes (quoteId exists): DB read only — display locked rates, never trigger AI
   useEffect(() => {
-    if (clientZip && clientZip.length >= 5 && !rateSheet && !quoteId) {
-      loadAnalysis(false);
-    }
-  }, [clientZip]);
-
-  // For saved quotes with no rate sheet: load the stored DB analysis (no AI call)
-  useEffect(() => {
-    if (!clientZip || clientZip.length < 5 || rateSheet || !quoteId) return;
-    // Read from DB only — never trigger AI refresh automatically on a saved quote
-    (async () => {
-      setLoading(true);
-      try {
-        const { data } = await import('../lib/supabase').then(m =>
-          m.supabase.from('market_rate_analyses')
-            .select('*')
-            .or(`zip.eq.${clientZip},zip_codes.cs.{${clientZip}}`)
-            .maybeSingle()
-        );
-        if (data) {
-          setAnalysis(data);
-          setWorkingRates({ ...data.rates });
-        }
-      } catch {}
-      setLoading(false);
-    })();
-  }, [clientZip, quoteId, rateSheet]);
+    if (!clientZip || clientZip.length < 5 || rateSheet) return;
+    const readOnly = !!quoteId; // saved quotes = read-only
+    loadAnalysis(false, readOnly);
+  }, [clientZip, quoteId]);
 
   async function handleRefresh() {
     setRefreshing(true);
