@@ -8,11 +8,9 @@ async function swCall(action, payload) {
   });
   const data = await res.json();
   if (!res.ok) {
-    // Surface the full SignWell error body for debugging
-    const detail = data.errors
-      ? Object.entries(data.errors).map(([k,v]) => `${k}: ${Array.isArray(v)?v.join(', '):v}`).join(' | ')
-      : data.error || data.message || JSON.stringify(data);
-    throw new Error(detail || `SignWell HTTP ${res.status}`);
+    // Dump the full raw error so we can see exactly what SignWell is rejecting
+    const raw = JSON.stringify(data);
+    throw new Error(raw || `SignWell HTTP ${res.status}`);
   }
   return data;
 }
