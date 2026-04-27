@@ -131,6 +131,10 @@ export default function VoiceQuotePage() {
       setHubDealUrl(data.hubspot_deal_url || '');
       setHubDealName(data.inputs?.hubspotDealName || '');
       if (data.inputs?.voice) setV({ ...DEF, ...data.inputs.voice });
+      if (data.market_tier && marketTiers.length) {
+        const t = marketTiers.find(t => t.tier_key === data.market_tier);
+        if (t) setSelectedMkt(t);
+      }
       if (data.rep_id) setRepId(data.rep_id);
       if (data.pricing_snapshot) { setPricingSnapshot(data.pricing_snapshot); setPriceLockDate(data.price_locked_at); }
       if (data.spt_proposal_id) setSptProposalId(data.spt_proposal_id);
@@ -168,6 +172,7 @@ export default function VoiceQuotePage() {
     const totals = r ? { finalMRR: r.finalMRR, nrc: r.nrc, gm: r.gm, estTax: r.estTax } : {};
     const payload = {
       client_name: recipientBiz, client_zip: clientZip,
+      market_tier: selectedMkt?.tier_key || null,
       package_name: `Voice — ${v.quoteType}`,
       status: quoteStatus, notes: dealDescription, inputs: allInputs,
       line_items: r?.lines || [], totals,
