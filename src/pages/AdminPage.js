@@ -901,6 +901,7 @@ export function IntegrationsAdmin() {
             border: `1px solid ${testMsg.startsWith('✓') ? '#bbf7d0' : '#fecaca'}` }}>
             {testMsg}
           </div>
+        )}
 
         {/* ── Quote URL field mapping ── */}
         <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
