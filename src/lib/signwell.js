@@ -141,27 +141,27 @@ function buildWaiverHtml({ contactName, entityName, title, tier, tierLabel, tier
 
       <div style="margin-bottom:12px;">
         <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:3px;">Full Legal Name</div>
-        <div style="font-size:11px; border-bottom:1px solid #374151; padding-bottom:4px; min-height:18px;">${contactName || ''}</div>
+        <div style="font-size:11px; border-bottom:1px solid #374151; padding-bottom:4px; min-height:18px;">${contactName || ''}<span style="color:white;font-size:1px;">{{autofill_name}}</span></div>
       </div>
 
       <div style="margin-bottom:12px;">
         <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:3px;">Company Name</div>
-        <div style="font-size:11px; border-bottom:1px solid #374151; padding-bottom:4px; min-height:18px;">${entityName || ''}</div>
+        <div style="font-size:11px; border-bottom:1px solid #374151; padding-bottom:4px; min-height:18px;">${entityName || ''}<span style="color:white;font-size:1px;">{{autofill_company}}</span></div>
       </div>
 
       <div style="margin-bottom:12px;">
         <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:3px;">Title / Role</div>
-        <div style="font-size:11px; border-bottom:1px solid #374151; padding-bottom:4px; min-height:18px;">${title || ''}</div>
+        <div style="font-size:11px; border-bottom:1px solid #374151; padding-bottom:4px; min-height:18px;">${title || ''}<span style="color:white;font-size:1px;">{{autofill_title}}</span></div>
       </div>
 
       <div style="margin-bottom:12px;">
         <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:3px;">Signature</div>
-        <div style="min-height:48px; border-bottom:1px solid #374151;">[[sig|1]]</div>
+        <div style="min-height:48px; border-bottom:1px solid #374151;"><span style="color:white;font-size:1px;">{{signature}}</span></div>
       </div>
 
       <div>
         <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:3px;">Date</div>
-        <div style="font-size:11px; border-bottom:1px solid #374151; padding-bottom:4px; min-height:18px;">[[date|1]]</div>
+        <div style="font-size:11px; border-bottom:1px solid #374151; padding-bottom:4px; min-height:18px;"><span style="color:white;font-size:1px;">{{date}}</span></div>
       </div>
     </td>
   </tr>
