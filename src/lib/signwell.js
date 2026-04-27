@@ -7,7 +7,13 @@ async function swCall(action, payload) {
     body: JSON.stringify({ action, payload }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `SignWell error ${res.status}`);
+  if (!res.ok) {
+    // Surface the full SignWell error body for debugging
+    const detail = data.errors
+      ? Object.entries(data.errors).map(([k,v]) => `${k}: ${Array.isArray(v)?v.join(', '):v}`).join(' | ')
+      : data.error || data.message || JSON.stringify(data);
+    throw new Error(detail || `SignWell HTTP ${res.status}`);
+  }
   return data;
 }
 
@@ -28,8 +34,9 @@ export async function sendIntlDialingWaiver({
 
   // Build the waiver as a plain-text document uploaded as a file
   // SignWell accepts base64-encoded files
-  const waiverText = buildWaiverText({ contactName, entityName, title, tier, tierLabel, tierDesc, today, quoteNumber });
-  const base64Content = btoa(unescape(encodeURIComponent(waiverText)));
+  const waiverHtml = buildWaiverHtml({ contactName, entityName, title, tier, tierLabel, tierDesc, today, quoteNumber });
+  // btoa requires Latin1 — encode UTF-8 string safely
+  const base64Content = btoa(unescape(encodeURIComponent(waiverHtml)));
 
   const result = await swCall('createDocument', {
     test_mode: testMode,
@@ -37,7 +44,7 @@ export async function sendIntlDialingWaiver({
     subject: `Action Required — International Dialing Authorization · ${entityName}`,
     message: `Please review and sign the International Dialing Authorization for your Ferrum Technology Services account. This document enables ${tierLabel} on your hosted SIP trunk. By signing, you acknowledge and accept the terms outlined including full financial responsibility for all international calling charges.`,
     files: [{
-      name: 'International_Dialing_Authorization.pdf',
+      name: 'International_Dialing_Authorization.html',
       file_base64: base64Content,
     }],
     recipients: [
@@ -96,77 +103,79 @@ export async function sendReminder(documentId) {
 
 // ── Build waiver text document ────────────────────────────────────────────────
 // Uses SignWell text tags for field placement: [[s|1]] = signer 1, [[sig|1]] = signature
-function buildWaiverText({ contactName, entityName, title, tier, tierLabel, tierDesc, today, quoteNumber }) {
-  return `
-INTERNATIONAL DIALING AUTHORIZATION & LIABILITY WAIVER
-Ferrum Technology Services, LLC
-${quoteNumber ? `Reference: ${quoteNumber}` : ''}
-Date: ${today}
+export function buildWaiverText({ contactName, entityName, title, tier, tierLabel, tierDesc, today, quoteNumber }) {
+  // Keep for backwards compat
+  return buildWaiverHtml({ contactName, entityName, title, tier, tierLabel, tierDesc, today, quoteNumber });
+}
 
-This International Dialing Authorization ("Authorization") is entered into as of ${today}, by and between
-Ferrum Technology Services, LLC ("Provider") and ${entityName || '[Client Name]'} ("Client").
+function buildWaiverHtml({ contactName, entityName, title, tier, tierLabel, tierDesc, today, quoteNumber }) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Georgia, serif; font-size: 12px; line-height: 1.8; max-width: 720px; margin: 40px auto; padding: 0 30px; color: #1f2937; }
+  h1 { font-size: 18px; text-align: center; margin-bottom: 4px; }
+  .subtitle { text-align: center; font-size: 11px; color: #6b7280; margin-bottom: 28px; }
+  h2 { font-size: 13px; margin-top: 22px; margin-bottom: 6px; }
+  p { margin: 0 0 14px; }
+  .sig-block { border-top: 1px solid #374151; padding-top: 12px; width: 48%; display: inline-block; vertical-align: top; margin-top: 28px; font-size: 11px; line-height: 1.9; }
+  .sig-row { display: flex; justify-content: space-between; }
+  .warning { background: #fef2f2; border-left: 4px solid #dc2626; padding: 8px 12px; margin: 14px 0; font-weight: bold; }
+</style>
+</head>
+<body>
 
-1. REQUEST FOR INTERNATIONAL CALLING
+<h1>International Dialing Authorization &amp; Liability Waiver</h1>
+<div class="subtitle">
+  Ferrum Technology Services, LLC${quoteNumber ? ` &nbsp;·&nbsp; ${quoteNumber}` : ''} &nbsp;·&nbsp; ${today}
+</div>
 
-Client hereby requests that Provider enable ${tierLabel} (${tierDesc}) on Client's hosted SIP
-trunking service. Client acknowledges that enabling international calling inherently introduces risk
-of unauthorized use and toll fraud.
+<p>This International Dialing Authorization (&ldquo;Authorization&rdquo;) is entered into as of <strong>${today}</strong>, by and between <strong>Ferrum Technology Services, LLC</strong> (&ldquo;Provider&rdquo;) and <strong>${entityName || '[Client Name]'}</strong> (&ldquo;Client&rdquo;).</p>
 
-2. CLIENT ASSUMES ALL FINANCIAL RESPONSIBILITY
+<h2>1. Request for International Calling</h2>
+<p>Client hereby requests that Provider enable <strong>${tierLabel}</strong> (${tierDesc}) on Client&rsquo;s hosted SIP trunking service. Client acknowledges that enabling international calling inherently introduces risk of unauthorized use and toll fraud.</p>
 
-Client acknowledges and agrees that it assumes full and sole financial responsibility for all charges
-associated with international calling placed through Client's account, whether authorized or
-unauthorized. This includes, without limitation, charges resulting from toll fraud, unauthorized access,
-compromised credentials, PBX hacking, or any other security incident that results in international
-calls being placed through Client's SIP trunk or hosted telephony environment.
+<h2>2. Client Assumes All Financial Responsibility</h2>
+<p>Client acknowledges and agrees that it assumes <em>full and sole financial responsibility</em> for all charges associated with international calling placed through Client&rsquo;s account, whether authorized or unauthorized. This includes, without limitation, charges resulting from toll fraud, unauthorized access, compromised credentials, PBX hacking, or any other security incident that results in international calls being placed through Client&rsquo;s SIP trunk or hosted telephony environment.</p>
 
-THERE IS NO CAP ON CHARGES UNDER THIS AUTHORIZATION.
+<div class="warning">THERE IS NO CAP ON CHARGES UNDER THIS AUTHORIZATION.</div>
 
-3. NO CAP ON CHARGES
+<h2>3. No Cap on Charges</h2>
+<p>Client acknowledges that international calling charges are metered and billed as incurred. Provider shall not be liable for any charges, losses, or damages &mdash; including consequential, incidental, or punitive damages &mdash; arising from international calling activity on Client&rsquo;s account.</p>
 
-Client acknowledges that international calling charges are metered and billed as incurred. Provider
-shall not be liable for any charges, losses, or damages — including consequential, incidental, or
-punitive damages — arising from international calling activity on Client's account.
+<h2>4. Security Responsibility</h2>
+<p>Client is solely responsible for the security of its telephony environment, including but not limited to extension passwords, SIP credentials, call routing rules, and network access controls. Provider recommends Client implement call limits, country restrictions, and off-hours lockouts where available.</p>
 
-4. SECURITY RESPONSIBILITY
+<h2>5. Right to Suspend</h2>
+<p>Provider reserves the right to disable international calling immediately and without notice in the event of suspected fraud, unusual call patterns, or non-payment of charges.</p>
 
-Client is solely responsible for the security of its telephony environment, including but not limited
-to extension passwords, SIP credentials, call routing rules, and network access controls. Provider
-recommends Client implement call limits, country restrictions, and off-hours lockouts where available.
+<h2>6. Indemnification</h2>
+<p>Client agrees to indemnify, defend, and hold harmless Ferrum Technology Services, LLC and its officers, employees, and agents from and against any and all claims, liabilities, damages, costs, and expenses (including reasonable attorneys&rsquo; fees) arising from or related to international calling activity on Client&rsquo;s account.</p>
 
-5. RIGHT TO SUSPEND
+<div class="sig-row">
+  <div class="sig-block">
+    <strong>Client</strong><br/>
+    Full Name: ${contactName || '&nbsp;'}<br/>
+    Title: ${title || '&nbsp;'}<br/>
+    Business: ${entityName || '&nbsp;'}<br/>
+    Signature: [[sig|1]]<br/>
+    Date: [[date|1]]
+  </div>
+  <div class="sig-block" style="margin-left:4%">
+    <strong>Ferrum Technology Services, LLC</strong><br/>
+    Full Name: Shaun Lang<br/>
+    Title: Chief Experience Officer<br/>
+    Business: Ferrum Technology Services, LLC<br/>
+    Signature: [[sig|2]]<br/>
+    Date: [[date|2]]
+  </div>
+</div>
 
-Provider reserves the right to disable international calling immediately and without notice in the
-event of suspected fraud, unusual call patterns, or non-payment of charges.
+<p style="margin-top:40px; font-size:10px; color:#6b7280; text-align:center;">
+  Electronic signatures are legally binding pursuant to E-SIGN and UETA. By signing, all parties agree to the terms above.
+</p>
 
-6. INDEMNIFICATION
-
-Client agrees to indemnify, defend, and hold harmless Ferrum Technology Services, LLC and its officers,
-employees, and agents from and against any and all claims, liabilities, damages, costs, and expenses
-(including reasonable attorneys' fees) arising from or related to international calling activity on
-Client's account.
-
-─────────────────────────────────────────────────────────────────────────────
-CLIENT SIGNATURE
-
-Full Name:   ${contactName || ''}  [[s|1]]
-Title:       ${title || ''}
-Business:    ${entityName || ''}
-Signature:   [[sig|1]]
-Date:        [[date|1]]
-
-─────────────────────────────────────────────────────────────────────────────
-FERRUM TECHNOLOGY SERVICES, LLC — COMPANY SIGNATURE
-
-Full Name:   Shaun Lang  [[s|2]]
-Title:       Chief Experience Officer
-Business:    Ferrum Technology Services, LLC
-Signature:   [[sig|2]]
-Date:        [[date|2]]
-
-─────────────────────────────────────────────────────────────────────────────
-This document was prepared by Ferrum Technology Services, LLC. Electronic signatures are legally
-binding pursuant to the Electronic Signatures in Global and National Commerce Act (E-SIGN) and the
-Uniform Electronic Transactions Act (UETA). By signing, all parties agree to the terms above.
-`;
+</body>
+</html>`;
 }

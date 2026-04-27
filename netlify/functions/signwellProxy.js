@@ -46,6 +46,7 @@ exports.handler = async (event) => {
           }),
         });
         const data = await res.json();
+        if (!res.ok) console.error('SignWell error:', JSON.stringify(data));
         return { statusCode: res.status, body: JSON.stringify(data) };
       }
 
@@ -53,6 +54,7 @@ exports.handler = async (event) => {
       case 'getDocument': {
         const res = await fetch(`${BASE}/documents/${payload.documentId}/`, { headers });
         const data = await res.json();
+        if (!res.ok) console.error('SignWell error:', JSON.stringify(data));
         return { statusCode: res.status, body: JSON.stringify(data) };
       }
 
@@ -62,6 +64,7 @@ exports.handler = async (event) => {
         if (payload.status) params.set('status', payload.status);
         const res = await fetch(`${BASE}/documents/?${params}`, { headers });
         const data = await res.json();
+        if (!res.ok) console.error('SignWell error:', JSON.stringify(data));
         return { statusCode: res.status, body: JSON.stringify(data) };
       }
 
@@ -69,6 +72,7 @@ exports.handler = async (event) => {
       case 'getCompletedPdf': {
         const res = await fetch(`${BASE}/documents/${payload.documentId}/completed_pdf/`, { headers });
         const data = await res.json();
+        if (!res.ok) console.error('SignWell error:', JSON.stringify(data));
         return { statusCode: res.status, body: JSON.stringify(data) };
       }
 
@@ -79,6 +83,7 @@ exports.handler = async (event) => {
           body: JSON.stringify({}),
         });
         const data = await res.json();
+        if (!res.ok) console.error('SignWell error:', JSON.stringify(data));
         return { statusCode: res.status, body: JSON.stringify(data) };
       }
 
@@ -89,6 +94,7 @@ exports.handler = async (event) => {
           body: JSON.stringify({ callback_url: payload.callbackUrl }),
         });
         const data = await res.json();
+        if (!res.ok) console.error('SignWell error:', JSON.stringify(data));
         return { statusCode: res.status, body: JSON.stringify(data) };
       }
 
