@@ -71,10 +71,11 @@ export default function VoiceQuotePage() {
   const [recipientContact, setRecipientContact] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
   const [recipientAddress, setRecipientAddress] = useState('');
-  const [clientZip, setClientZip]   = useState('');
-  const [zipResult, setZipResult]   = useState(null);
-  const [zipApplied, setZipApplied] = useState(false);
-  const [marketCity,  setMarketCity]  = useState('');
+  const [clientZip,    setClientZip]    = useState('');
+  const [zipResult,    setZipResult]    = useState(null);
+  const [zipApplied,   setZipApplied]   = useState(false);
+  const [selectedMkt,  setSelectedMkt]  = useState(null);
+  const [marketCity,   setMarketCity]   = useState('');
   const [marketState, setMarketState] = useState('');
   const [dealDescription, setDealDescription]           = useState('');
   const [quoteStatus, setQuoteStatus] = useState('draft');
