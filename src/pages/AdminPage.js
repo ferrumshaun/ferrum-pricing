@@ -911,28 +911,31 @@ export function IntegrationsAdmin() {
             This lets anyone in HubSpot click directly into the quote. Only string/text properties are shown.
           </p>
 
-          <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
-            <select value={quoteUrlField} onChange={e => { setQuoteUrlField(e.target.value); setUrlFieldSaved(false); }}
-              style={{ flex: 1, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 11, background: 'white', outline: 'none', color: quoteUrlField ? '#0f1e3c' : '#9ca3af' }}>
-              <option value="">— select a HubSpot deal property —</option>
-              {hsProps.map(p => (
-                <option key={p.name} value={p.name}>
-                  {p.label} ({p.name}){p.groupName === 'dealinformation' ? '' : ` · ${p.groupName}`}
-                </option>
-              ))}
-              {quoteUrlField && !hsProps.find(p => p.name === quoteUrlField) && (
-                <option value={quoteUrlField}>{quoteUrlField} (previously saved)</option>
-              )}
-            </select>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
             <button onClick={loadHsProperties} disabled={loadingProps || !token}
-              style={{ padding: '6px 12px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', opacity: (!token || loadingProps) ? 0.6 : 1 }}>
-              {loadingProps ? 'Loading…' : 'Load Fields'}
+              style={{ padding: '6px 12px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, opacity: (!token || loadingProps) ? 0.6 : 1 }}>
+              {loadingProps ? 'Loading…' : hsProps.length ? '↻ Reload Fields' : 'Load Fields'}
             </button>
-            <button onClick={saveQuoteUrlField} disabled={!quoteUrlField}
-              style={{ padding: '6px 12px', background: '#0f1e3c', color: 'white', border: 'none', borderRadius: 5, fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: !quoteUrlField ? 0.6 : 1 }}>
-              {urlFieldSaved ? '✓ Saved' : 'Save'}
-            </button>
+            {hsProps.length > 0 && (
+              <span style={{ fontSize: 10, color: '#9ca3af' }}>{hsProps.length} properties loaded</span>
+            )}
           </div>
+          <select value={quoteUrlField} onChange={e => { setQuoteUrlField(e.target.value); setUrlFieldSaved(false); }}
+            style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 11, background: 'white', outline: 'none', color: quoteUrlField ? '#0f1e3c' : '#9ca3af', marginBottom: 8 }}>
+            <option value="">— select a HubSpot deal property —</option>
+            {hsProps.map(p => (
+              <option key={p.name} value={p.name}>
+                {p.label} — {p.name}
+              </option>
+            ))}
+            {quoteUrlField && !hsProps.find(p => p.name === quoteUrlField) && (
+              <option value={quoteUrlField}>{quoteUrlField} (saved)</option>
+            )}
+          </select>
+          <button onClick={saveQuoteUrlField} disabled={!quoteUrlField}
+            style={{ padding: '6px 14px', background: '#0f1e3c', color: 'white', border: 'none', borderRadius: 5, fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: !quoteUrlField ? 0.6 : 1 }}>
+            {urlFieldSaved ? '✓ Saved' : 'Save Field Selection'}
+          </button>
 
           {propsError && <div style={{ fontSize: 11, color: '#dc2626', marginBottom: 6 }}>{propsError}</div>}
 
@@ -947,7 +950,6 @@ export function IntegrationsAdmin() {
             </div>
           )}
         </div>
-        )}
       </div>
 
       {/* Smart Pricing Table */}
