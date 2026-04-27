@@ -13,17 +13,18 @@ const fmtPct = n => n != null ? `${n > 0 ? '+' : ''}${Math.round(n * 100)}%` : '
 export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted, fallbackMarket }) {
   const { profile } = useAuth();
 
-  const [analysis,    setAnalysis]    = useState(null);
-  const [rateSheet,   setRateSheet]   = useState(null);
-  const [workingRates,setWorkingRates]= useState(null);
-  const [overrides,   setOverrides]   = useState({});
-  const [accepted,    setAccepted]    = useState(false);
-  const [loading,     setLoading]     = useState(false);
-  const [refreshing,  setRefreshing]  = useState(false);
-  const [error,       setError]       = useState('');
-  const [showDetail,  setShowDetail]  = useState(false);
-  const [isNewMarket, setIsNewMarket] = useState(false);
-  const [statusMsg,   setStatusMsg]   = useState('');
+  const [analysis,         setAnalysis]         = useState(null);
+  const [rateSheet,        setRateSheet]        = useState(null);
+  const [rateSheetChecked, setRateSheetChecked] = useState(false); // gate: don't run analysis until DB check done
+  const [workingRates,     setWorkingRates]     = useState(null);
+  const [overrides,        setOverrides]        = useState({});
+  const [accepted,         setAccepted]         = useState(false);
+  const [loading,          setLoading]          = useState(false);
+  const [refreshing,       setRefreshing]       = useState(false);
+  const [error,            setError]            = useState('');
+  const [showDetail,       setShowDetail]       = useState(false);
+  const [isNewMarket,      setIsNewMarket]      = useState(false);
+  const [statusMsg,        setStatusMsg]        = useState('');
 
   // Load market analysis when city/state available
   const loadAnalysis = useCallback(async (force = false, readOnly = false) => {
@@ -49,11 +50,11 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted, fa
       }
       const { analysis: result, wasRefreshed } = res;
       setAnalysis(result);
-      // Only reset working rates if no accepted rate sheet exists
+      // Only reset working rates if no accepted rate sheet — never stomp an accepted state
       if (!rateSheet) {
         setWorkingRates({ ...result.rates });
         setOverrides({});
-        setAccepted(false);
+        // Don't touch setAccepted here — it's managed by the rate sheet loader
       }
       if (wasRefreshed && result.analysis_source === 'ai_generated') {
         setIsNewMarket(true);
@@ -69,9 +70,9 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted, fa
     setLoading(false);
   }, [clientZip, rateSheet]);
 
-  // Load existing rate sheet if quote is saved
+  // Load existing rate sheet if quote is saved — MUST complete before analysis runs
   useEffect(() => {
-    if (!quoteId) return;
+    if (!quoteId) { setRateSheetChecked(true); return; } // no quote → no DB check needed
     getRateSheet(quoteId).then(sheet => {
       if (sheet) {
         setRateSheet(sheet);
@@ -80,17 +81,20 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted, fa
         setAccepted(true);
         onRatesAccepted?.(sheet.accepted_rates, null);
       }
-    });
+      setRateSheetChecked(true); // always ungate, whether sheet found or not
+    }).catch(() => setRateSheetChecked(true));
   }, [quoteId]);
 
-  // Load market analysis when zip is ready
-  // - New quotes (no quoteId): full flow including AI generation if no DB record found
-  // - Saved quotes (quoteId exists): DB read only — display locked rates, never trigger AI
+  // Load market analysis — only AFTER the rate sheet DB check completes
+  // This prevents the race condition where loadAnalysis resets accepted=false
+  // before getRateSheet has a chance to set it back to true
   useEffect(() => {
-    if (!clientZip || clientZip.length < 5 || rateSheet) return;
-    const readOnly = !!quoteId; // saved quotes = read-only
+    if (!rateSheetChecked) return;          // wait for DB check
+    if (!clientZip || clientZip.length < 5) return;
+    if (rateSheet) return;                  // already have accepted rates — don't overwrite
+    const readOnly = !!quoteId;
     loadAnalysis(false, readOnly);
-  }, [clientZip, quoteId]);
+  }, [rateSheetChecked, clientZip, quoteId]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -184,22 +188,33 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted, fa
   const hasOverrides = Object.keys(overrides).length > 0;
   const overrideCount = Object.keys(overrides).length;
 
+  // Yellow state: any market rate differs from baseline AND rates not yet accepted
+  const isNonBaseline = !accepted && Object.keys(BASE_RATES).some(key =>
+    workingRates[key] != null && BASE_RATES[key] != null &&
+    Math.abs(workingRates[key] - BASE_RATES[key]) > 0.01
+  );
+
+  // Card appearance: green = accepted, yellow = non-baseline or stale, grey = baseline
+  const cardBorder = accepted ? '#bbf7d0' : (isNonBaseline || stale) ? '#fde68a' : '#e2e8f0';
+  const cardBg     = accepted ? '#f0fdf4' : (isNonBaseline || stale) ? '#fffbeb' : '#f8fafc';
+
   return (
-    <div style={{ border: `1px solid ${accepted ? '#bbf7d0' : stale ? '#fde68a' : '#e2e8f0'}`, borderRadius: 8, overflow: 'hidden', marginTop: 8 }}>
+    <div style={{ border: `1px solid ${cardBorder}`, borderRadius: 8, overflow: 'hidden', marginTop: 8 }}>
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div style={{
-        background: accepted ? '#f0fdf4' : stale ? '#fffbeb' : '#f8fafc',
+        background: cardBg,
         padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        borderBottom: `1px solid ${accepted ? '#bbf7d0' : stale ? '#fde68a' : '#e2e8f0'}`
+        borderBottom: `1px solid ${cardBorder}`
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 13 }}>📊</span>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#0f1e3c' }}>
               Market Rate Analysis
-              {accepted && <span style={{ marginLeft: 6, fontSize: 9, background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: 3, fontWeight: 700 }}>✓ ACCEPTED</span>}
-              {hasOverrides && !accepted && <span style={{ marginLeft: 6, fontSize: 9, background: '#fef3c7', color: '#92400e', padding: '1px 6px', borderRadius: 3, fontWeight: 700 }}>{overrideCount} OVERRIDE{overrideCount > 1 ? 'S' : ''}</span>}
+              {accepted    && <span style={{ marginLeft: 6, fontSize: 9, background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: 3, fontWeight: 700 }}>✓ ACCEPTED</span>}
+              {!accepted && isNonBaseline && !hasOverrides && <span style={{ marginLeft: 6, fontSize: 9, background: '#fef3c7', color: '#92400e', padding: '1px 6px', borderRadius: 3, fontWeight: 700 }}>⚠ RATES DIFFER FROM BASELINE — REVIEW</span>}
+              {hasOverrides && !accepted && <span style={{ marginLeft: 6, fontSize: 9, background: '#fef3c7', color: '#92400e', padding: '1px 6px', borderRadius: 3, fontWeight: 700 }}>{overrideCount} OVERRIDE{overrideCount > 1 ? 'S' : ''} — PENDING ACCEPTANCE</span>}
             </div>
             <div style={{ fontSize: 9, color: '#6b7280', marginTop: 1 }}>
               {analysis.city}, {analysis.state}
