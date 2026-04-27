@@ -213,6 +213,8 @@ export default function VoiceQuotePage() {
     : null;
 
   const gc = result ? gmColor(result.gm) : '#374151';
+  const mktColor = { major_metro:'#1e40af', mid_market:'#065f46', small_market:'#6d28d9', secondary:'#92400e' };
+  const mktBg    = { major_metro:'#dbeafe', mid_market:'#d1fae5', small_market:'#ede9fe', secondary:'#fef3c7' };
   const gb = result ? gmBg(result.gm)    : '#f9fafb';
 
   const recommendedTier = v.quoteType === 'hosted' && v.seats > 0 ? getRecommendedTier(v.seats, v.licenseType) : null;
@@ -298,41 +300,23 @@ export default function VoiceQuotePage() {
           </Fld>
         </Sec>
 
-        {/* Market Tier — shown as soon as a ZIP is entered */}
-        {clientZip.length >= 5 && (
-          <div style={{ marginBottom:6 }}>
-            <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'#6b7280', marginBottom:5 }}>Market Tier</div>
-            <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:6 }}>
-              {marketTiers.map(t => (
-                <div key={t.id} onClick={() => setSelectedMkt(t)}
-                  style={{ padding:'4px 10px', borderRadius:4, cursor:'pointer', fontSize:9, fontWeight:700,
-                    border:`${selectedMkt?.id===t.id?'2':'1'}px solid ${selectedMkt?.id===t.id?'#2563eb':'#e5e7eb'}`,
-                    background:selectedMkt?.id===t.id?'#eff6ff':'white',
-                    color:selectedMkt?.id===t.id?'#1e40af':'#374151' }}>
-                  {t.name}
-                </div>
-              ))}
+        {/* Market Tier — matches IT quote design */}
+        <Sec t="Market Tier" c="#0f1e3c">
+          {marketTiers.map(t => (
+            <div key={t.id} onClick={() => setSelectedMkt(t)}
+              style={{ padding:'5px 7px', borderRadius:4, cursor:'pointer', marginBottom:2,
+                border:`${selectedMkt?.id===t.id?'2':'1'}px solid ${selectedMkt?.id===t.id?(mktColor[t.tier_key]||'#374151'):'#e5e7eb'}`,
+                background:selectedMkt?.id===t.id?(mktBg[t.tier_key]||'#f3f4f6'):'white',
+                display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <span style={{ fontSize:10, fontWeight:700, color:mktColor[t.tier_key] }}>{t.name}</span>
+              <span style={{ fontSize:9, color:'#6b7280', fontFamily:'DM Mono, monospace' }}>
+                {(t.labor_multiplier||t.pricing_multiplier||1)<1
+                  ? `-${Math.round((1-(t.labor_multiplier||t.pricing_multiplier||1))*100)}% pricing`
+                  : 'baseline'}
+              </span>
             </div>
-            {selectedMkt && (
-              <div style={{ fontSize:9, color:'#6b7280', padding:'3px 6px', background:'#f8fafc', borderRadius:3, border:'1px solid #e5e7eb' }}>
-                {selectedMkt.name} &middot; {Math.round((selectedMkt.pricing_multiplier||1)*100)}% pricing index
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Market Rate Analysis card */}
-        <MarketRateCard
-          quoteId={existingQuote?.id}
-          clientZip={clientZip}
-          fallbackMarket={selectedMkt}
-          onRatesAccepted={(rates, suggestedTier) => {
-            if (suggestedTier && marketTiers.length) {
-              const tier = marketTiers.find(t => t.tier_key === suggestedTier);
-              if (tier) setSelectedMkt(tier);
-            }
-          }}
-        />
+          ))}
+        </Sec>
 
         {/* Contract & Status — just under Proposal Details */}
         <Sec t="Contract & Status" c="#374151">
@@ -896,6 +880,19 @@ export default function VoiceQuotePage() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Market Rate Analysis — same position as IT/Bundle quotes */}
+                  <MarketRateCard
+                    quoteId={existingQuote?.id}
+                    clientZip={clientZip}
+                    fallbackMarket={selectedMkt}
+                    onRatesAccepted={(rates, suggestedTier) => {
+                      if (suggestedTier && marketTiers.length) {
+                        const tier = marketTiers.find(t => t.tier_key === suggestedTier);
+                        if (tier) setSelectedMkt(tier);
+                      }
+                    }}
+                  />
 
                   {/* Voice Documents */}
                   <div style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:6, padding:'10px 12px', marginBottom:10 }}>
