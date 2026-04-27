@@ -68,6 +68,7 @@ export default function VoiceQuotePage() {
   const [showVoiceAssumptions, setShowVoiceAssumptions] = useState(false);
   const [showLOA,              setShowLOA]              = useState(false);
   const [loaDocRecord,         setLoaDocRecord]         = useState(null);
+  const [intlWaiverDocRecord,  setIntlWaiverDocRecord]  = useState(null);
   const [voiceProgIncentive,   setVoiceProgIncentive]   = useState(null);
   const [pricingSnapshot, setPricingSnapshot] = useState(null);
   const [priceLockDate,   setPriceLockDate]   = useState(null);
@@ -136,6 +137,9 @@ export default function VoiceQuotePage() {
       // Restore LOA doc record for port readiness
       const loaDocs = (data.inputs?.signwellDocuments || []).filter(d => d.type === 'loa');
       if (loaDocs.length > 0) setLoaDocRecord(loaDocs[loaDocs.length - 1]);
+      // Restore International Dialing Waiver doc record for status display
+      const intlWaiverDocs = (data.inputs?.signwellDocuments || []).filter(d => d.type === 'intl_waiver');
+      if (intlWaiverDocs.length > 0) setIntlWaiverDocRecord(intlWaiverDocs[intlWaiverDocs.length - 1]);
       if (data.market_tier && marketTiers.length) {
         const t = marketTiers.find(t => t.tier_key === data.market_tier);
         if (t) setSelectedMkt(t);
@@ -1205,12 +1209,29 @@ export default function VoiceQuotePage() {
                       )}
 
                       {v.internationalDialing !== 'none' ? (
-                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#fef2f2', borderRadius:4, border:'1px solid #fecaca' }}>
-                          <div>
-                            <div style={{ fontSize:11, fontWeight:600, color:'#991b1b' }}>⚠ International Dialing Waiver</div>
-                            <div style={{ fontSize:9, color:'#9ca3af', marginTop:1 }}>Required — client must sign before international calling is enabled</div>
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background: intlWaiverDocRecord ? '#f0fdf4' : '#fef2f2', borderRadius:4, border: `1px solid ${intlWaiverDocRecord ? '#a7f3d0' : '#fecaca'}` }}>
+                          <div style={{ minWidth:0, flex:1 }}>
+                            <div style={{ fontSize:11, fontWeight:600, color: intlWaiverDocRecord ? '#065f46' : '#991b1b' }}>
+                              {intlWaiverDocRecord ? '✓' : '⚠'} International Dialing Waiver
+                            </div>
+                            {intlWaiverDocRecord ? (
+                              <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:3, flexWrap:'wrap' }}>
+                                {(intlWaiverDocRecord.status === 'signed' || intlWaiverDocRecord.signed_at) ? (
+                                  <span style={{ fontSize:9, fontWeight:600, color:'#065f46', background:'#d1fae5', padding:'1px 6px', borderRadius:3 }}>SIGNED</span>
+                                ) : (
+                                  <span style={{ fontSize:9, fontWeight:600, color:'#92400e', background:'#fef3c7', padding:'1px 6px', borderRadius:3 }}>SENT — AWAITING SIGNATURE</span>
+                                )}
+                                {(intlWaiverDocRecord.hubspot_uploaded_at || intlWaiverDocRecord.hubspot_file_id) && (
+                                  <span style={{ fontSize:9, fontWeight:600, color:'#9a3412', background:'#ffedd5', padding:'1px 6px', borderRadius:3 }}>↗ HUBSPOT</span>
+                                )}
+                              </div>
+                            ) : (
+                              <div style={{ fontSize:9, color:'#9ca3af', marginTop:1 }}>Required — client must sign before international calling is enabled</div>
+                            )}
                           </div>
-                          <button onClick={() => setShowIntlWaiver(true)} style={{ padding:'4px 10px', background:'#7c1d1d', color:'white', border:'none', borderRadius:4, fontSize:10, fontWeight:600, cursor:'pointer', flexShrink:0 }}>Open Waiver</button>
+                          <button onClick={() => setShowIntlWaiver(true)} style={{ padding:'4px 10px', background: intlWaiverDocRecord ? '#065f46' : '#7c1d1d', color:'white', border:'none', borderRadius:4, fontSize:10, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+                            {intlWaiverDocRecord ? 'View Status' : 'Open Waiver'}
+                          </button>
                         </div>
                       ) : (
                         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#f8fafc', borderRadius:4, border:'1px dashed #d1d5db' }}>
@@ -1282,6 +1303,8 @@ export default function VoiceQuotePage() {
                       settings={settings}
                       hubDealId={hubDealId}
                       selectedTier={v.internationalDialing !== 'none' ? v.internationalDialing : 'standard'}
+                      existingDocRecord={intlWaiverDocRecord}
+                      onDocSaved={(rec) => { setIntlWaiverDocRecord(rec); }}
                     />
                   )}
 
