@@ -8,9 +8,10 @@ const INTL_TIERS = {
   open:     { label:'Full Open International Access',desc:'Unrestricted global dialing — all destinations',     risk:'High',     color:'#dc2626' },
 };
 const STATUS_BADGE = {
-  pending:   { label:'Awaiting Signature', bg:'#fef3c7', color:'#92400e' },
-  completed: { label:'✓ Signed',           bg:'#dcfce7', color:'#166534' },
-  declined:  { label:'✗ Declined',         bg:'#fee2e2', color:'#991b1b' },
+  draft:     { label:'Draft — Place Fields', bg:'#eff6ff', color:'#1e40af' },
+  pending:   { label:'Awaiting Signature',   bg:'#fef3c7', color:'#92400e' },
+  completed: { label:'✓ Signed',             bg:'#dcfce7', color:'#166534' },
+  declined:  { label:'✗ Declined',           bg:'#fee2e2', color:'#991b1b' },
 };
 
 export default function IntlDialingWaiver({ onClose, quoteId, quoteNumber, clientName, recipientContact, recipientEmail: initialEmail, settings, selectedTier, existingDoc, onDocSaved }) {
@@ -55,7 +56,9 @@ export default function IntlDialingWaiver({ onClose, quoteId, quoteNumber, clien
       const record = await sendIntlDialingWaiver({ clientName: entityName, clientEmail: contactEmail, contactName, entityName, title: jobTitle, tier, tierLabel: tierInfo.label, tierDesc: tierInfo.desc, quoteNumber, testMode });
       setDocRecord(record);
       await saveDocToQuote(record);
-      notify(testMode ? '✓ Test document sent — check SignWell dashboard. No email in test mode.' : `✓ Signing request sent to ${contactEmail}. Client will receive a link by email.`);
+      notify(testMode
+        ? '✓ Draft created in SignWell (test mode). Click "Open in SignWell" to place signature fields, then send.'
+        : '✓ Draft created in SignWell. Click "Open in SignWell" below to place signature fields, then send to client.');
     } catch(e) { notify('✗ ' + e.message, 'err'); }
     setSending(false);
   }
@@ -142,8 +145,14 @@ export default function IntlDialingWaiver({ onClose, quoteId, quoteNumber, clien
                     ↓ Download Signed PDF
                   </a>
                 )}
+                {docRecord.editUrl && (
+                  <a href={docRecord.editUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ padding:'5px 12px', background:'#0f1e3c', color:'white', borderRadius:4, fontSize:11, fontWeight:700, textDecoration:'none' }}>
+                    ✏ Open in SignWell →
+                  </a>
+                )}
                 <button onClick={()=>setDocRecord(null)} style={{ padding:'5px 12px', background:'white', border:'1px solid #fecaca', borderRadius:4, fontSize:11, color:'#dc2626', cursor:'pointer' }}>
-                  Send New
+                  Create New
                 </button>
               </div>
             </div>
@@ -232,9 +241,12 @@ export default function IntlDialingWaiver({ onClose, quoteId, quoteNumber, clien
                 {(!entityName||!contactEmail) && <div style={{ fontSize:9, color:'#dc2626', marginTop:4 }}>Name and email required</div>}
               </>
             )}
-            <div style={{ marginTop:10, fontSize:9, color:'#9ca3af', lineHeight:1.6 }}>
-              Client receives an email with a signing link — no account required. Both parties sign: client first, then Ferrum.
-              Full audit trail (IP, timestamp, auth method) stored in SignWell and linked to this quote.
+            <div style={{ marginTop:10, fontSize:9, color:'#9ca3af', lineHeight:1.7 }}>
+              <strong style={{ color:'#374151' }}>Workflow:</strong><br/>
+              1. Click Send — document is created as a draft in SignWell<br/>
+              2. Click <strong>Open in SignWell →</strong> to place signature fields (drag &amp; drop)<br/>
+              3. Click Send in SignWell — client receives email with signing link (no account needed)<br/>
+              4. Client signs, then Ferrum countersigns. Full audit trail auto-saved.
             </div>
           </div>
         </div>

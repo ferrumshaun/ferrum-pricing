@@ -41,7 +41,6 @@ export async function sendIntlDialingWaiver({
     name: `International Dialing Authorization — ${entityName}${quoteNumber ? ` (${quoteNumber})` : ''}`,
     subject: `Action Required — International Dialing Authorization · ${entityName}`,
     message: `Please review and sign the International Dialing Authorization for your Ferrum Technology Services account. This document enables ${tierLabel} on your hosted SIP trunk. By signing, you acknowledge and accept the terms outlined including full financial responsibility for all international calling charges.`,
-    text_tags: true,
     files: [{
       name: 'International_Dialing_Authorization.html',
       file_base64: base64Content,
@@ -52,13 +51,16 @@ export async function sendIntlDialingWaiver({
     ],
   });
 
+  // Draft created — return edit URL so user can place signature fields in SignWell
+  const editUrl = `https://app.signwell.com/app/documents/${result.id}`;
+
   return {
-    documentId: result.id,
-    signingUrl: result.signing_url,
-    status: result.status,
-    createdAt: new Date().toISOString(),
+    documentId:  result.id,
+    editUrl,
+    status:      'draft',
+    createdAt:   new Date().toISOString(),
     clientEmail,
-    clientName: contactName || clientName,
+    clientName:  contactName || clientName,
     entityName,
     tier,
     tierLabel,
