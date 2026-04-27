@@ -818,6 +818,7 @@ export function IntegrationsAdmin() {
 
       {/* Smart Pricing Table */}
       <SPTIntegration />
+      <SignWellIntegration />
 
       {/* HubSpot */}
       <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20, marginBottom: 16 }}>
@@ -890,6 +891,101 @@ export function IntegrationsAdmin() {
   );
 }
 
+
+// ─── SignWell Integration ────────────────────────────────────────────────────
+function SignWellIntegration() {
+  const [key,     setKey]     = useState('');
+  const [saved,   setSaved]   = useState(false);
+  const [saving,  setSaving]  = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testMsg, setTestMsg] = useState('');
+  const [loading, setLoading] = useState(true);
+  const { profile } = useAuth();
+
+  useEffect(() => {
+    supabase.from('pricing_settings').select('value').eq('key', 'signwell_api_key').single()
+      .then(({ data }) => { if (data?.value) setKey(data.value); setLoading(false); });
+  }, []);
+
+  async function save() {
+    setSaving(true); setSaved(false); setTestMsg('');
+    await supabase.from('pricing_settings').upsert({ key: 'signwell_api_key', value: key, description: 'SignWell e-signature API key' }, { onConflict: 'key' });
+    await logActivity({ action: 'UPDATE', entityType: 'setting', entityId: null, entityName: 'signwell_api_key', changes: { updated: true } });
+    setSaved(true); setSaving(false);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  async function testConnection() {
+    if (!key) { setTestMsg('✗ Enter an API key first'); return; }
+    setTesting(true); setTestMsg('');
+    try {
+      const res = await fetch('/.netlify/functions/signwellProxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'listDocuments', payload: { per_page: 1 } }),
+      });
+      const data = await res.json();
+      if (res.ok) setTestMsg('✓ Connected successfully — SignWell API is responding');
+      else setTestMsg('✗ ' + (data.error || data.errors?.base?.[0] || `Error ${res.status}`));
+    } catch(e) { setTestMsg('✗ ' + e.message); }
+    setTesting(false);
+  }
+
+  return (
+    <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20, marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <div style={{ width: 24, height: 24, background: '#166534', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ color: 'white', fontSize: 12, fontWeight: 700 }}>SW</span>
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f1e3c' }}>SignWell E-Signatures</div>
+      </div>
+      <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 14 }}>
+        Legally binding e-signatures for International Dialing Waivers and other one-off documents.
+        First 25 documents/month free, then $0.75/doc — no monthly minimum.
+        Get your API key from{' '}
+        <a href="https://app.signwell.com/account/api" target="_blank" rel="noopener noreferrer" style={{ color: '#166534' }}>
+          SignWell → Account → API
+        </a>.
+      </p>
+      <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 14 }}>
+        Also register the webhook URL in{' '}
+        <a href="https://app.signwell.com/account/api" target="_blank" rel="noopener noreferrer" style={{ color: '#166534' }}>
+          SignWell → API → Webhooks
+        </a>:{' '}
+        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, background: '#f1f5f9', padding: '1px 5px', borderRadius: 3 }}>
+          https://lustrous-treacle-e0ca6a.netlify.app/.netlify/functions/signwellWebhook
+        </span>
+      </p>
+      {loading ? <div style={{ fontSize: 11, color: '#9ca3af' }}>Loading...</div> : (
+        <>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>API Key</label>
+          <input
+            type="password"
+            value={key}
+            onChange={e => setKey(e.target.value)}
+            placeholder="your SignWell API key..."
+            style={{ width: '100%', padding: '7px 9px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, outline: 'none', fontFamily: 'DM Mono, monospace', marginBottom: 10 }}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={save} disabled={saving}
+              style={{ padding: '7px 18px', background: '#166534', color: 'white', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+              {saving ? 'Saving...' : 'Save API Key'}
+            </button>
+            <button onClick={testConnection} disabled={testing || !key}
+              style={{ padding: '7px 14px', background: 'white', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, color: '#374151', cursor: 'pointer', opacity: testing ? 0.6 : 1 }}>
+              {testing ? 'Testing...' : 'Test Connection'}
+            </button>
+            {saved && <span style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>✓ Saved</span>}
+            {testMsg && <span style={{ fontSize: 11, fontWeight: 600, color: testMsg.startsWith('✓') ? '#166534' : '#dc2626' }}>{testMsg}</span>}
+          </div>
+          <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 8 }}>
+            The key is stored in Pricing Settings and used server-side only. You can also set SIGNWELL_API_KEY in Netlify environment variables (env var takes precedence).
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 // ─── SPT Integration ─────────────────────────────────────────────────────────
 function SPTIntegration() {

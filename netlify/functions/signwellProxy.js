@@ -12,10 +12,25 @@ exports.handler = async (event) => {
   catch { return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
   const { action, payload } = body;
-  const apiKey = process.env.SIGNWELL_API_KEY;
+  // API key: env var takes precedence, falls back to pricing_settings in Supabase
+  let apiKey = process.env.SIGNWELL_API_KEY;
 
   if (!apiKey) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'SIGNWELL_API_KEY not configured — add it to Netlify environment variables.' }) };
+    const supabaseUrl  = process.env.REACT_APP_SUPABASE_URL;
+    const supabaseKey  = process.env.REACT_APP_SUPABASE_ANON_KEY;
+    if (supabaseUrl && supabaseKey) {
+      try {
+        const res = await fetch(`${supabaseUrl}/rest/v1/pricing_settings?key=eq.signwell_api_key&select=value`, {
+          headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+        });
+        const rows = await res.json();
+        apiKey = rows?.[0]?.value || null;
+      } catch {}
+    }
+  }
+
+  if (!apiKey) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'SignWell API key not configured. Add it in Admin → Integrations → SignWell, or set SIGNWELL_API_KEY in Netlify environment variables.' }) };
   }
 
   const BASE = 'https://www.signwell.com/api/v1';
