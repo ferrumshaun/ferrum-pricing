@@ -1,5 +1,27 @@
 [
   {
+    "version": "3.1.1",
+    "date": "2026-04-27",
+    "summary": "Hosted Voice assumptions & exclusions + HubSpot fixes",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "\ud83d\udccb Hosted Voice Assumptions & Exclusions document \u2014 separate from Managed IT assumptions, voice-specific fields: seats, DID porting (none/partial/full), auto-attendant/voicemail/call recording, fax lines, hardware notes, current PBX type, network/firewall notes, compliance",
+        "Voice Documents panel now shows both Assumptions & Exclusions and International Dialing Waiver as distinct cards",
+        "Standard voice exclusions pre-populated: end-user training, cabling, internet connectivity, third-party integrations, number porting limits, international calling, on-site support",
+        "Bundle strategy confirmed: IT assumptions and Voice assumptions remain separate documents \u2014 each quote type owns its own, Bundle stacks both"
+      ],
+      "improved": [
+        "International Dialing Waiver now includes Proposal Name, Reference # (auto-populated from quote), and Authorized Scope field \u2014 legally ties the waiver to a specific account/location",
+        "VoiceQuotePage passes proposalName and recipientEmail to the waiver form"
+      ],
+      "fixed": [
+        "Voice quote: marketTiers was not destructured from useConfig \u2014 caused crash when connecting HubSpot if client had a ZIP code on file",
+        "Contact Name and Contact Email were not populating from HubSpot on Voice quotes \u2014 this was a side effect of the marketTiers crash stopping the onConnect handler mid-execution"
+      ]
+    }
+  },
+  {
     "version": "3.1.0",
     "date": "2026-04-26",
     "summary": "Voice quote \u2014 hardware mix & match, BYOH, international dialing waiver, flex time removed",

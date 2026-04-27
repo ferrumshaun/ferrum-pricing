@@ -10,7 +10,8 @@ import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
-import IntlDialingWaiver from '../components/IntlDialingWaiver';
+import IntlDialingWaiver       from '../components/IntlDialingWaiver';
+import VoiceAssumptionsModal  from '../components/VoiceAssumptionsModal';
 import HubSpotConnect from '../components/HubSpotConnect';
 import SPTConnect    from '../components/SPTConnect';
 import MarketRateCard from '../components/MarketRateCard';
@@ -58,7 +59,8 @@ export default function VoiceQuotePage() {
   const [v, setV]               = useState(DEF);
   const [proposalName, setProposalName] = useState('');
   const [sptProposalId,    setSptProposalId]    = useState(null);
-  const [showIntlWaiver,   setShowIntlWaiver]   = useState(false);
+  const [showIntlWaiver,      setShowIntlWaiver]      = useState(false);
+  const [showVoiceAssumptions, setShowVoiceAssumptions] = useState(false);
   const [pricingSnapshot, setPricingSnapshot] = useState(null);
   const [priceLockDate,   setPriceLockDate]   = useState(null);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
@@ -803,6 +805,17 @@ export default function VoiceQuotePage() {
                   <div style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:6, padding:'10px 12px', marginBottom:10 }}>
                     <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'#6b7280', marginBottom:8 }}>📄 Documents</div>
                     <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                      {/* Assumptions & Exclusions */}
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#faf5ff', borderRadius:4, border:'1px solid #e9d5ff' }}>
+                        <div>
+                          <div style={{ fontSize:11, fontWeight:600, color:'#6d28d9' }}>📋 Assumptions & Exclusions</div>
+                          <div style={{ fontSize:9, color:'#9ca3af', marginTop:1 }}>Hosted Voice specific — seats, porting, features, infrastructure</div>
+                        </div>
+                        <button onClick={() => setShowVoiceAssumptions(true)}
+                          style={{ padding:'4px 10px', background:'#7c3aed', color:'white', border:'none', borderRadius:4, fontSize:10, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+                          Open
+                        </button>
+                      </div>
                       {v.internationalDialing !== 'none' ? (
                         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:'#fef2f2', borderRadius:4, border:'1px solid #fecaca' }}>
                           <div>
@@ -822,6 +835,20 @@ export default function VoiceQuotePage() {
                       )}
                     </div>
                   </div>
+
+                  {showVoiceAssumptions && (
+                    <VoiceAssumptionsModal
+                      onClose={() => setShowVoiceAssumptions(false)}
+                      quoteId={existingQuote?.id}
+                      quoteNumber={existingQuote?.quote_number}
+                      clientName={recipientBiz}
+                      recipientContact={recipientContact}
+                      inputs={v}
+                      voicePlan={v.quoteType}
+                      settings={settings}
+                      onSaved={() => setShowVoiceAssumptions(false)}
+                    />
+                  )}
 
                   {showIntlWaiver && (
                     <IntlDialingWaiver
