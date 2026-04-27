@@ -131,7 +131,7 @@ export async function getMarketByZip(zip) {
 // ── Get or analyze — main entry point ─────────────────────────────────────
 // Accepts zip alone — resolves city/state via DB or AI
 // Returns { analysis, wasRefreshed }
-export async function getOrAnalyzeMarket(zip, forceRefresh = false, cityHint, stateHint) {
+export async function getOrAnalyzeMarket(zip, forceRefresh = false, cityHint, stateHint, readOnly = false) {
   // Require either a zip or city+state — otherwise nothing to look up
   if (!zip && !(cityHint && stateHint)) return null;
 
@@ -165,7 +165,14 @@ export async function getOrAnalyzeMarket(zip, forceRefresh = false, cityHint, st
     }
   }
 
-  // 3. Run AI analysis — pass zip + any hints
+  // 3. readOnly mode — return stale data rather than triggering AI (used by quote pages on load)
+  if (readOnly) {
+    if (zip) { const byZip = await getMarketByZip(zip); if (byZip) return { analysis: byZip, wasRefreshed: false }; }
+    if (cityHint && stateHint) { const byCityState = await getMarketAnalysis(cityHint, stateHint); if (byCityState) return { analysis: byCityState, wasRefreshed: false }; }
+    return null;
+  }
+
+  // 4. Run AI analysis — pass zip + any hints (only when not readOnly)
   const aiResult = await runMarketAnalysis(cityHint || null, stateHint || null, zip || null);
 
   // AI returns city/state in the result

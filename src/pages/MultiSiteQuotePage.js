@@ -132,21 +132,23 @@ export default function MultiSiteQuotePage() {
   }, [packages]);
 
   // ── Fetch market analysis per location when zip changes ───────────────────
-  const fetchAnalysis = useCallback(async (locId, zip) => {
+  const fetchAnalysis = useCallback(async (locId, zip, readOnly = false) => {
     if (!zip || zip.length < 5) return;
     setLocLoading(prev => ({ ...prev, [locId]: true }));
     try {
-      const { analysis } = await getOrAnalyzeMarket(zip, false);
-      if (analysis) setLocationAnalyses(prev => ({ ...prev, [locId]: analysis }));
+      const result = await getOrAnalyzeMarket(zip, false, undefined, undefined, readOnly);
+      if (result?.analysis) setLocationAnalyses(prev => ({ ...prev, [locId]: result.analysis }));
     } catch (e) { console.warn('Market analysis failed:', e.message); }
     setLocLoading(prev => ({ ...prev, [locId]: false }));
   }, []);
 
   // Re-fetch when locations change
+  // readOnly=true for saved quotes — reads DB only, never triggers AI refresh
   useEffect(() => {
+    const isExisting = !!existingQuote?.id;
     locations.forEach(l => {
       if (l.zip && l.zip.length >= 5 && !locationAnalyses[l.id]) {
-        fetchAnalysis(l.id, l.zip);
+        fetchAnalysis(l.id, l.zip, isExisting);
       }
     });
   }, [locations.map(l => l.id + l.zip).join(',')]);
