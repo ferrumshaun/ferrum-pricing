@@ -33,7 +33,7 @@ const DEF = {
 
 export default function VoiceQuotePage() {
   const { id } = useParams();
-  const { settings, loading: configLoading } = useConfig();
+  const { settings, marketTiers, loading: configLoading } = useConfig();
   const { profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
