@@ -53,8 +53,8 @@ exports.handler = async (event) => {
             name:       payload.name,
             subject:    payload.subject || payload.name,
             message:    payload.message || 'Please review and sign the attached document.',
-            files:      payload.files,
-            recipients: payload.recipients,
+            files:    payload.files,
+            signees:  payload.recipients,
           }),
         });
         const data = await res.json();
@@ -72,8 +72,8 @@ exports.handler = async (event) => {
             name:       payload.name,
             subject:    payload.subject || payload.name,
             message:    payload.message || 'Please review and sign the attached document.',
-            files:      payload.files,
-            recipients: payload.recipients,
+            files:    payload.files,
+            signees:  payload.recipients,
           }),
         });
         const data = await res.json();
