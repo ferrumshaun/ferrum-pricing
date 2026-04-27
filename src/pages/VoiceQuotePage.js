@@ -28,8 +28,8 @@ const DEF = {
   sipChannels: 0,
   localDIDs: 0, smsDIDs: 0, tollFreeNumbers: 0, e911DIDs: 0, tollFreePerMin: false, tollFreePerMinRate: 0.05, portingDIDList: '',
   faxType: 'none', faxUsers: 1, faxDIDs: 1, ataItems: [],
-  callRecording: false,
-  smsEnabled: false, smsNewRegistration: true, smsCampaigns: 1,
+  callRecording: false, callRecordingDays: 30,
+  smsEnabled: false, smsNewRegistration: true, smsCampaigns: 1, smsCampaignList: [],
   hardwareType: 'none', hardwareItems: [], hardwareDiscount50: false, byohItems: [],
   waiveProgrammingFee: false, portingNumbers: 0,
   contractTerm: 24,
@@ -416,7 +416,14 @@ export default function VoiceQuotePage() {
         <Sec t="Numbers & DIDs" c="#0f766e">
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:5 }}>
             <Fld lbl="Local DIDs" sub="$1.50/mo w/CNAM"><NI v={v.localDIDs} s={val=>set('localDIDs',val)}/></Fld>
-            <Fld lbl="SMS-Enabled DIDs" sub="+$1.25/mo add-on"><NI v={v.smsDIDs} s={val=>set('smsDIDs',val)}/></Fld>
+            <Fld lbl="SMS-Enabled DIDs" sub="+$1.25/mo add-on">
+              <NI v={v.smsDIDs} s={val=>{
+                set('smsDIDs',val);
+                if(val>0 && !v.smsEnabled) set('smsEnabled',true);
+                if(val===0) set('smsEnabled',false);
+              }}/>
+              {(v.smsDIDs||0)>0 && <div style={{fontSize:8,color:'#d97706',marginTop:2,fontWeight:600}}>⚡ 10DLC registration + campaigns required — see SMS/10DLC section below</div>}
+            </Fld>
             <Fld lbl="Toll-Free Numbers" sub="$5.00/mo"><NI v={v.tollFreeNumbers} s={val=>set('tollFreeNumbers',val)}/></Fld>
             <Fld lbl="E911 DIDs" sub="$2.50/mo flat"><NI v={v.e911DIDs} s={val=>set('e911DIDs',val)}/></Fld>
           </div>
@@ -622,14 +629,78 @@ export default function VoiceQuotePage() {
           })()}
         </Sec>
 
-        {/* Add-ons */}
-        <Sec t="Add-ons" c="#0891b2">
-          <Tog on={v.callRecording} set={val=>set('callRecording',val)} lbl="Call Recording" sub="Cloud storage — $15/mo"/>
-          <Tog on={v.smsEnabled} set={val=>set('smsEnabled',val)} lbl="SMS/MMS" sub="10DLC reg + campaigns + metered segments"/>
-          {v.smsEnabled && (
-            <div style={{ marginLeft:8, marginTop:4 }}>
-              <Tog on={v.smsNewRegistration} set={val=>set('smsNewRegistration',val)} lbl="New 10DLC brand registration" sub="$65 one-time"/>
-              <Fld lbl="SMS Campaigns" sub="$15/mo each"><NI v={v.smsCampaigns} s={val=>set('smsCampaigns',val)}/></Fld>
+        {/* SMS / 10DLC — moved up, required when smsDIDs > 0 */}
+        <Sec t="SMS / 10DLC" c="#7c3aed">
+          {(v.smsDIDs||0) > 0 && !v.smsEnabled && (
+            <div style={{ padding:'6px 9px', background:'#fef3c7', border:'1px solid #fde68a', borderRadius:4, fontSize:9, color:'#92400e', marginBottom:6, fontWeight:600 }}>
+              ⚡ Required — you have {v.smsDIDs} SMS-enabled DID{v.smsDIDs>1?'s':''}.
+            </div>
+          )}
+          <Tog
+            on={v.smsEnabled || (v.smsDIDs||0)>0}
+            set={val=>{ if((v.smsDIDs||0)>0&&!val) return; set('smsEnabled',val); }}
+            lbl="SMS / MMS Enabled"
+            sub={(v.smsDIDs||0)>0 ? "Required — SMS DIDs selected" : "10DLC reg + campaigns + metered segments"}
+          />
+          {(v.smsEnabled || (v.smsDIDs||0)>0) && (
+            <div style={{ marginTop:6 }}>
+              <Tog on={v.smsNewRegistration!==false} set={val=>set('smsNewRegistration',val)} lbl="New 10DLC brand registration" sub="$65 one-time NRC"/>
+              <div style={{ marginTop:8 }}>
+                <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:5 }}>
+                  SMS Campaigns <span style={{ fontSize:8, color:'#9ca3af', fontWeight:400 }}>— $15/mo each · quantity depends on client use case</span>
+                </div>
+                {(v.smsCampaignList||[]).map((c,i)=>(
+                  <div key={i} style={{ display:'flex', gap:5, marginBottom:4, alignItems:'center' }}>
+                    <input value={c.name||''} onChange={e=>{const l=[...(v.smsCampaignList||[])];l[i]={...l[i],name:e.target.value};set('smsCampaignList',l);}}
+                      placeholder={`Campaign ${i+1} — e.g. Customer Notifications, Marketing, Support`}
+                      style={{ flex:1, padding:'4px 7px', border:'1px solid #d1d5db', borderRadius:4, fontSize:10, outline:'none' }}/>
+                    <button onClick={()=>set('smsCampaignList',(v.smsCampaignList||[]).filter((_,j)=>j!==i))}
+                      style={{ padding:'3px 6px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:3, color:'#dc2626', fontSize:11, cursor:'pointer' }}>×</button>
+                  </div>
+                ))}
+                {(v.smsCampaignList||[]).length === 0 && (
+                  <div style={{ fontSize:9, color:'#9ca3af', fontStyle:'italic', marginBottom:6 }}>
+                    No campaigns added. Add at least one campaign for 10DLC compliance.
+                  </div>
+                )}
+                <button onClick={()=>set('smsCampaignList',[...(v.smsCampaignList||[]),{name:''}])}
+                  style={{ padding:'4px 9px', background:'white', border:'1px dashed #c4b5fd', borderRadius:4, fontSize:9, color:'#7c3aed', cursor:'pointer' }}>
+                  + Add Campaign
+                </button>
+                {(v.smsCampaignList||[]).length > 0 && (
+                  <div style={{ marginTop:5, fontSize:9, color:'#6b7280' }}>
+                    {v.smsCampaignList.length} campaign{v.smsCampaignList.length>1?'s':''} × $15/mo = <strong>${v.smsCampaignList.length*15}/mo</strong>
+                  </div>
+                )}
+              </div>
+              <div style={{ marginTop:6, padding:'5px 8px', background:'#f5f3ff', border:'1px solid #ddd6fe', borderRadius:4, fontSize:8, color:'#6b7280', lineHeight:1.6 }}>
+                Usage rate: $0.02/SMS segment · $0.04/MMS segment — billed monthly in arrears
+              </div>
+            </div>
+          )}
+        </Sec>
+
+        {/* Call Recording */}
+        <Sec t="Call Recording" c="#0891b2">
+          <Tog on={v.callRecording} set={val=>set('callRecording',val)} lbl="Enable Call Recording" sub="$35/mo — includes 30-day storage"/>
+          {v.callRecording && (
+            <div style={{ marginTop:6, padding:'8px 10px', background:'#f0f9ff', border:'1px solid #bae6fd', borderRadius:5 }}>
+              <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:6 }}>Recording Retention Period</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                {[[30,'30 days',35,'Included in base'],[60,'60 days',50,'+ 1 month storage'],[90,'90 days',65,'+ 2 months storage'],[180,'180 days',110,'+ 5 months storage'],[365,'1 year',195,'+ 11 months storage']].map(([days,label,total,note])=>(
+                  <div key={days} onClick={()=>set('callRecordingDays',days)}
+                    style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 8px', borderRadius:4, cursor:'pointer',
+                      border:`${(v.callRecordingDays||30)===days?'2':'1'}px solid ${(v.callRecordingDays||30)===days?'#0891b2':'#e5e7eb'}`,
+                      background:(v.callRecordingDays||30)===days?'#ecfeff':'white' }}>
+                    <div>
+                      <span style={{ fontSize:10, fontWeight:700, color:(v.callRecordingDays||30)===days?'#0e7490':'#374151' }}>{label}</span>
+                      <span style={{ fontSize:8, color:'#9ca3af', marginLeft:6 }}>{note}</span>
+                    </div>
+                    <span style={{ fontSize:9, fontFamily:'DM Mono, monospace', color:'#6b7280' }}>${total}/mo</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize:8, color:'#9ca3af', marginTop:5 }}>Base rate $35/mo includes 30-day retention. Extended storage adds $15/mo per additional 30-day period.</div>
             </div>
           )}
         </Sec>

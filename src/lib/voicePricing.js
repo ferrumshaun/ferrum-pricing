@@ -204,24 +204,32 @@ export function calcVoice(v, settings) {
 
   // ── CALL RECORDING ────────────────────────────────────────────────────────
   if (v.callRecording) {
-    const crRate = parseFloat(s.voice_call_recording_rate || 15);
-    lines.push({ label: 'Call Recording (cloud storage)', mrr: crRate, cost: crRate * 0.5, section: 'addons' });
-    mrr += crRate; costMrr += crRate * 0.5;
+    const crBase    = parseFloat(s.voice_call_recording_rate || 35);
+    const crExtRate = parseFloat(s.voice_call_recording_ext_rate || 15);
+    const crDays    = parseInt(v.callRecordingDays || 30);
+    const extraMonths = Math.max(0, Math.round((crDays - 30) / 30));
+    const crMRR = crBase + extraMonths * crExtRate;
+    lines.push({ label: `Call Recording — ${crDays}-day retention`, mrr: crMRR, cost: crMRR * 0.5, section: 'addons',
+      desc: crDays === 30 ? '30 days included' : `30 days base + ${extraMonths} extra month${extraMonths > 1 ? 's' : ''} storage` });
+    mrr += crMRR; costMrr += crMRR * 0.5;
   }
 
-  // ── SMS/MMS ───────────────────────────────────────────────────────────────
-  if (v.smsEnabled) {
-    if (v.smsNewRegistration) {
+  // ── SMS/MMS — required when smsDIDs > 0 ─────────────────────────────────
+  const smsRequired = smsDIDs > 0;
+  if (v.smsEnabled || smsRequired) {
+    if (v.smsNewRegistration !== false) {
       lines.push({ label: '10DLC Brand Registration (one-time)', mrr: 0, nrc: smsReg, cost: smsReg, section: 'sms' });
       nrc += smsReg;
     }
-    const campaigns = parseInt(v.smsCampaigns || 1);
-    if (campaigns > 0) {
-      const campMRR = campaigns * smsCamp;
-      lines.push({ label: `SMS Campaign Fee (${campaigns} × $${smsCamp}/mo)`, mrr: campMRR, cost: campMRR * 0.7, section: 'sms' });
+    // Support smsCampaignList array (new) or legacy smsCampaigns count
+    const campaignList = v.smsCampaignList || [];
+    const numCampaigns = campaignList.length > 0 ? campaignList.length : parseInt(v.smsCampaigns || 1);
+    if (numCampaigns > 0) {
+      const campMRR = numCampaigns * smsCamp;
+      lines.push({ label: `SMS Campaigns (${numCampaigns} × $${smsCamp}/mo)`, mrr: campMRR, cost: campMRR * 0.7, section: 'sms' });
       mrr += campMRR; costMrr += campMRR * 0.7;
     }
-    lines.push({ label: 'SMS — $0.02/segment · MMS — $0.04/segment', mrr: 0, cost: 0, section: 'sms', note: 'Metered — billed monthly. Client acknowledges per-segment rates.', metered: true });
+    lines.push({ label: 'SMS — $0.02/segment · MMS — $0.04/segment', mrr: 0, cost: 0, section: 'sms', note: 'Metered — billed monthly in arrears.', metered: true });
   }
 
   // ── HARDWARE — supports mixed models ────────────────────────────────────
