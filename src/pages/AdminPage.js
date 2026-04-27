@@ -894,22 +894,30 @@ export function IntegrationsAdmin() {
 
 // ─── SignWell Integration ────────────────────────────────────────────────────
 function SignWellIntegration() {
-  const [key,     setKey]     = useState('');
-  const [saved,   setSaved]   = useState(false);
-  const [saving,  setSaving]  = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testMsg, setTestMsg] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [key,        setKey]        = useState('');
+  const [templateId, setTemplateId] = useState('');
+  const [saved,      setSaved]      = useState(false);
+  const [saving,     setSaving]     = useState(false);
+  const [testing,    setTesting]    = useState(false);
+  const [testMsg,    setTestMsg]    = useState('');
+  const [loading,    setLoading]    = useState(true);
   const { profile } = useAuth();
 
   useEffect(() => {
-    supabase.from('pricing_settings').select('value').eq('key', 'signwell_api_key').single()
-      .then(({ data }) => { if (data?.value) setKey(data.value); setLoading(false); });
+    Promise.all([
+      supabase.from('pricing_settings').select('value').eq('key', 'signwell_api_key').single(),
+      supabase.from('pricing_settings').select('value').eq('key', 'signwell_intl_waiver_template_id').single(),
+    ]).then(([keyRes, tplRes]) => {
+      if (keyRes.data?.value) setKey(keyRes.data.value);
+      if (tplRes.data?.value) setTemplateId(tplRes.data.value);
+      setLoading(false);
+    });
   }, []);
 
   async function save() {
     setSaving(true); setSaved(false); setTestMsg('');
     await supabase.from('pricing_settings').upsert({ key: 'signwell_api_key', value: key, description: 'SignWell e-signature API key' }, { onConflict: 'key' });
+    await supabase.from('pricing_settings').upsert({ key: 'signwell_intl_waiver_template_id', value: templateId, description: 'SignWell template ID for International Dialing Waiver signature page' }, { onConflict: 'key' });
     await logActivity({ action: 'UPDATE', entityType: 'setting', entityId: null, entityName: 'signwell_api_key', changes: { updated: true } });
     setSaved(true); setSaving(false);
     setTimeout(() => setSaved(false), 2500);
@@ -964,8 +972,21 @@ function SignWellIntegration() {
             value={key}
             onChange={e => setKey(e.target.value)}
             placeholder="your SignWell API key..."
-            style={{ width: '100%', padding: '7px 9px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, outline: 'none', fontFamily: 'DM Mono, monospace', marginBottom: 10 }}
+            style={{ width: '100%', padding: '7px 9px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, outline: 'none', fontFamily: 'DM Mono, monospace', marginBottom: 14 }}
           />
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+            International Dialing Waiver — Template ID
+          </label>
+          <input
+            type="text"
+            value={templateId}
+            onChange={e => setTemplateId(e.target.value)}
+            placeholder="e.g. 53906b87-b393-44c1-9ebb-d267c756cb66"
+            style={{ width: '100%', padding: '7px 9px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, outline: 'none', fontFamily: 'DM Mono, monospace', marginBottom: 4 }}
+          />
+          <div style={{ fontSize: 9, color: '#9ca3af', marginBottom: 10 }}>
+            Found in SignWell → Templates → your template URL. Update here when you replace the template.
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <button onClick={save} disabled={saving}
               style={{ padding: '7px 18px', background: '#166534', color: 'white', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>

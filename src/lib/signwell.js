@@ -16,9 +16,6 @@ async function swCall(action, payload) {
 }
 
 // ── Send the International Dialing Waiver for signature ───────────────────────
-// SignWell template ID for International Dialing Waiver signature page
-const INTL_WAIVER_TEMPLATE_ID = '53906b87-b393-44c1-9ebb-d267c756cb66';
-
 export async function sendIntlDialingWaiver({
   clientName,
   clientEmail,
@@ -29,6 +26,7 @@ export async function sendIntlDialingWaiver({
   tierLabel,
   tierDesc,
   quoteNumber,
+  templateId,
   testMode = false,
 }) {
   const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -40,7 +38,7 @@ export async function sendIntlDialingWaiver({
   // Create document from template — template (page 2) has signature fields pre-placed
   // The waiver content (page 1) is passed as the file; SignWell appends the template page
   const result = await swCall('createDocumentFromTemplate', {
-    templateId: INTL_WAIVER_TEMPLATE_ID,
+    templateId: templateId,
     test_mode:  testMode,
     name:    `International Dialing Authorization — ${entityName}${quoteNumber ? ` (${quoteNumber})` : ''}`,
     subject: `Action Required — International Dialing Authorization · ${entityName}`,

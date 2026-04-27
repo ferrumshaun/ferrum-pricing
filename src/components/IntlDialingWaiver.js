@@ -53,7 +53,9 @@ export default function IntlDialingWaiver({ onClose, quoteId, quoteNumber, clien
     if (!entityName)   { notify('Client name is required.', 'err');   return; }
     setSending(true); notify('Sending via SignWell...', 'info');
     try {
-      const record = await sendIntlDialingWaiver({ clientName: entityName, clientEmail: contactEmail, contactName, entityName, title: jobTitle, tier, tierLabel: tierInfo.label, tierDesc: tierInfo.desc, quoteNumber, testMode });
+      const templateId = settings?.signwell_intl_waiver_template_id;
+      if (!templateId) { notify('✗ SignWell template ID not configured — add it in Admin → Integrations → SignWell', 'err'); setSending(false); return; }
+      const record = await sendIntlDialingWaiver({ clientName: entityName, clientEmail: contactEmail, contactName, entityName, title: jobTitle, tier, tierLabel: tierInfo.label, tierDesc: tierInfo.desc, quoteNumber, templateId, testMode });
       setDocRecord(record);
       await saveDocToQuote(record);
       notify(testMode
