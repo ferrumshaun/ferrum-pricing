@@ -7,7 +7,9 @@ import { useAuth } from '../contexts/AuthContext';
 const TABS = ['Products', 'Packages', 'Market Tiers', 'Pricing Settings', 'Voice Hardware', 'Users', 'Integrations'];
 
 const QTY_DRIVERS = ['user','mailbox','workstation','location','server','flat','mixed','mobile_device'];
-const CATEGORIES = [
+// Product categories are stored in pricing_settings key 'product_categories'
+// Fallback list used if not yet configured
+const DEFAULT_CATEGORIES = [
   'Cloud & Email Security','Endpoint Security','Backup & Recovery',
   'Security Awareness','SIEM & SOC','Network & Connectivity','Strategic Advisory'
 ];
@@ -133,22 +135,52 @@ const btnStyle = (bg, color) => ({
 
 // ─── PRODUCTS ADMIN ───────────────────────────────────────────────────────────
 function ProductsAdmin() {
-  const [products, setProducts] = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [editing,  setEditing]  = useState(null);
-  const [saving,   setSaving]   = useState(false);
-  const [saveError,setSaveError]= useState('');
+  const [products,   setProducts]   = useState([]);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [loading,    setLoading]    = useState(true);
+  const [editing,    setEditing]    = useState(null);
+  const [saving,     setSaving]     = useState(false);
+  const [saveError,  setSaveError]  = useState('');
+  const [showCatMgr, setShowCatMgr] = useState(false);
+  const [newCat,     setNewCat]     = useState('');
   const { profile } = useAuth();
   const { reload } = useConfig();
 
   async function load() {
     setLoading(true);
-    const { data, error } = await supabase.from('products').select('*').order('category').order('sort_order');
-    if (error) console.error('Load products error:', error);
-    setProducts(data || []);
+    const [prodRes, catRes] = await Promise.all([
+      supabase.from('products').select('*').order('category').order('sort_order'),
+      supabase.from('pricing_settings').select('value').eq('key','product_categories').single(),
+    ]);
+    if (prodRes.error) console.error('Load products error:', prodRes.error);
+    setProducts(prodRes.data || []);
+    if (catRes.data?.value) {
+      try { setCategories(JSON.parse(catRes.data.value)); } catch {}
+    }
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
+
+  async function saveCategories(updated) {
+    setCategories(updated);
+    await supabase.from('pricing_settings').upsert({
+      key: 'product_categories',
+      value: JSON.stringify(updated),
+      description: 'Product category list for Admin → Products',
+    }, { onConflict: 'key' });
+  }
+
+  async function addCategory() {
+    const name = newCat.trim();
+    if (!name || categories.includes(name)) return;
+    await saveCategories([...categories, name].sort());
+    setNewCat('');
+  }
+
+  async function removeCategory(cat) {
+    if (!window.confirm(`Remove category "${cat}"? Products using it won't be affected.`)) return;
+    await saveCategories(categories.filter(c => c !== cat));
+  }
 
   function startNew() {
     setSaveError('');
@@ -236,7 +268,38 @@ function ProductsAdmin() {
           <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Manage all add-on products, sell prices, and costs</p>
         </div>
         <button onClick={startNew} style={{ padding: '6px 14px', background: '#0f1e3c', color: 'white', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600 }}>+ Add Product</button>
+        <button onClick={() => setShowCatMgr(m => !m)}
+          style={{ padding:'6px 12px', background:'white', border:'1px solid #d1d5db', borderRadius:5, fontSize:11, fontWeight:600, cursor:'pointer', color:'#374151' }}>
+          ⚙ Categories ({categories.length})
+        </button>
       </div>
+      {/* Category manager */}
+      {showCatMgr && (
+        <div style={{ background:'#f8fafc', border:'1px solid #e5e7eb', borderRadius:6, padding:'12px 14px', marginBottom:12 }}>
+          <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:8, letterSpacing:'.05em' }}>Manage Categories</div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:8 }}>
+            {categories.map(cat => (
+              <span key={cat} style={{ display:'flex', alignItems:'center', gap:4, padding:'3px 8px', background:'white', border:'1px solid #d1d5db', borderRadius:4, fontSize:11 }}>
+                {cat}
+                <button onClick={() => removeCategory(cat)}
+                  style={{ background:'none', border:'none', cursor:'pointer', color:'#9ca3af', fontSize:12, padding:0, lineHeight:1 }}>×</button>
+              </span>
+            ))}
+          </div>
+          <div style={{ display:'flex', gap:6 }}>
+            <input value={newCat} onChange={e => setNewCat(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addCategory()}
+              placeholder="New category name..."
+              style={{ flex:1, padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none' }}/>
+            <button onClick={addCategory} disabled={!newCat.trim()}
+              style={{ padding:'5px 12px', background:'#2563eb', color:'white', border:'none', borderRadius:4, fontSize:11, fontWeight:700, cursor:'pointer', opacity:!newCat.trim()?.6:1 }}>
+              Add
+            </button>
+          </div>
+          <div style={{ fontSize:9, color:'#9ca3af', marginTop:5 }}>Categories are sorted alphabetically. Removing a category doesn't affect existing products — just removes it from the dropdown.</div>
+        </div>
+      )}
+
       <AdminTable cols={['name','category','qty_driver','$sell','$cost','gm','flags']} rows={rows} onEdit={r => { setSaveError(''); setEditing(r); }} onToggle={toggle} loading={loading} />
       {editing && (
         <Modal title={editing.id ? 'Edit Product' : 'New Product'} onClose={() => setEditing(null)} onSave={save} saving={saving}>
@@ -245,7 +308,7 @@ function ProductsAdmin() {
               <Field label="Product Name"><Input value={editing.name} onChange={v => setEditing(e => ({...e, name: v}))} /></Field>
             </div>
             <Field label="Category">
-              <Select value={editing.category} onChange={v => setEditing(e => ({...e, category: v}))} opts={CATEGORIES.map(c => [c, c])} />
+              <Select value={editing.category} onChange={v => setEditing(e => ({...e, category: v}))} opts={categories.map(c => [c, c])} />
             </Field>
             <Field label="Sub-category (optional)"><Input value={editing.sub_category || ''} onChange={v => setEditing(e => ({...e, sub_category: v}))} placeholder="e.g. INKY, vCIO" /></Field>
             <Field label="Sell Price ($)"><Input type="number" value={editing.sell_price} onChange={v => setEditing(e => ({...e, sell_price: v}))} /></Field>
