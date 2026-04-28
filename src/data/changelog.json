@@ -1,5 +1,23 @@
 [
   {
+    "version": "3.5.3",
+    "date": "2026-04-27",
+    "summary": "FlexIT On-Demand — market intelligence now actually runs when no analysis exists for a ZIP",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [],
+      "fixed": [
+        "FlexIT On-Demand market analysis was a dead-end for unfamiliar ZIPs — handleZipChange ran a raw fetch against market_rate_analyses and silently failed when no row existed for the entered ZIP. Result: marketAnalysis stayed null, the Rate Card Preview kept showing 'Enter a ZIP code to see market-adjusted rates' even after a ZIP was entered, and SPT Create was blocked because the rate sheet builder requires a populated marketAnalysis",
+        "Replaced the raw supabase query with getOrAnalyzeMarket(zip, false, cityHint, stateHint, readOnly) — same helper the IT/Voice/Bundle pages use via MarketRateCard. It tries an exact-ZIP match, then a city/state match, then triggers an AI analysis to create a fresh market entry when none is found and the call isn't readOnly",
+        "City/state hints from the ZIP table are now passed into getOrAnalyzeMarket so the AI doesn't have to resolve unfamiliar ZIPs from scratch — speeds up first-time analyses for known cities",
+        "Existing FlexIT quotes load in readOnly mode (won't re-trigger AI on every reopen) — same pattern as MarketRateCard at quoteId-set",
+        "Rate Card Preview no longer shows the misleading 'Enter a ZIP code...' label when a ZIP IS entered. Now shows '⏳ Analyzing market rates for [ZIP]...' while AI is running, '✗ Market analysis unavailable: ...' on error, or 'No market analysis available yet for ZIP [ZIP]' if the call returned nothing",
+        "ZIP-driven market analysis now also kicks in when a ZIP comes in via HubSpot deal connect (the v3.5.1 pull-through path) — same handleZipChange entry point, so HubSpot connect on a fresh FlexIT quote populates the market analysis automatically"
+      ]
+    }
+  },
+  {
     "version": "3.5.2",
     "date": "2026-04-27",
     "summary": "VoiceQuotePage state recovery — restore fax picker cost+GM display and totals.onboarding write",

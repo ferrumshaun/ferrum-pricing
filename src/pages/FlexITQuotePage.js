@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useConfig } from '../contexts/ConfigContext';
 import { lookupZip, lookupZipFromUSPS } from '../lib/pricing';
 import { buildRateSheet, fmtRate, isArea2 } from '../lib/rateSheet';
+import { getOrAnalyzeMarket } from '../lib/marketRates';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import QuoteNotes   from '../components/QuoteNotes';
 import QuoteHistory from '../components/QuoteHistory';
@@ -92,6 +93,8 @@ export default function FlexITQuotePage() {
 
   // Market analysis
   const [marketAnalysis, setMarketAnalysis] = useState(null);
+  const [marketLoading,  setMarketLoading]  = useState(false);
+  const [marketError,    setMarketError]    = useState('');
 
   // FlexIT-specific
   const [prepayHours,    setPrepayHours]    = useState(2);
@@ -131,28 +134,35 @@ export default function FlexITQuotePage() {
   }, [repId, teamMembers]);
 
   // ── Load market analysis for ZIP ────────────────────────────────────────────
-  async function handleZipChange(zip) {
+  async function handleZipChange(zip, opts = {}) {
+    const { readOnly = false } = opts;
     setClientZip(zip);
-    if (zip?.length === 5) {
-      const zr = lookupZip(zip);
-      setZipResult(zr);
-      // Try to fetch a stored market analysis for this zip/city
-      try {
-        const { data } = await supabase
-          .from('market_rate_analyses')
-          .select('*')
-          .or(`zip.eq.${zip},zip_codes.cs.{${zip}}`)
-          .maybeSingle();
-        if (data) {
-          setMarketAnalysis(data);
-          setMarketCity(data.city);
-          setMarketState(data.state);
-        } else if (zr) {
-          setMarketCity(zr.name?.split(',')[0] || '');
-          setMarketState(zr.state || '');
-        }
-      } catch {}
+    if (zip?.length !== 5) return;
+    const zr = lookupZip(zip);
+    setZipResult(zr);
+    setMarketLoading(true);
+    setMarketError('');
+    try {
+      // getOrAnalyzeMarket fetches existing analysis OR runs AI to create one when none exists.
+      // Pass city/state hints so AI can resolve unfamiliar ZIPs faster.
+      const cityHint  = zr?.name?.split(',')[0] || undefined;
+      const stateHint = zr?.state || undefined;
+      const res = await getOrAnalyzeMarket(zip, false, cityHint, stateHint, readOnly);
+      if (res?.analysis) {
+        setMarketAnalysis(res.analysis);
+        setMarketCity(res.analysis.city || cityHint || '');
+        setMarketState(res.analysis.state || stateHint || '');
+      } else if (zr) {
+        // No analysis available (readOnly mode + no existing record). Fall back to ZIP table.
+        setMarketCity(cityHint || '');
+        setMarketState(stateHint || '');
+      }
+    } catch (e) {
+      setMarketError('Market analysis unavailable: ' + e.message);
+      // Still populate city/state from ZIP table so the page isn't completely blank
+      if (zr) { setMarketCity(zr.name?.split(',')[0] || ''); setMarketState(zr.state || ''); }
     }
+    setMarketLoading(false);
   }
 
   // ── Load existing quote ──────────────────────────────────────────────────────
@@ -182,7 +192,7 @@ export default function FlexITQuotePage() {
       if (data.spt_proposal_id) setSptProposalId(data.spt_proposal_id);
       if (data.inputs?.flexHours) setFlexHours(data.inputs.flexHours);
       // Load market analysis
-      if (data.client_zip) handleZipChange(data.client_zip);
+      if (data.client_zip) handleZipChange(data.client_zip, { readOnly: true });
     });
   }, [id, configLoading]);
 
@@ -316,7 +326,7 @@ export default function FlexITQuotePage() {
               throw new Error('Enter a ZIP code first to compute market-adjusted rates');
             }
             const quote = buildFlexITQuoteShape({
-              proposalName:     name, // honor whatever the rep entered/edited in the modal
+              proposalName:     name,
               recipientBiz,
               recipientContact,
               recipientEmail,
@@ -509,8 +519,14 @@ export default function FlexITQuotePage() {
           <div style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:6, padding:12, marginBottom:12 }}>
             <div style={{ fontSize:11, fontWeight:700, color:'#0f1e3c', marginBottom:10 }}>Rate Card Preview</div>
             {!marketAnalysis ? (
-              <div style={{ fontSize:11, color:'#9ca3af', padding:'12px 0', textAlign:'center' }}>
-                Enter a ZIP code to see market-adjusted rates
+              <div style={{ fontSize:11, padding:'12px 0', textAlign:'center', color: marketError ? '#dc2626' : '#9ca3af' }}>
+                {marketLoading
+                  ? '⏳ Analyzing market rates for ' + (clientZip || 'this ZIP') + '...'
+                  : marketError
+                    ? '✗ ' + marketError
+                    : clientZip && clientZip.length === 5
+                      ? 'No market analysis available yet for ZIP ' + clientZip + '.'
+                      : 'Enter a ZIP code to see market-adjusted rates'}
               </div>
             ) : (
               rateSheet?.sections.map(section => (
