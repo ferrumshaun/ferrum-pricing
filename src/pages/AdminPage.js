@@ -996,6 +996,9 @@ export function IntegrationsAdmin() {
   const [logoMsg,    setLogoMsg]    = useState('');
   const [logoFile,   setLogoFile]   = useState(null);
   const [logoPreview,setLogoPreview]= useState(null);
+  const [stageAwaitingPay, setStageAwaitingPay] = useState('');
+  const [stageClosedWon,   setStageClosedWon]   = useState('');
+  const [stagesSaved,      setStagesSaved]      = useState(false);
   const { profile } = useAuth();
 
   useEffect(() => {
@@ -1005,7 +1008,20 @@ export function IntegrationsAdmin() {
       .then(({ data }) => { if (data?.value) setQuoteUrlField(data.value); });
     supabase.from('pricing_settings').select('value').eq('key','company_logo_url').single()
       .then(({ data }) => { if (data?.value) setLogoUrl(data.value); });
+    supabase.from('pricing_settings').select('value').eq('key','hubspot_stage_awaiting_payment').single()
+      .then(({ data }) => { if (data?.value) setStageAwaitingPay(data.value); });
+    supabase.from('pricing_settings').select('value').eq('key','hubspot_stage_closed_won').single()
+      .then(({ data }) => { if (data?.value) setStageClosedWon(data.value); });
   }, []);
+
+  async function saveStages() {
+    await Promise.all([
+      supabase.from('pricing_settings').upsert({ key: 'hubspot_stage_awaiting_payment', value: stageAwaitingPay, description: 'HubSpot pipeline stage ID for deals awaiting payment after contract signed.' }, { onConflict: 'key' }),
+      supabase.from('pricing_settings').upsert({ key: 'hubspot_stage_closed_won',       value: stageClosedWon,   description: 'HubSpot pipeline stage ID for deals where payment is collected.' }, { onConflict: 'key' }),
+    ]);
+    setStagesSaved(true);
+    setTimeout(() => setStagesSaved(false), 2500);
+  }
 
   async function saveLogo() {
     if (!logoUrl.trim() && !logoPreview) { setLogoMsg('Enter a URL or select a file.'); return; }
@@ -1253,6 +1269,45 @@ export function IntegrationsAdmin() {
             </div>
           )}
         </div>
+
+        {/* Pipeline Stage Automation */}
+        <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 14, marginTop: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#0f1e3c', marginBottom: 4 }}>📊 Pipeline Stage Automation</div>
+          <p style={{ fontSize: 10, color: '#6b7280', marginBottom: 10, lineHeight: 1.6 }}>
+            Optional. When set, deals automatically move through pipeline stages on contract signing and payment.
+            Find stage IDs at <span style={{ fontFamily: 'DM Mono, monospace' }}>app.hubspot.com</span> → Settings → Objects → Deals → Pipelines &amp; Stages.
+            Hover over a stage and copy the internal value (e.g., <span style={{ fontFamily: 'DM Mono, monospace' }}>contractsent</span> or <span style={{ fontFamily: 'DM Mono, monospace' }}>1234567</span>).
+            Leave blank to skip stage updates.
+          </p>
+
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+            Stage when client signs contract (Awaiting Payment)
+          </label>
+          <input
+            value={stageAwaitingPay}
+            onChange={e => { setStageAwaitingPay(e.target.value); setStagesSaved(false); }}
+            placeholder="e.g. contractsent or 12345678"
+            style={{ width: '100%', padding: '6px 9px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 11, outline: 'none', fontFamily: 'DM Mono, monospace', marginBottom: 10, boxSizing: 'border-box' }}
+          />
+
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+            Stage when payment collected (Closed Won)
+          </label>
+          <input
+            value={stageClosedWon}
+            onChange={e => { setStageClosedWon(e.target.value); setStagesSaved(false); }}
+            placeholder="e.g. closedwon or 12345679"
+            style={{ width: '100%', padding: '6px 9px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 11, outline: 'none', fontFamily: 'DM Mono, monospace', marginBottom: 10, boxSizing: 'border-box' }}
+          />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={saveStages}
+              style={{ padding: '6px 14px', background: '#0f1e3c', color: 'white', border: 'none', borderRadius: 5, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+              Save Stage IDs
+            </button>
+            {stagesSaved && <span style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>✓ Saved</span>}
+          </div>
+        </div>
       </div>
 
       {/* Smart Pricing Table */}
@@ -1281,6 +1336,7 @@ export function IntegrationsAdmin() {
 function SignWellIntegration() {
   const [key,        setKey]        = useState('');
   const [templateId,    setTemplateId]    = useState('');
+  const [webhookSecret, setWebhookSecret] = useState('');
   const [saved,      setSaved]      = useState(false);
   const [saving,     setSaving]     = useState(false);
   const [testing,    setTesting]    = useState(false);
@@ -1292,9 +1348,11 @@ function SignWellIntegration() {
     Promise.all([
       supabase.from('pricing_settings').select('value').eq('key', 'signwell_api_key').single(),
       supabase.from('pricing_settings').select('value').eq('key', 'signwell_intl_waiver_template_id').single(),
-    ]).then(([keyRes, tplRes]) => {
+      supabase.from('pricing_settings').select('value').eq('key', 'signwell_webhook_secret').single(),
+    ]).then(([keyRes, tplRes, whRes]) => {
       if (keyRes.data?.value) setKey(keyRes.data.value);
       if (tplRes.data?.value) setTemplateId(tplRes.data.value);
+      if (whRes.data?.value)  setWebhookSecret(whRes.data.value);
       setLoading(false);
     });
   }, []);
@@ -1303,9 +1361,18 @@ function SignWellIntegration() {
     setSaving(true); setSaved(false); setTestMsg('');
     await supabase.from('pricing_settings').upsert({ key: 'signwell_api_key', value: key, description: 'SignWell e-signature API key' }, { onConflict: 'key' });
     await supabase.from('pricing_settings').upsert({ key: 'signwell_intl_waiver_template_id', value: templateId, description: 'SignWell template ID for International Dialing Waiver signature page' }, { onConflict: 'key' });
+    await supabase.from('pricing_settings').upsert({ key: 'signwell_webhook_secret', value: webhookSecret, description: 'Shared secret used to authenticate incoming SignWell webhooks (passed as ?secret= in webhook URL).' }, { onConflict: 'key' });
     await logActivity({ action: 'UPDATE', entityType: 'setting', entityId: null, entityName: 'signwell_api_key', changes: { updated: true } });
     setSaved(true); setSaving(false);
     setTimeout(() => setSaved(false), 2500);
+  }
+
+  function generateSecret() {
+    // 32 random hex chars (128 bits) — sufficient entropy for an opaque shared secret
+    const arr = new Uint8Array(16);
+    (window.crypto || window.msCrypto).getRandomValues(arr);
+    const hex = Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+    setWebhookSecret(hex);
   }
 
   async function saveQuoteUrlField() {
@@ -1397,6 +1464,55 @@ function SignWellIntegration() {
           />
           <div style={{ fontSize: 9, color: '#9ca3af', marginBottom: 14 }}>
             Found in SignWell → Templates → your template URL. Update here when you replace the template.
+          </div>
+
+          {/* Webhook configuration — for v3.5.18 auto-payment trigger */}
+          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 14, marginTop: 6, marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#0f1e3c', marginBottom: 4 }}>📡 Webhook Endpoint</div>
+            <p style={{ fontSize: 10, color: '#6b7280', marginBottom: 8, lineHeight: 1.6 }}>
+              Receives SignWell document events. Required for auto-triggering Stripe payment links when clients sign FlexIT agreements.
+              Register the URL below in SignWell → Webhooks (or via API).
+            </p>
+
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+              Webhook URL <span style={{ fontWeight: 400, color: '#9ca3af' }}>(read-only, paste this into SignWell)</span>
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                readOnly
+                value={`${typeof window !== 'undefined' ? window.location.origin : 'https://lustrous-treacle-e0ca6a.netlify.app'}/.netlify/functions/signwellWebhook${webhookSecret ? `?secret=${webhookSecret}` : ''}`}
+                style={{ width: '100%', padding: '7px 9px', paddingRight: 88, border: '1px solid #d1d5db', borderRadius: 5, fontSize: 11, outline: 'none', fontFamily: 'DM Mono, monospace', background: '#f8fafc', boxSizing: 'border-box' }}
+              />
+              <button
+                onClick={() => {
+                  const url = `${window.location.origin}/.netlify/functions/signwellWebhook${webhookSecret ? `?secret=${webhookSecret}` : ''}`;
+                  navigator.clipboard?.writeText(url);
+                }}
+                style={{ position: 'absolute', right: 4, top: 4, padding: '5px 12px', background: '#0f1e3c', color: 'white', border: 'none', borderRadius: 4, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
+                Copy
+              </button>
+            </div>
+
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginTop: 10, marginBottom: 4 }}>
+              Webhook Secret <span style={{ fontWeight: 400, color: '#9ca3af' }}>(authenticates incoming requests)</span>
+            </label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input
+                type="text"
+                value={webhookSecret}
+                onChange={e => setWebhookSecret(e.target.value)}
+                placeholder="Click Generate to create one"
+                style={{ flex: 1, padding: '7px 9px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 11, outline: 'none', fontFamily: 'DM Mono, monospace' }}
+              />
+              <button onClick={generateSecret}
+                style={{ padding: '7px 14px', background: 'white', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 11, fontWeight: 600, color: '#0f1e3c', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                ⟳ Generate
+              </button>
+            </div>
+            <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 4 }}>
+              SignWell does not publish HMAC signature support; we authenticate by including the secret as a query parameter on the webhook URL.
+              Anyone with this URL can post events, so keep it private. Click Generate for a fresh 32-char hex secret.
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -1628,6 +1744,7 @@ function StripeIntegration() {
   const [whSecret,   setWhSecret]   = useState('');
   const [mode,       setMode]       = useState('test');
   const [stmtDesc,   setStmtDesc]   = useState('FERRUM IT PREPAY');
+  const [autoPay,    setAutoPay]    = useState(true);
   const [saved,      setSaved]      = useState(false);
   const [saving,     setSaving]     = useState(false);
   const [testing,    setTesting]    = useState(false);
@@ -1642,12 +1759,14 @@ function StripeIntegration() {
       supabase.from('pricing_settings').select('value').eq('key', 'stripe_webhook_secret').single(),
       supabase.from('pricing_settings').select('value').eq('key', 'stripe_mode').single(),
       supabase.from('pricing_settings').select('value').eq('key', 'stripe_statement_desc').single(),
-    ]).then(([sk, pk, wh, md, sd]) => {
+      supabase.from('pricing_settings').select('value').eq('key', 'flexit_auto_payment_after_sign').single(),
+    ]).then(([sk, pk, wh, md, sd, ap]) => {
       if (sk.data?.value) setSecretKey(sk.data.value);
       if (pk.data?.value) setPubKey(pk.data.value);
       if (wh.data?.value) setWhSecret(wh.data.value);
       if (md.data?.value) setMode(md.data.value);
       if (sd.data?.value) setStmtDesc(sd.data.value);
+      if (ap.data?.value !== undefined) setAutoPay(ap.data.value !== 'false');
       setLoading(false);
     });
   }, []);
@@ -1667,8 +1786,9 @@ function StripeIntegration() {
       supabase.from('pricing_settings').upsert({ key: 'stripe_webhook_secret', value: whSecret, description: 'Stripe webhook signing secret (whsec_…). Used to verify webhook authenticity.' }, { onConflict: 'key' }),
       supabase.from('pricing_settings').upsert({ key: 'stripe_mode', value: mode, description: 'Stripe mode: test or live.' }, { onConflict: 'key' }),
       supabase.from('pricing_settings').upsert({ key: 'stripe_statement_desc', value: stmtDesc, description: 'Statement descriptor on the cardholder bank statement (max 22 chars).' }, { onConflict: 'key' }),
+      supabase.from('pricing_settings').upsert({ key: 'flexit_auto_payment_after_sign', value: autoPay ? 'true' : 'false', description: 'When true, signing a FlexIT quote automatically creates a Stripe payment link and emails it to the client.' }, { onConflict: 'key' }),
     ]);
-    await logActivity({ action: 'UPDATE', entityType: 'setting', entityId: null, entityName: 'stripe_integration', changes: { mode, has_secret: !!secretKey, has_webhook: !!whSecret } });
+    await logActivity({ action: 'UPDATE', entityType: 'setting', entityId: null, entityName: 'stripe_integration', changes: { mode, has_secret: !!secretKey, has_webhook: !!whSecret, autoPay } });
     setSaved(true); setSaving(false);
     setTimeout(() => setSaved(false), 2500);
   }
@@ -1807,6 +1927,23 @@ function StripeIntegration() {
           </div>
           <div style={{ fontSize: 9, color: '#9ca3af', marginBottom: 14 }}>
             Auto-detected from key prefix. Test mode = no real charges. Live mode = real money.
+          </div>
+
+          {/* FlexIT auto-payment toggle */}
+          <div style={{ background: autoPay ? '#f0fdf4' : '#fef2f2', border: `1px solid ${autoPay ? '#bbf7d0' : '#fecaca'}`, borderRadius: 5, padding: 10, marginBottom: 14 }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+              <input type="checkbox" checked={autoPay} onChange={e => setAutoPay(e.target.checked)} style={{ marginTop: 2 }} />
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#0f1e3c' }}>
+                  ⚡ Auto-trigger Stripe payment when FlexIT contract is signed
+                </div>
+                <div style={{ fontSize: 10, color: '#374151', lineHeight: 1.6, marginTop: 4 }}>
+                  When enabled, the SignWell webhook automatically creates a Stripe Checkout link and emails it to the client the moment they sign the FlexIT agreement.
+                  Service desk and finance don't need to touch Stripe — the entire flow runs end-to-end.
+                  Disable for testing or if you want the rep to send the payment link manually.
+                </div>
+              </div>
+            </label>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

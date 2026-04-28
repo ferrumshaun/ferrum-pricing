@@ -236,11 +236,15 @@ export default function FlexITSignatureCard({
             </div>
           )}
 
-          {/* v3.5.18 placeholder — show what'll happen on completion */}
+          {/* Auto-payment status indicator — visible while pending or after signing */}
           {!isCompleted && !failed && (
-            <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 8, fontStyle: 'italic', borderTop: '1px solid #f1f5f9', paddingTop: 6 }}>
-              Note: Auto-payment trigger after signing will be wired up in v3.5.18.
-              For now, payment link must be sent manually from the Stripe Prepayment card after signing.
+            <div style={{ fontSize: 9, color: '#475569', marginTop: 8, fontStyle: 'italic', borderTop: '1px solid #f1f5f9', paddingTop: 6 }}>
+              ⚡ When the client signs, a Stripe payment link will be automatically generated and emailed (if enabled in Admin → Integrations → Stripe).
+            </div>
+          )}
+          {doc?.payment_id && (
+            <div style={{ fontSize: 9, color: '#166534', marginTop: 8, fontWeight: 600, borderTop: '1px solid #f1f5f9', paddingTop: 6 }}>
+              ✓ Stripe payment link automatically generated. See the Stripe Prepayment card below for status.
             </div>
           )}
         </div>

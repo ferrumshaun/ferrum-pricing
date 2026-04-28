@@ -97,6 +97,47 @@ async function handleCheckoutCompleted(session) {
 
   await sbUpdate('stripe_payments', `id=eq.${paymentRowId}`, updates);
   console.log(`✓ Payment ${paymentRowId} marked paid (session ${session.id})`);
+
+  // ── v3.5.18: HubSpot side effects on payment ──
+  // If the payment is linked to a HubSpot deal, post a note + move stage to closed-won.
+  try {
+    const paymentRows = await sbSelect('stripe_payments', `id=eq.${paymentRowId}&select=quote_number,client_name,total_charged_cents,hubspot_deal_id,quote_id`);
+    const payment = paymentRows?.[0];
+    if (!payment?.hubspot_deal_id) return;
+
+    // Pull HubSpot config in one go
+    const settingRows = await sbSelect('pricing_settings', `key=in.(hubspot_token,hubspot_stage_closed_won)&select=key,value`);
+    const sm = {};
+    (settingRows || []).forEach(r => { sm[r.key] = r.value; });
+    const token   = sm.hubspot_token;
+    const stageId = sm.hubspot_stage_closed_won;
+    if (!token) return;
+
+    const origin   = process.env.URL || process.env.DEPLOY_URL || 'https://lustrous-treacle-e0ca6a.netlify.app';
+    const noteBody = `${payment.quote_number || 'Quote'} — ${payment.client_name || ''}\nPayment received: $${(payment.total_charged_cents / 100).toFixed(2)} via Stripe\nStripe payment intent: ${typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id || 'N/A'}`;
+
+    // Post note
+    try {
+      await fetch(`${origin}/.netlify/functions/hubspot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create_note', token, payload: { dealId: payment.hubspot_deal_id, body: noteBody } }),
+      });
+    } catch (e) { console.warn('HubSpot note failed:', e.message); }
+
+    // Move stage if configured
+    if (stageId) {
+      try {
+        await fetch(`${origin}/.netlify/functions/hubspot`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'update_deal_property', token, payload: { dealId: payment.hubspot_deal_id, propertyName: 'dealstage', propertyValue: stageId } }),
+        });
+      } catch (e) { console.warn('HubSpot stage move failed:', e.message); }
+    }
+  } catch (err) {
+    console.error('Stripe webhook HubSpot side effects failed:', err);
+  }
 }
 
 async function handleCheckoutExpired(session) {

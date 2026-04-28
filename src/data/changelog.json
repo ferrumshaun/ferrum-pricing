@@ -1,5 +1,26 @@
 [
   {
+    "version": "3.5.18",
+    "date": "2026-04-28",
+    "summary": "FlexIT auto-payment trigger \u2014 client signs the contract, Stripe payment link fires automatically, no manual touchpoint",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "\u26a1 SignWell webhook handler that automatically generates and emails a Stripe payment link the moment a client signs a FlexIT contract. Service desk and finance no longer need to touch Stripe to close a FlexIT deal \u2014 the rep clicks 'Send for Signature' once and the rest runs end-to-end",
+        "Auto-payment fires on CLIENT signature \u2014 not on full document completion. If countersignature is required, the client doesn't have to wait for the company countersign before receiving their payment link. Counter-signature happens in parallel",
+        "HubSpot deal note posted automatically when a FlexIT contract is signed: includes the SignWell document ID, the auto-generated Stripe checkout URL, and the email recipient. Visible on the deal timeline alongside Quote Notes",
+        "HubSpot pipeline stage automation \u2014 admin can configure 'Awaiting Payment' and 'Closed Won' stage IDs in Admin \u2192 Integrations \u2192 HubSpot. When configured, deals automatically move to 'Awaiting Payment' on contract signing. (When the client pays, the existing Stripe webhook will move them to 'Closed Won' \u2014 wired in this deploy)",
+        "Idempotency safeguard \u2014 SignWell may retry webhooks on transient failures, so we anchor each auto-payment to the SignWell document via a payment_id field. If a payment already exists, the webhook is a no-op",
+        "Webhook authentication via shared secret in the URL query string. SignWell does not publish HMAC signature verification, so we generate a 32-char hex secret in Admin \u2192 Integrations \u2192 SignWell and validate it on every incoming request",
+        "Auto-payment toggle in Admin \u2192 Integrations \u2192 Stripe \u2014 globally disable auto-trigger for testing or if you want a manual gate. Default is ON",
+        "FlexIT signature card now shows the live status of the auto-payment trail: 'Stripe payment link automatically generated' confirmation appears once the webhook has fired"
+      ],
+      "improved": [
+        "Stripe webhook now also handles the 'Closed Won' stage transition when configured \u2014 closes the loop on the deal: signed \u2192 awaiting payment \u2192 closed won, all without manual stage moves"
+      ]
+    }
+  },
+  {
     "version": "3.5.17",
     "date": "2026-04-28",
     "summary": "FlexIT direct-send for signature \u2014 packages quote + legal terms + signature block, sends through SignWell from the platform",
