@@ -582,6 +582,7 @@ export default function BundleQuotePage() {
             <Sec key={cat} t={cat} c="#374151">
               {catProducts.map(p => {
                 const sel = isSelected(p.id);
+                const qty = parseInt(itInputs.manualQuantities?.[p.id] || 0);
                 return (
                   <div key={p.id} onClick={() => toggleProduct(p.id)}
                     style={{ display:'flex', alignItems:'center', gap:5, padding:'4px 6px', borderRadius:3, cursor:'pointer', marginBottom:2, border:`1px solid ${sel?'#93c5fd':'#e5e7eb'}`, background:sel?'#eff6ff':'white' }}>
@@ -589,7 +590,18 @@ export default function BundleQuotePage() {
                       <div style={{ position:'absolute', top:2, left:sel?10:2, width:8, height:8, borderRadius:'50%', background:'white', transition:'left .1s' }}/>
                     </div>
                     <span style={{ fontSize:9, fontWeight:600, flex:1, color:sel?'#1e40af':'#374151' }}>{p.name}</span>
-                    <span style={{ fontSize:9, fontFamily:'DM Mono, monospace', color:'#6b7280' }}>${p.sell_price}/{p.qty_driver}</span>
+                    {sel && p.qty_driver === 'manual' && (
+                      <div onClick={e=>e.stopPropagation()} style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:0 }}>
+                        <input type="number" min="0" value={qty || ''} placeholder="qty"
+                          onChange={e=>{
+                            const next = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value) || 0);
+                            setItInputs(prev => ({ ...prev, manualQuantities: { ...(prev.manualQuantities || {}), [p.id]: next } }));
+                          }}
+                          style={{ width:48, padding:'1px 4px', border:`1px solid ${qty > 0 ? '#93c5fd' : '#fbbf24'}`, borderRadius:3, fontSize:9, fontFamily:'DM Mono, monospace', textAlign:'center', outline:'none', background: qty > 0 ? 'white' : '#fffbeb' }}/>
+                        {qty === 0 && <span style={{ fontSize:7, color:'#92400e', fontWeight:600, marginTop:1 }}>set qty</span>}
+                      </div>
+                    )}
+                    <span style={{ fontSize:9, fontFamily:'DM Mono, monospace', color:'#6b7280' }}>${p.sell_price}/{p.qty_driver === 'manual' ? 'lic' : p.qty_driver}</span>
                   </div>
                 );
               })}

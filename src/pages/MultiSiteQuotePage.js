@@ -54,6 +54,7 @@ export default function MultiSiteQuotePage() {
   const [compliance,   setCompliance]   = useState('none');
   const [industryRisk, setIndustryRisk] = useState('low');
   const [selectedProducts, setSelectedProducts] = useState([]);
+  const [manualQuantities, setManualQuantities] = useState({});
   const [flexHours,    setFlexHours]    = useState(null);
 
   // ── Locations ─────────────────────────────────────────────────────────────
@@ -118,6 +119,7 @@ export default function MultiSiteQuotePage() {
       setCompliance(data.inputs?.compliance || 'none');
       setIndustryRisk(data.inputs?.industryRisk || 'low');
       setSelectedProducts(data.inputs?.selectedProducts || []);
+      setManualQuantities(data.inputs?.manualQuantities || {});
       if (data.rep_id) setRepId(data.rep_id);
       if (data.pricing_snapshot) { setPricingSnapshot(data.pricing_snapshot); setPriceLockDate(data.price_locked_at); }
       if (data.spt_proposal_id) setSptProposalId(data.spt_proposal_id);
@@ -176,7 +178,9 @@ export default function MultiSiteQuotePage() {
         ? locations.reduce((s, l) => s + (parseInt(l.users) || 0), 0)
         : (p.qty_driver === 'workstation')
           ? locations.reduce((s, l) => s + (parseInt(l.workstations) || 0), 0)
-          : 1;
+          : (p.qty_driver === 'manual')
+            ? parseInt(manualQuantities?.[p.id] || 0)
+            : 1;
       const rev  = qty * p.sell_price;
       const cst  = qty * p.cost_price;
       if (p.no_discount) protected_ += rev; else discountable += rev;
@@ -184,7 +188,7 @@ export default function MultiSiteQuotePage() {
       lines.push({ ...p, qty, revenue: rev, cost: cst });
     }
     return { addonRevenue: discountable + protected_, protectedAddonRevenue: protected_, addonCost: cost, addonLineItems: lines };
-  }, [selectedProducts, products, locations]);
+  }, [selectedProducts, products, locations, manualQuantities]);
 
   const multiDiscRate   = getMultiSiteDiscount(locations.length, settings);
   const multiDiscAmount = totalLocationMRR * multiDiscRate;
@@ -284,6 +288,7 @@ export default function MultiSiteQuotePage() {
       proposalName, recipientContact, recipientEmail, recipientAddress,
       hubspotDealName: hubDealName, contractTerm, compliance, industryRisk,
       selectedProducts, locations, flexHours: flexHours || null,
+      manualQuantities,
       repId: repId || null, repName: repProfile?.full_name || repProfile?.email || null,
     };
     const totals = { finalMRR, onboarding, contractValue, locationCount: locations.length, multiDiscRate };
@@ -338,6 +343,7 @@ export default function MultiSiteQuotePage() {
         servers: first?.servers || 0, endpoints: first?.endpoints || 0,
         mobileDevices: first?.mobileDevices || 0,
         contractTerm, compliance, industryRisk, selectedProducts,
+        manualQuantities,
         locations: 1,
       },
       sourceQuoteId: existingQuote?.id, sourceQuoteNum: existingQuote?.quote_number,
@@ -633,6 +639,7 @@ export default function MultiSiteQuotePage() {
                   <div style={{ fontSize:8, fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'#9ca3af', marginBottom:4 }}>{cat}</div>
                   {catProds.map(p => {
                     const sel = selectedProducts.includes(p.id);
+                    const qty = parseInt(manualQuantities?.[p.id] || 0);
                     return (
                       <div key={p.id} onClick={() => toggleProduct(p.id)}
                         style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 6px', borderRadius:4, cursor:'pointer', marginBottom:2,
@@ -643,7 +650,18 @@ export default function MultiSiteQuotePage() {
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ fontSize:9, fontWeight:600, color:sel?'#1e40af':'#374151' }}>{p.name}</div>
                         </div>
-                        <div style={{ fontSize:9, fontFamily:'DM Mono, monospace', color:'#6b7280' }}>${p.sell_price}/{p.qty_driver}</div>
+                        {sel && p.qty_driver === 'manual' && (
+                          <div onClick={e=>e.stopPropagation()} style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:0 }}>
+                            <input type="number" min="0" value={qty || ''} placeholder="qty"
+                              onChange={e=>{
+                                const next = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value) || 0);
+                                setManualQuantities(prev => ({ ...prev, [p.id]: next }));
+                              }}
+                              style={{ width:48, padding:'1px 4px', border:`1px solid ${qty > 0 ? '#93c5fd' : '#fbbf24'}`, borderRadius:3, fontSize:9, fontFamily:'DM Mono, monospace', textAlign:'center', outline:'none', background: qty > 0 ? 'white' : '#fffbeb' }}/>
+                            {qty === 0 && <span style={{ fontSize:7, color:'#92400e', fontWeight:600, marginTop:1 }}>set qty</span>}
+                          </div>
+                        )}
+                        <div style={{ fontSize:9, fontFamily:'DM Mono, monospace', color:'#6b7280' }}>${p.sell_price}/{p.qty_driver === 'manual' ? 'lic' : p.qty_driver}</div>
                       </div>
                     );
                   })}

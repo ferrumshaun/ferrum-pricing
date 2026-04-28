@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const TABS = ['IT & Security Products', 'Managed IT Packages', 'Market Tiers', 'Pricing Settings', 'Voice Hardware', 'Voice Fax Packages', 'Users', 'Integrations'];
 
-const QTY_DRIVERS = ['user','mailbox','workstation','location','server','flat','mixed','mobile_device'];
+const QTY_DRIVERS = ['user','mailbox','workstation','location','server','flat','mixed','mobile_device','manual'];
 // Product categories are stored in pricing_settings key 'product_categories'
 // Fallback list used if not yet configured
 const DEFAULT_CATEGORIES = [
@@ -356,7 +356,12 @@ function ProductsAdmin() {
             <Field label="Sell Price ($)"><Input type="number" value={editing.sell_price} onChange={v => setEditing(e => ({...e, sell_price: v}))} /></Field>
             <Field label="Cost Price ($)"><Input type="number" value={editing.cost_price} onChange={v => setEditing(e => ({...e, cost_price: v}))} /></Field>
             <Field label="Qty Driver (Sell)">
-              <Select value={editing.qty_driver} onChange={v => setEditing(e => ({...e, qty_driver: v}))} opts={QTY_DRIVERS.map(d => [d, d])} />
+              <div>
+                <Select value={editing.qty_driver} onChange={v => setEditing(e => ({...e, qty_driver: v}))} opts={QTY_DRIVERS.map(d => [d, d])} />
+                {editing.qty_driver === 'manual' && (
+                  <div style={{ fontSize: 10, color: '#6d28d9', marginTop: 3, fontWeight:600 }}>↳ Rep enters qty per quote — use for licenses (M365, Adobe, etc.) that don't track 1:1 with users or workstations</div>
+                )}
+              </div>
             </Field>
             <Field label="Qty Driver (Cost)" >
               <div>

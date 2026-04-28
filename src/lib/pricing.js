@@ -347,7 +347,7 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMulti
   };
 }
 
-function getQtyForDriver(driver, inputs) {
+function getQtyForDriver(driver, inputs, product) {
   switch (driver) {
     case 'user':          return inputs.users;
     case 'mailbox':       return inputs.users + (inputs.sharedMailboxes || 0);
@@ -357,19 +357,22 @@ function getQtyForDriver(driver, inputs) {
     case 'flat':          return 1;
     case 'mobile_device': return inputs.mobileDevices || 0;
     case 'mixed':         return inputs.workstations;
+    // 'manual' lets reps enter the qty themselves on the quote (e.g. M365 license counts
+    // that don't track 1:1 with users or workstations). Stored at inputs.manualQuantities[productId].
+    case 'manual':        return parseInt(inputs.manualQuantities?.[product?.id] || 0);
     default:              return 0;
   }
 }
 
 function getSellQty(product, inputs) {
-  return getQtyForDriver(product.qty_driver, inputs);
+  return getQtyForDriver(product.qty_driver, inputs, product);
 }
 
 function getCostQty(product, inputs) {
   // cost_qty_driver overrides qty_driver for cost calculation
   // NULL means same as sell driver
   const driver = product.cost_qty_driver || product.qty_driver;
-  return getQtyForDriver(driver, inputs);
+  return getQtyForDriver(driver, inputs, product);
 }
 
 // ─── FORMAT HELPERS ──────────────────────────────────────────────────────────

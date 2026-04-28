@@ -722,9 +722,25 @@ export default function QuotePage() {
                       <div style={{ fontSize:8, color:'#92400e', fontStyle:'italic', marginTop:1 }}>{p.recommendation_reason.substring(0,80)}{p.recommendation_reason.length>80?'…':''}</div>
                     )}
                   </div>
-                  <div style={{ textAlign:'right', flexShrink:0 }}>
-                    <div style={{ fontSize:10, fontFamily:'DM Mono, monospace', fontWeight:600, color:'#374151' }}>${p.sell_price}/{p.qty_driver}</div>
-                    <div style={{ fontSize:8, color:'#9ca3af' }}>{(gm*100).toFixed(0)}% GM</div>
+                  <div style={{ textAlign:'right', flexShrink:0, display:'flex', alignItems:'center', gap:6 }}>
+                    {sel && p.qty_driver === 'manual' && (() => {
+                      const qty = parseInt(inputs.manualQuantities?.[p.id] || 0);
+                      return (
+                        <div onClick={e=>e.stopPropagation()} style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:1 }}>
+                          <input type="number" min="0" value={qty || ''} placeholder="qty"
+                            onChange={e=>{
+                              const next = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value) || 0);
+                              setInputs(prev => ({ ...prev, manualQuantities: { ...(prev.manualQuantities || {}), [p.id]: next } }));
+                            }}
+                            style={{ width:54, padding:'2px 5px', border:`1px solid ${qty > 0 ? '#93c5fd' : '#fbbf24'}`, borderRadius:3, fontSize:10, fontFamily:'DM Mono, monospace', textAlign:'center', outline:'none', background: qty > 0 ? 'white' : '#fffbeb' }}/>
+                          {qty === 0 && <span style={{ fontSize:8, color:'#92400e', fontWeight:600 }}>set qty</span>}
+                        </div>
+                      );
+                    })()}
+                    <div>
+                      <div style={{ fontSize:10, fontFamily:'DM Mono, monospace', fontWeight:600, color:'#374151' }}>${p.sell_price}/{p.qty_driver === 'manual' ? 'license' : p.qty_driver}</div>
+                      <div style={{ fontSize:8, color:'#9ca3af' }}>{(gm*100).toFixed(0)}% GM</div>
+                    </div>
                   </div>
                 </div>
               );
