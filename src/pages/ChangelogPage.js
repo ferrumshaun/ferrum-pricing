@@ -9,10 +9,18 @@ const AUDIENCE_COLOR = { all: '#166534', admin: '#1e40af' };
 const AUDIENCE_BG    = { all: '#dcfce7', admin: '#dbeafe' };
 
 const CAT_CONFIG = {
-  new:      { label: 'New',       color: '#166534', bg: '#dcfce7', icon: '✦' },
-  improved: { label: 'Improved',  color: '#0f766e', bg: '#d1fae5', icon: '↑' },
-  fixed:    { label: 'Fixed',     color: '#1e40af', bg: '#dbeafe', icon: '✓' },
+  new:         { label: 'New',         color: '#166534', bg: '#dcfce7', icon: '✦' },
+  improved:    { label: 'Improved',    color: '#0f766e', bg: '#d1fae5', icon: '↑' },
+  fixed:       { label: 'Fixed',       color: '#1e40af', bg: '#dbeafe', icon: '✓' },
+  coming_soon: { label: 'Coming Soon', color: '#7c3aed', bg: '#ede9fe', icon: '◆' },
 };
+
+// Defensive fallback so a new/unknown category key never crashes the page.
+// We preserve the actual key name as the label so it's visible (and fixable)
+// rather than silently masked.
+const DEFAULT_CAT = { color: '#475569', bg: '#f1f5f9', icon: '•' };
+const catFor = (key) => CAT_CONFIG[key] || { ...DEFAULT_CAT, label: key };
+
 
 export default function ChangelogPage() {
   const { isAdmin } = useAuth();
@@ -111,7 +119,7 @@ export default function ChangelogPage() {
                   <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                     {Object.entries(release.categories).map(([key, items]) => {
                       if (!items.length) return null;
-                      const cfg = CAT_CONFIG[key];
+                      const cfg = catFor(key);
                       return (
                         <span key={key} style={{ fontSize: 9, fontWeight: 700, background: cfg.bg, color: cfg.color, padding: '2px 6px', borderRadius: 3 }}>
                           {cfg.icon} {items.length} {cfg.label}
@@ -130,7 +138,7 @@ export default function ChangelogPage() {
                   <div style={{ padding: '0 16px 14px', borderTop: '1px solid #f3f4f6' }}>
                     {Object.entries(release.categories).map(([key, items]) => {
                       if (!items.length) return null;
-                      const cfg = CAT_CONFIG[key];
+                      const cfg = catFor(key);
                       return (
                         <div key={key} style={{ marginTop: 12 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>

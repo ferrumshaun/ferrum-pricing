@@ -1,5 +1,20 @@
 [
   {
+    "version": "3.5.21",
+    "date": "2026-04-28",
+    "summary": "Hotfix \u2014 changelog page no longer crashes on unknown category keys",
+    "audience": "all",
+    "categories": {
+      "fixed": [
+        "Changelog page (/changelog) was rendering as blank white because the v3.5.17 entry contained a 'coming_soon' category key that the renderer didn't recognize \u2014 every changelog page render hit a TypeError on cfg.bg and the entire React tree unmounted. Cleaned up the v3.5.17 entry by folding the 'coming_soon' note into 'improved' (where it belonged \u2014 the auto-payment automation it described has now actually shipped in v3.5.18, so it's historical context, not a forward-looking promise)"
+      ],
+      "improved": [
+        "ChangelogPage.js is now defensive against unknown category keys. If a future changelog entry uses a key the renderer doesn't have styling for, the page falls back to neutral default styling (gray pill, bullet icon) and uses the literal key name as the label \u2014 visible enough that the broken key gets noticed and fixed, but no longer crashes the page",
+        "Added 'coming_soon' to the recognized category lookup with purple styling and ◆ icon, so future forward-looking changelog entries will render properly without needing a renderer change"
+      ]
+    }
+  },
+  {
     "version": "3.5.20",
     "date": "2026-04-28",
     "summary": "Sales Agent dropdown \u2014 commission rate no longer displayed next to rep name",
@@ -65,10 +80,8 @@
         "Test mode toggle in the modal \u2014 SignWell will mark the document as test (no real signature collected) for end-to-end verification before going live with a client"
       ],
       "improved": [
-        "Document tracking uses the existing quotes.inputs.signwellDocuments JSONB array pattern (matches LOA and IntlDialingWaiver) \u2014 no new tables, consistent shape across all signature document types"
-      ],
-      "coming_soon": [
-        "v3.5.18: SignWell webhook handler will fire automatically when the client signs \u2014 generates the Stripe payment link, emails the client, posts a HubSpot deal note, and updates the deal stage. Service desk and finance won't need to touch Stripe to close a FlexIT deal. The pricing_settings keys (flexit_auto_payment_after_sign, hubspot_stage_awaiting_payment, hubspot_stage_closed_won) are seeded now so admin can pre-configure them"
+        "Document tracking uses the existing quotes.inputs.signwellDocuments JSONB array pattern (matches LOA and IntlDialingWaiver) \u2014 no new tables, consistent shape across all signature document types",
+        "Pricing_settings keys (flexit_auto_payment_after_sign, hubspot_stage_awaiting_payment, hubspot_stage_closed_won) are seeded so admin can pre-configure them ahead of the v3.5.18 webhook handler that wires up the auto-payment automation"
       ]
     }
   },
