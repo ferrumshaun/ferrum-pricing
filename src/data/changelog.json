@@ -1,5 +1,20 @@
 [
   {
+    "version": "3.5.2",
+    "date": "2026-04-27",
+    "summary": "VoiceQuotePage state recovery — restore fax picker cost+GM display and totals.onboarding write",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [],
+      "fixed": [
+        "VoiceQuotePage.js was inadvertently reverted to a pre-3.4.6 base in the v3.5.0 deploy because the build was generated from a stale snapshot of the project files. The library it depends on (voicePricing.js) and the Admin → Voice Fax Packages tab (AdminPage.js) were untouched and remained in their post-3.4.11 state, so the regression was localized to the page-level UI on Voice quotes only",
+        "Restored VoiceQuotePage.js from commit dea7732 (the post-3.4.8 state). This single restore brings back three features in one go: 3.4.5 waiver parity (status-aware International Dialing Waiver card with SENT/SIGNED/HUBSPOT badges), 3.4.6 fax picker cost + GM% strip (each fax option now shows sell · cost · GM% next to the suggested badge), and 3.4.8 totals.onboarding write on save (Voice quotes now write totals.onboarding alongside totals.nrc so the Saved Quotes onboarding column renders correctly)",
+        "Going forward, the deploy workflow (single zip with merged changelog inside) is locked into Claude's project memory — every future deploy will mirror the established repo structure and bundle the changelog entry in the same commit, preventing this kind of drift between sessions"
+      ]
+    }
+  },
+  {
     "version": "3.5.1",
     "date": "2026-04-27",
     "summary": "FlexIT On-Demand — HubSpot deal connect now pulls in address, contact, and ZIP",
@@ -143,6 +158,23 @@
         "calcVoice() in lib/voicePricing.js was computing fax cost as a hardcoded 60% of sell price (cost: faxMRR * 0.6) — every fax line on every voice and bundle quote had a fictional cost that distorted gross margin",
         "Same 60% placeholder was applied to extra-user and extra-DID lines, compounding the error on Business and Infinity packages where extras are common"
       ]
+    }
+  },
+  {
+    "version": "3.4.5",
+    "date": "2026-04-27",
+    "summary": "International Dialing Waiver — status parity with LOA on Voice Documents panel",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [
+        "Voice quote parent page tracks intlWaiverDocRecord alongside loaDocRecord, restored from inputs.signwellDocuments (filtered by type === 'intl_waiver') when reopening a saved quote",
+        "IntlDialingWaiver modal receives existingDoc and onDocSaved props, mirroring LOAModal, so the parent page stays in sync as the rep sends, signs, and uploads the waiver to HubSpot",
+        "International Dialing Waiver card on the Voice Documents panel is now status-aware: card flips red ⚠ → amber ⏳ (sent, awaiting signature) → green ✓ (signed) based on the latest record's status",
+        "Inline status badges on the waiver card — SENT — AWAITING SIGNATURE (amber) when status is pending/awaiting_signature/sent, SIGNED (green) when status === 'completed' or signed_at is set; second badge ↗ HUBSPOT (orange) appears when hubspot_uploaded_at or hubspot_file_id is set",
+        "Button label flips Open Waiver → View Status when a record exists, so reps know they're returning to the SignWell status panel rather than starting a new send"
+      ],
+      "fixed": []
     }
   },
   {
