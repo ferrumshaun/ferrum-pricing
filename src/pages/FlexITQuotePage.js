@@ -96,6 +96,12 @@ export default function FlexITQuotePage() {
   const [marketAnalysis, setMarketAnalysis] = useState(null);
   const [marketLoading,  setMarketLoading]  = useState(false);
   const [marketError,    setMarketError]    = useState('');
+  // Locked-in market rates from MarketRateCard accept (or saved rate sheet load).
+  // Held independently of marketAnalysis so it survives the race condition where
+  // handleZipChange completes AFTER MarketRateCard fires onRatesAccepted — without
+  // this, accepting a rate override and then having handleZipChange finish second
+  // would silently overwrite the override with the original analysis.
+  const [acceptedRates,  setAcceptedRates]  = useState(null);
 
   // FlexIT-specific
   const [prepayHours,    setPrepayHours]    = useState(2);
@@ -111,13 +117,25 @@ export default function FlexITQuotePage() {
   const [hubDescription, setHubDescription]= useState('');
   const [sptProposalId,  setSptProposalId]  = useState(null);
 
-  // Computed rates
-  const rateSheet    = marketAnalysis ? buildRateSheet({ analysis: marketAnalysis, settings, clientName: recipientBiz, recipientContact }) : null;
-  const remoteRate   = marketAnalysis?.rates?.remote_support || parseFloat(settings?.oos_remote_rate || 165);
-  const prepayAmount = overridePrepay && prepayOverride
-    ? parseFloat(prepayOverride) || 0
-    : Math.round(prepayHours * remoteRate * 100) / 100;
+  // Computed rates — accepted rates always win, then live analysis, then admin default.
+  // This makes the flex block, the prepay calc, the FlexTimeSelector, and the rate
+  // sheet preview all use the same locked-in labor rate.
+  const effectiveRates = acceptedRates
+    ? { ...(marketAnalysis?.rates || {}), ...acceptedRates }
+    : (marketAnalysis?.rates || null);
+  const rateSheetAnalysis = marketAnalysis
+    ? { ...marketAnalysis, rates: effectiveRates || marketAnalysis.rates }
+    : null;
+  const rateSheet    = rateSheetAnalysis ? buildRateSheet({ analysis: rateSheetAnalysis, settings, clientName: recipientBiz, recipientContact }) : null;
+  const remoteRate   = effectiveRates?.remote_support ?? parseFloat(settings?.oos_remote_rate || 165);
+  // When a flex block is selected the flex block IS the upfront fee — no separate prepay.
   const flexBlock    = (flexHours && remoteRate) ? calcFlexBlock(flexHours, remoteRate, settings) : null;
+  const hasFlexBlock = !!flexBlock;
+  const prepayAmount = hasFlexBlock
+    ? 0
+    : (overridePrepay && prepayOverride
+        ? parseFloat(prepayOverride) || 0
+        : Math.round(prepayHours * remoteRate * 100) / 100);
 
   // ── Rep effects ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -376,34 +394,47 @@ export default function FlexITQuotePage() {
 
         {/* FlexIT Service Setup */}
         <Sec t="Service Setup" c={SECTION_COLOR}>
-          <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:5, padding:'8px 10px', marginBottom:8 }}>
-            <div style={{ fontSize:10, fontWeight:700, color:'#c2410c', marginBottom:4 }}>New Account Prepayment</div>
-            <div style={{ fontSize:9, color:'#92400e', lineHeight:1.5 }}>
-              A prepayment is required prior to any services being rendered. Applied toward the first engagement.
+          {hasFlexBlock ? (
+            <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:5, padding:'8px 10px', marginBottom:8 }}>
+              <div style={{ fontSize:10, fontWeight:700, color:'#c2410c', marginBottom:4 }}>Flex Block — Pre-Purchased</div>
+              <div style={{ fontSize:9, color:'#92400e', lineHeight:1.5 }}>
+                The {flexHours}hr flex block is the upfront fee for this engagement — paid in full upon agreement signing.
+                No separate initial prepayment is required when a flex block is selected.
+              </div>
             </div>
-          </div>
-          <Fld lbl="Prepayment Hours">
-            <NI v={prepayHours} s={v => { setPrepayHours(v); setOverridePrepay(false); }}/>
-          </Fld>
-          <Fld lbl="Prepayment Amount">
-            <div style={{ display:'flex', gap:4, alignItems:'center' }}>
-              {overridePrepay
-                ? <input value={prepayOverride} onChange={e => setPrepayOverride(e.target.value)}
-                    style={{ flex:1, padding:'4px 6px', border:'1px solid #f97316', borderRadius:4, fontSize:11, fontFamily:'DM Mono, monospace', fontWeight:700, color:'#c2410c', outline:'none' }}/>
-                : <div style={{ flex:1, padding:'4px 6px', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:4, fontSize:12, fontFamily:'DM Mono, monospace', fontWeight:700, color:'#c2410c' }}>
-                    {fmt$2(prepayAmount)}
-                  </div>
-              }
-              <button onClick={() => setOverridePrepay(v => !v)}
-                style={{ padding:'3px 7px', fontSize:9, background:'white', border:'1px solid #d1d5db', borderRadius:3, cursor:'pointer', color:'#6b7280' }}>
-                {overridePrepay ? 'Auto' : 'Edit'}
-              </button>
-            </div>
-            <div style={{ fontSize:9, color:'#9ca3af', marginTop:2 }}>
-              Auto: {prepayHours}hr × {fmt$2(remoteRate)}/hr
-              {marketAnalysis ? ' · market-adjusted' : ' · base rate (enter zip for market rate)'}
-            </div>
-          </Fld>
+          ) : (
+            <>
+              <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:5, padding:'8px 10px', marginBottom:8 }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#c2410c', marginBottom:4 }}>New Account Prepayment</div>
+                <div style={{ fontSize:9, color:'#92400e', lineHeight:1.5 }}>
+                  A prepayment is required prior to any services being rendered. Applied toward the first engagement.
+                  Selecting a flex block below replaces this with the block fee.
+                </div>
+              </div>
+              <Fld lbl="Prepayment Hours">
+                <NI v={prepayHours} s={v => { setPrepayHours(v); setOverridePrepay(false); }}/>
+              </Fld>
+              <Fld lbl="Prepayment Amount">
+                <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+                  {overridePrepay
+                    ? <input value={prepayOverride} onChange={e => setPrepayOverride(e.target.value)}
+                        style={{ flex:1, padding:'4px 6px', border:'1px solid #f97316', borderRadius:4, fontSize:11, fontFamily:'DM Mono, monospace', fontWeight:700, color:'#c2410c', outline:'none' }}/>
+                    : <div style={{ flex:1, padding:'4px 6px', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:4, fontSize:12, fontFamily:'DM Mono, monospace', fontWeight:700, color:'#c2410c' }}>
+                        {fmt$2(prepayAmount)}
+                      </div>
+                  }
+                  <button onClick={() => setOverridePrepay(v => !v)}
+                    style={{ padding:'3px 7px', fontSize:9, background:'white', border:'1px solid #d1d5db', borderRadius:3, cursor:'pointer', color:'#6b7280' }}>
+                    {overridePrepay ? 'Auto' : 'Edit'}
+                  </button>
+                </div>
+                <div style={{ fontSize:9, color:'#9ca3af', marginTop:2 }}>
+                  Auto: {prepayHours}hr × {fmt$2(remoteRate)}/hr
+                  {marketAnalysis ? ' · market-adjusted' : ' · base rate (enter zip for market rate)'}
+                </div>
+              </Fld>
+            </>
+          )}
           <Fld lbl="Internal Notes">
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
               placeholder="Notes about this client or engagement..."
@@ -451,7 +482,9 @@ export default function FlexITQuotePage() {
           {/* KPI Strip */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:16 }}>
             {[
-              ['Initial Prepayment', fmt$2(prepayAmount), '#c2410c', '#fff7ed'],
+              hasFlexBlock
+                ? [`Flex Block (${flexHours}hr)`, fmt$2(flexBlock?.blockPrice), '#c2410c', '#fff7ed']
+                : ['Initial Prepayment', fmt$2(prepayAmount), '#c2410c', '#fff7ed'],
               ['Remote Rate', `${fmt$2(remoteRate)}/hr`, '#0f766e', '#f0fdf4'],
               ['Market', marketAnalysis ? `${marketCity || '—'} · ${marketAnalysis.market_tier}` : 'Enter ZIP', '#6d28d9', '#faf5ff'],
             ].map(([l,v,co,bg]) => (
@@ -486,25 +519,25 @@ export default function FlexITQuotePage() {
                 </tr>
               </thead>
               <tbody>
-                <tr style={{ borderBottom:'1px solid #fde68a', background:'#fffbeb' }}>
-                  <td style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:'#374151' }}>#1 — Initial Prepayment</td>
-                  <td style={{ padding:'10px 12px', fontSize:12, fontFamily:'DM Mono, monospace', fontWeight:700, color:'#c2410c' }}>{fmt$2(prepayAmount)}</td>
-                  <td style={{ padding:'10px 12px', fontSize:11, color:'#6b7280' }}>Upon agreement signing — non-refundable</td>
-                </tr>
-                {flexHours && (() => {
-                  const fb = calcFlexBlock(flexHours, remoteRate, settings);
-                  return (
-                    <tr style={{ borderBottom:'1px solid #e5e7eb', background:'#fff7ed' }}>
-                      <td style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:'#c2410c' }}>Flex Block — {flexHours}hrs pre-purchased</td>
-                      <td style={{ padding:'10px 12px', fontSize:12, fontFamily:'DM Mono, monospace', fontWeight:700, color:'#c2410c' }}>{fmt$2(fb?.blockPrice)}</td>
-                      <td style={{ padding:'10px 12px', fontSize:11, color:'#6b7280' }}>Valid 12 months · refillable at this rate</td>
-                    </tr>
-                  );
-                })()}
+                {hasFlexBlock ? (
+                  /* Flex block IS the upfront — no separate prepay row. */
+                  <tr style={{ borderBottom:'1px solid #fde68a', background:'#fffbeb' }}>
+                    <td style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:'#c2410c' }}>#1 — Flex Block — {flexHours}hrs pre-purchased</td>
+                    <td style={{ padding:'10px 12px', fontSize:12, fontFamily:'DM Mono, monospace', fontWeight:700, color:'#c2410c' }}>{fmt$2(flexBlock?.blockPrice)}</td>
+                    <td style={{ padding:'10px 12px', fontSize:11, color:'#6b7280' }}>Due in full upon agreement signing — non-refundable · Valid 12 months · refillable at this rate</td>
+                  </tr>
+                ) : (
+                  /* No flex block — standard 2hr prepay for new-account engagement. */
+                  <tr style={{ borderBottom:'1px solid #fde68a', background:'#fffbeb' }}>
+                    <td style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:'#374151' }}>#1 — Initial Prepayment</td>
+                    <td style={{ padding:'10px 12px', fontSize:12, fontFamily:'DM Mono, monospace', fontWeight:700, color:'#c2410c' }}>{fmt$2(prepayAmount)}</td>
+                    <td style={{ padding:'10px 12px', fontSize:11, color:'#6b7280' }}>Upon agreement signing — non-refundable · Applied toward first engagement</td>
+                  </tr>
+                )}
                 <tr>
                   <td style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:'#374151' }}>Ongoing Labor</td>
                   <td style={{ padding:'10px 12px', fontSize:11, color:'#6b7280' }}>At published rates</td>
-                  <td style={{ padding:'10px 12px', fontSize:11, color:'#6b7280' }}>Billed as consumed — invoiced upon completion or end of billing period</td>
+                  <td style={{ padding:'10px 12px', fontSize:11, color:'#6b7280' }}>{hasFlexBlock ? 'After flex block depleted — billed as consumed' : 'Billed as consumed — invoiced upon completion or end of billing period'}</td>
                 </tr>
               </tbody>
             </table>
@@ -518,10 +551,13 @@ export default function FlexITQuotePage() {
             quoteId={existingQuote?.id}
             clientZip={clientZip}
             onRatesAccepted={(rates, suggestedTier, analysis) => {
-              // When the rep accepts (or the saved rate sheet loads), MarketRateCard
-              // hands us the latest accepted rates and — when generated fresh — the
-              // full analysis. FlexIT computes its rate sheet directly off
-              // marketAnalysis, so we mirror the accepted rates back into it.
+              // Race-proof: always capture the accepted rates into acceptedRates.
+              // remoteRate / flexBlock / rateSheet all derive from that, so the
+              // accepted overrides survive even if handleZipChange completes
+              // afterward and replaces marketAnalysis with the original.
+              if (rates) setAcceptedRates(rates);
+              // When MarketRateCard generated a fresh analysis (vs. loading a
+              // saved rate sheet), keep the city/state/full analysis in sync too.
               if (analysis) {
                 setMarketAnalysis({ ...analysis, rates: { ...analysis.rates, ...rates } });
                 if (analysis.city)  setMarketCity(analysis.city);

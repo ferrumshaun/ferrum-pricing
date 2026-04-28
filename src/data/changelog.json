@@ -1,5 +1,27 @@
 [
   {
+    "version": "3.5.7",
+    "date": "2026-04-27",
+    "summary": "After-hours dispatch fees now track market rates · FlexIT race condition fix · Flex Block replaces prepayment when selected",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Rate Sheet now shows the on-site 2-hour dispatch block as an explicit line item (rate sourced from market analysis onsite_block_2hr) so reps and clients can see the dispatch block fee directly. Previously the rate sheet only showed onsite_additional ($/hr after 2hr min) and the 2hr block fee was implicit"
+      ],
+      "improved": [
+        "After-hours dispatch fees in the Rate Sheet are now derived from the market on-site 2-hour block × multiplier instead of flat admin defaults. Weekday 5-11pm, Weekend 7am-5pm, and Saturday 5-11pm dispatches now compute as onsite_block_2hr × oos_afterhours_mult_standard (1.5×). Graveyard / Sundays dispatch is onsite_block_2hr × oos_afterhours_mult_graveyard (2.0×). With a market on-site block of $288, after-hours dispatches are $432 and $576 respectively — previously the admin defaults of $300 / $285 / $285 / $380 were producing the absurd outcome where after-hours dispatch could cost LESS than a daytime dispatch in higher-rate markets",
+        "FlexIT On-Demand quote — the entire pricing pipeline (remoteRate, prepay calc, FlexTimeSelector, flex block calc, rate sheet preview, SPT export) now derives from a single effectiveRates value that prefers acceptedRates > marketAnalysis.rates. Previously these computations could fall back to oos_remote_rate or BASE_RATES if the marketAnalysis state was racing with onRatesAccepted",
+        "FlexIT On-Demand quote — billing summary restructured: when a flex block is selected it now appears as the single upfront line ('#1 — Flex Block — Nhrs pre-purchased — Due in full upon agreement signing'). The separate 'Initial Prepayment' row that previously rendered alongside the flex block is suppressed, since the flex block IS the upfront for that engagement",
+        "FlexIT On-Demand quote — when a flex block is selected, the left-column 'New Account Prepayment' callout, Prepayment Hours field, and Prepayment Amount field are all hidden and replaced with a clarifying note ('The {N}hr flex block is the upfront fee for this engagement — paid in full upon agreement signing. No separate initial prepayment is required when a flex block is selected.'). When no flex block is selected, those controls render as before",
+        "FlexIT On-Demand quote — the right-column KPI tile that previously always read 'Initial Prepayment' now flips to 'Flex Block (Nhr)' when one is selected, displaying the block price instead of the (now-zero) prepay amount",
+        "FlexIT SPT proposal export — the FlexIT Base Plan line item description now adapts to whether a flex block is present. When a flex block is selected it reads 'This engagement is initiated with the Flex Block pre-purchase listed below — that block fee is paid in full upon agreement signing... No separate hourly pre-payment is required.' instead of the contradictory 'A 2-hour labor pre-payment ($0.00) is required' that would have rendered before"
+      ],
+      "fixed": [
+        "FlexIT On-Demand quote — added an acceptedRates state separate from marketAnalysis. Previously the onRatesAccepted callback at line 530 used setMarketAnalysis(prev => prev ? {...prev, rates: {...prev.rates, ...rates}} : prev) which silently dropped accepted rates when prev was null. That happened whenever MarketRateCard's getRateSheet completed before handleZipChange's getOrAnalyzeMarket — the accepted overrides were applied to a null marketAnalysis (no-op), then handleZipChange finished and overwrote marketAnalysis with the original rates, losing the override entirely. Now acceptedRates is captured unconditionally and remoteRate/flexBlock/rateSheet all derive from a merged effectiveRates that prefers it"
+      ]
+    }
+  },
+  {
     "version": "3.5.6",
     "date": "2026-04-27",
     "summary": "Rate locking now actually preserves the locked rates — and Flex Time blocks honor them",

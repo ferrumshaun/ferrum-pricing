@@ -20,13 +20,15 @@ export function buildRateSheet({ analysis, settings, clientName, recipientContac
   const tier  = analysis?.market_tier || 'standard';
 
   // Base rates — straight from market analysis, no surcharge multiplier
-  const remoteRate   = roundRate(rates.remote_support  || 165);
-  const onsiteRate   = roundRate(rates.onsite_additional || 165);
-  const devRate      = roundRate(rates.dev_crm          || 220);
-  const designRate   = roundRate(rates.design_ux        || 140);
-  const pcSetup      = roundRate(rates.pc_setup         || 250);
+  const remoteRate     = roundRate(rates.remote_support  || 165);
+  const onsiteRate     = roundRate(rates.onsite_additional || 165);
+  const onsiteBlock2hr = roundRate(rates.onsite_block_2hr  || 330);
+  const devRate        = roundRate(rates.dev_crm          || 220);
+  const designRate     = roundRate(rates.design_ux        || 140);
+  const pcSetup        = roundRate(rates.pc_setup         || 250);
 
-  // Fixed fees — admin-configured, applied as-is
+  // Fixed fees — admin-configured, applied as-is. These are penalty/surcharge
+  // fees (not labor), so they don't track market rates.
   const fee = (key, def) => roundRate(parseFloat(s[key] || def));
 
   const sameDayFee       = fee('oos_same_day_fee',             200);
@@ -34,15 +36,21 @@ export function buildRateSheet({ analysis, settings, clientName, recipientContac
   const cancellationFee  = fee('oos_cancellation_fee',         125);
   const abortFee         = fee('oos_abort_fee',                195);
 
-  // After-hours dispatch (flat)
-  const ahWeekdayDisp    = fee('oos_afterhours_weekday_disp',   300);
-  const ahWeekendDisp    = fee('oos_afterhours_weekend_disp',   285);
-  const ahSatNightDisp   = fee('oos_afterhours_satnight_disp',  285);
-  const ahGraveyardDisp  = fee('oos_afterhours_graveyard_disp', 380);
-
-  // After-hours additional hourly = remote rate × multiplier
+  // After-hours hourly multipliers (admin-configurable)
   const ahStdMult      = parseFloat(s.oos_afterhours_mult_standard  || 1.5);
   const ahGraveMult    = parseFloat(s.oos_afterhours_mult_graveyard || 2.0);
+
+  // After-hours dispatch fees — derived from the market 2hr on-site block × multiplier.
+  // Previously these were flat admin defaults ($300 / $285 / $285 / $380) which produced
+  // the absurd result of an after-hours dispatch sometimes costing LESS than a daytime
+  // dispatch when the market rate was high. Now they track the market: 1.5× the daytime
+  // 2hr block for evening/weekend/saturday-night, 2× for graveyard/sundays.
+  const ahWeekdayDisp    = roundRate(onsiteBlock2hr * ahStdMult);
+  const ahWeekendDisp    = roundRate(onsiteBlock2hr * ahStdMult);
+  const ahSatNightDisp   = roundRate(onsiteBlock2hr * ahStdMult);
+  const ahGraveyardDisp  = roundRate(onsiteBlock2hr * ahGraveMult);
+
+  // After-hours additional hourly = remote rate × multiplier
   const ahStdRate      = roundRate(remoteRate * ahStdMult);
   const ahGraveRate    = roundRate(remoteRate * ahGraveMult);
 
@@ -84,7 +92,8 @@ export function buildRateSheet({ analysis, settings, clientName, recipientContac
         title: 'On-Site Labor & Dispatches',
         note: null,
         items: [
-          { service: 'On-Site Maintenance & Support Labor', rate: onsiteRate,      unit: '/hr', minimum: '2 Hour Minimum' },
+          { service: 'On-Site Dispatch (2 Hour Block)',     rate: onsiteBlock2hr,  unit: '',    minimum: 'Covers first 2 hours on-site' },
+          { service: 'On-Site Maintenance & Support Labor', rate: onsiteRate,      unit: '/hr', minimum: 'After 2 Hour Block' },
           { service: 'Same Day Fee',                        rate: sameDayFee,      unit: '',    minimum: null },
           { service: 'Next Day Fee',                        rate: nextDayFee,      unit: '',    minimum: null },
           { service: 'Cancellation Fee',                    rate: cancellationFee, unit: '',    minimum: null },

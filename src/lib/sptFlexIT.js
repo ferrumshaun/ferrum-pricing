@@ -171,10 +171,20 @@ function acceptanceTermsHtml() {
 }
 
 // ── Line item description (dynamic — uses actual prepay hours/amount) ────────
-function basePlanDescription({ prepayHours, prepayAmount }) {
+// When `hasFlexBlock` is true, the flex block IS the upfront fee and the
+// "New Account — Initial Engagement" pre-payment paragraph is dropped. The
+// prepay paragraph would otherwise read "$0.00 pre-payment is required" which
+// is both meaningless and contradicts the flex block line that follows.
+function basePlanDescription({ prepayHours, prepayAmount, hasFlexBlock }) {
+  const intro = `<!-- tiny-editor-content -->
+<p>Time and materials support services covering remote and onsite technical labor. All time is tracked from the moment work begins and billed at the published hourly rate &mdash; including diagnostics, remediation, configuration, vendor coordination, and follow-up. There are no included hours, credits, or retainers under this plan; every unit of effort is invoiced as incurred. Applicable rates and billing increments are outlined in the Rate Card attached to this agreement.</p>`;
+  if (hasFlexBlock) {
+    return `${intro}
+<p><strong>Upfront Engagement:</strong></p>
+<p>This engagement is initiated with the Flex Block pre-purchase listed below &mdash; that block fee is paid in full upon agreement signing and serves as the engagement&rsquo;s initial commitment. No separate hourly pre-payment is required. Time on engagements is drawn from the block first; once the block is exhausted, additional time is billed at the published rates per the Rate Card.</p>`;
+  }
   const hoursLbl = prepayHours === 1 ? '1-hour' : `${prepayHours}-hour`;
-  return `<!-- tiny-editor-content -->
-<p>Time and materials support services covering remote and onsite technical labor. All time is tracked from the moment work begins and billed at the published hourly rate &mdash; including diagnostics, remediation, configuration, vendor coordination, and follow-up. There are no included hours, credits, or retainers under this plan; every unit of effort is invoiced as incurred. Applicable rates and billing increments are outlined in the Rate Card attached to this agreement.</p>
+  return `${intro}
 <p><strong>New Account &mdash; Initial Engagement:</strong></p>
 <p>A ${hoursLbl} labor pre-payment (${fmt$(prepayAmount)}) is required prior to any services being rendered. This pre-payment is applied toward the first billable engagement, whether remote or onsite. Ongoing per-engagement minimums are defined in the attached Rate Card.</p>`;
 }
@@ -256,12 +266,14 @@ export function buildFlexITSPTPayload({ quote, rateSheet, settings = {} }) {
     || `FlexIT On-Demand — ${quote.clientName || 'Client'}${quote.quoteNumber ? ` (${quote.quoteNumber})` : ''}`;
 
   // ── Line items for the Service & Billing Overview scope ─────────────────────
+  const hasFlexBlock = quote.flexHours > 0 && quote.flexBlockPrice > 0;
   const lineItems = [
     {
       name: 'FlexIT Base Plan — Time & Materials (Break/Fix)',
       description: basePlanDescription({
         prepayHours: quote.prepayHours || 2,
         prepayAmount: quote.prepayAmount || 0,
+        hasFlexBlock,
       }),
       price: { model: 'fixed', value: Number(quote.prepayAmount || 0), frequency: 'once' },
       isOptional: false,
@@ -279,7 +291,7 @@ export function buildFlexITSPTPayload({ quote, rateSheet, settings = {} }) {
   ];
 
   // Optional Flex Block pre-purchase (only if hours > 0 and price > 0)
-  if (quote.flexHours > 0 && quote.flexBlockPrice > 0) {
+  if (hasFlexBlock) {
     lineItems.push({
       name: `Flex Block — ${quote.flexHours}hrs Pre-Purchase`,
       description: flexBlockDescription({
