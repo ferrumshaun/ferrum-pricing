@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { searchDeals, getDealFull, updateDeal } from '../lib/hubspot';
+import { searchDeals, getDealFull, updateDeal, dealUrlFor } from '../lib/hubspot';
 import { logActivity } from '../lib/supabase';
 
 // ── HubSpotConnect ─────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ export default function HubSpotConnect({
           <div style={{ display:'flex', gap:4, alignItems:'center', flexShrink:0 }}>
             {dealId && (
               <>
-                <a href={dealUrl} target="_blank" rel="noopener noreferrer"
+                <a href={dealUrl || dealUrlFor(dealId)} target="_blank" rel="noopener noreferrer"
                   style={{ fontSize:10, color:'#c2410c', fontWeight:600, textDecoration:'none' }}>
                   View →
                 </a>

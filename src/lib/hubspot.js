@@ -1,6 +1,18 @@
 // HubSpot CRM Integration — routes through Netlify proxy to avoid CORS
 import { supabase } from './supabase';
 
+// Portal ID — hardcoded for Ferrum's HubSpot instance. If this ever needs to
+// move to a setting, update this constant and the dealUrlFor() callers.
+const HUBSPOT_PORTAL_ID = '47514592';
+
+// Build a deal record URL from just the deal id. HubSpot deal URLs follow
+// a deterministic pattern, so when the proxy response or a saved row is
+// missing dealUrl we can still produce a working "View →" link from the id.
+export function dealUrlFor(dealId) {
+  if (!dealId) return '';
+  return `https://app.hubspot.com/contacts/${HUBSPOT_PORTAL_ID}/record/0-3/${dealId}`;
+}
+
 async function getToken() {
   const { data } = await supabase
     .from('pricing_settings')
@@ -28,10 +40,20 @@ export async function searchDeals(query)  {
   const data = await callProxy('search', { query });
   return data.results || [];
 }
-export async function getDealFull(dealId) { return callProxy('get_deal_full', { dealId }); }
+// Always returns a response with a populated `dealUrl` — falls back to a
+// constructed URL when the proxy doesn't supply one. Without this guard,
+// older deals (or proxy responses missing the field) caused front-end code
+// to save dealUrl='' to the quote row, which then rendered the View link
+// as `<a href="">` — clicking it reloads the current page instead of
+// opening HubSpot. Symptom: "View Deal" navigates back to the quote.
+export async function getDealFull(dealId) {
+  const full = await callProxy('get_deal_full', { dealId });
+  if (full && !full.dealUrl) full.dealUrl = dealUrlFor(full.dealId || dealId);
+  return full;
+}
 export async function createDeal(p)       {
   const deal = await callProxy('create', p);
-  return { id: deal.id, url: deal.dealUrl || `https://app.hubspot.com/contacts/47514592/record/0-3/${deal.id}` };
+  return { id: deal.id, url: deal.dealUrl || dealUrlFor(deal.id) };
 }
 export async function updateDeal(dealId, p) { return callProxy('update', { dealId, ...p }); }
 

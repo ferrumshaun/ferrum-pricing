@@ -1,5 +1,25 @@
 [
   {
+    "version": "3.5.10",
+    "date": "2026-04-27",
+    "summary": "HubSpot deal links now derive from deal id when the explicit URL is missing — fixes 'View Deal' looping back to the quote",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "lib/hubspot.js exports a new dealUrlFor(dealId) helper that builds a HubSpot deal record URL from just the deal id (HubSpot deal URLs follow the pattern https://app.hubspot.com/contacts/<portal>/record/0-3/<dealId>, so the explicit URL isn't strictly required when we have the id). The previous portal id was hardcoded inside createDeal — now it's a single HUBSPOT_PORTAL_ID constant at the top of the file"
+      ],
+      "improved": [
+        "lib/hubspot.js getDealFull(dealId) — wraps the proxy response and guarantees the returned full.dealUrl is populated, falling back to dealUrlFor(dealId) if the proxy omitted it. Previously the front-end would receive {dealUrl: undefined} from some deals and persist that as an empty string in hubspot_deal_url",
+        "components/HubSpotConnect.js View → button — href now reads `dealUrl || dealUrlFor(dealId)` so it always opens HubSpot, even on quotes whose hubspot_deal_url was never captured. Previously when dealUrl was empty the rendered <a href=''> reloaded the current page, which on a quote URL like /flexIT/<id> meant clicking 'View Deal' brought the rep right back to the quote instead of HubSpot",
+        "pages/QuotesPage.js HubSpot column — the View Deal link now renders whenever a quote has a hubspot_deal_id, even if hubspot_deal_url is null/empty in the row. The link's href falls back to dealUrlFor(q.hubspot_deal_id). Previously the column rendered '—' for any older FlexIT/IT/Voice/Bundle quote whose dealUrl wasn't captured at connect time, even though the deal id was right there in the row"
+      ],
+      "fixed": [
+        "FlexIT quote (and any other older quote where hubspot_deal_url ended up empty) — the 'View →' button in the HubSpot Connect strip no longer loops back to the quote itself. The proxy's get_deal_full response occasionally didn't include dealUrl, which the front-end stored as an empty string. With the saved URL empty, the View → link rendered as <a href=''> which the browser interprets as the current URL — reloading the same page. Now both the live View → button and the persisted DB column have synthesized fallbacks anchored on the deal id",
+        "Saved Quotes page — the HubSpot column no longer shows '—' for quotes that have a deal_id but were missing the deal_url. Existing affected quotes get a working link immediately on next page load; no DB backfill needed"
+      ]
+    }
+  },
+  {
     "version": "3.5.9",
     "date": "2026-04-27",
     "summary": "Rate Sheet after-hours rates now match the Market Rate Analysis card exactly — single source of truth",
