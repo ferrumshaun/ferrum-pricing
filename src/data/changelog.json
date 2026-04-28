@@ -1,5 +1,17 @@
 [
   {
+    "version": "3.5.16",
+    "date": "2026-04-28",
+    "summary": "Stripe Integration card finally appears in Admin \u2192 Integrations (was wired into orphan file)",
+    "audience": "all",
+    "categories": {
+      "fixed": [
+        "Stripe Integration card now actually shows up at /admin \u2192 Integrations tab. The v3.5.13 deploy added the StripeIntegration component to src/components/AdminPage.js, but App.js imports AdminPage from src/pages/AdminPage.js \u2014 so the modified file was never loaded by the app. This deploy adds StripeIntegration to the correct file",
+        "Removed the orphan src/components/AdminPage.js that was sitting unused in the repo. Nothing imported it; it was dead code from the v3.5.13 misplacement"
+      ]
+    }
+  },
+  {
     "version": "3.5.15",
     "date": "2026-04-28",
     "summary": "FlexIT \u2014 HubSpot deal description and totals now sync on save (was silently no-op)",

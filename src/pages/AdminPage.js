@@ -996,6 +996,7 @@ export function IntegrationsAdmin() {
       {/* Smart Pricing Table */}
       <SPTIntegration />
       <SignWellIntegration />
+      <StripeIntegration />
 
       {/* HubSpot */}
       <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20, marginBottom: 16 }}>
@@ -1456,6 +1457,219 @@ function VoiceHardwareAdmin() {
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Stripe Integration ──────────────────────────────────────────────────────
+function StripeIntegration() {
+  const [secretKey,  setSecretKey]  = useState('');
+  const [pubKey,     setPubKey]     = useState('');
+  const [whSecret,   setWhSecret]   = useState('');
+  const [mode,       setMode]       = useState('test');
+  const [stmtDesc,   setStmtDesc]   = useState('FERRUM IT PREPAY');
+  const [saved,      setSaved]      = useState(false);
+  const [saving,     setSaving]     = useState(false);
+  const [testing,    setTesting]    = useState(false);
+  const [testMsg,    setTestMsg]    = useState('');
+  const [loading,    setLoading]    = useState(true);
+  const { profile } = useAuth();
+
+  useEffect(() => {
+    Promise.all([
+      supabase.from('pricing_settings').select('value').eq('key', 'stripe_secret_key').single(),
+      supabase.from('pricing_settings').select('value').eq('key', 'stripe_publishable_key').single(),
+      supabase.from('pricing_settings').select('value').eq('key', 'stripe_webhook_secret').single(),
+      supabase.from('pricing_settings').select('value').eq('key', 'stripe_mode').single(),
+      supabase.from('pricing_settings').select('value').eq('key', 'stripe_statement_desc').single(),
+    ]).then(([sk, pk, wh, md, sd]) => {
+      if (sk.data?.value) setSecretKey(sk.data.value);
+      if (pk.data?.value) setPubKey(pk.data.value);
+      if (wh.data?.value) setWhSecret(wh.data.value);
+      if (md.data?.value) setMode(md.data.value);
+      if (sd.data?.value) setStmtDesc(sd.data.value);
+      setLoading(false);
+    });
+  }, []);
+
+  // Auto-derive mode from key prefix when secret key changes
+  useEffect(() => {
+    if (!secretKey) return;
+    if (secretKey.startsWith('sk_live_')) setMode('live');
+    else if (secretKey.startsWith('sk_test_')) setMode('test');
+  }, [secretKey]);
+
+  async function save() {
+    setSaving(true); setSaved(false); setTestMsg('');
+    await Promise.all([
+      supabase.from('pricing_settings').upsert({ key: 'stripe_secret_key', value: secretKey, description: 'Stripe secret API key (sk_test_… or sk_live_…). Used server-side only.' }, { onConflict: 'key' }),
+      supabase.from('pricing_settings').upsert({ key: 'stripe_publishable_key', value: pubKey, description: 'Stripe publishable key (pk_test_… or pk_live_…). Safe to expose client-side.' }, { onConflict: 'key' }),
+      supabase.from('pricing_settings').upsert({ key: 'stripe_webhook_secret', value: whSecret, description: 'Stripe webhook signing secret (whsec_…). Used to verify webhook authenticity.' }, { onConflict: 'key' }),
+      supabase.from('pricing_settings').upsert({ key: 'stripe_mode', value: mode, description: 'Stripe mode: test or live.' }, { onConflict: 'key' }),
+      supabase.from('pricing_settings').upsert({ key: 'stripe_statement_desc', value: stmtDesc, description: 'Statement descriptor on the cardholder bank statement (max 22 chars).' }, { onConflict: 'key' }),
+    ]);
+    await logActivity({ action: 'UPDATE', entityType: 'setting', entityId: null, entityName: 'stripe_integration', changes: { mode, has_secret: !!secretKey, has_webhook: !!whSecret } });
+    setSaved(true); setSaving(false);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  async function testConnection() {
+    if (!secretKey) { setTestMsg('✗ Enter a secret API key first'); return; }
+    setTesting(true); setTestMsg('');
+    try {
+      const res = await fetch('/.netlify/functions/stripeProxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'testConnection' }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const liveLabel = data.livemode ? 'LIVE' : 'TEST';
+        setTestMsg(`✓ Connected · Stripe is responding in ${liveLabel} mode`);
+      } else {
+        setTestMsg('✗ ' + (data.error || `Error ${res.status}`));
+      }
+    } catch (e) { setTestMsg('✗ ' + e.message); }
+    setTesting(false);
+  }
+
+  const webhookUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://lustrous-treacle-e0ca6a.netlify.app'}/.netlify/functions/stripeWebhook`;
+  const isConfigured = !!secretKey && !!whSecret;
+  const modeColor = mode === 'live' ? '#dc2626' : '#7c3aed';
+  const modeBg    = mode === 'live' ? '#fef2f2' : '#faf5ff';
+
+  return (
+    <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20, marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <div style={{ width: 24, height: 24, background: '#635bff', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ color: 'white', fontSize: 12, fontWeight: 700 }}>S</span>
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f1e3c' }}>Stripe — Prepayment Collection</div>
+        {isConfigured && (
+          <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, color: modeColor, background: modeBg, padding: '2px 7px', borderRadius: 3, textTransform: 'uppercase' }}>
+            {mode}
+          </span>
+        )}
+      </div>
+      <p style={{ fontSize: 11, color: '#6b7280', marginBottom: 14, lineHeight: 1.6 }}>
+        Collect Payment #1 (initial onboarding prepayment) by credit card via hosted Stripe Checkout.
+        The 2% card surcharge from <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, background: '#f1f5f9', padding: '0 4px', borderRadius: 2 }}>payment_cc_surcharge</span> is added as a separate line item on every Checkout page.
+        ACH/EFT remains free and external — clients pay via{' '}
+        <a href="https://ferrumit.com/billing" target="_blank" rel="noopener noreferrer" style={{ color: '#635bff' }}>ferrumit.com/billing</a>.
+        Get your API keys from{' '}
+        <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" style={{ color: '#635bff' }}>Stripe → Developers → API keys</a>.
+      </p>
+
+      {/* Webhook URL — copy/paste into Stripe dashboard */}
+      <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 5, padding: '8px 12px', marginBottom: 14 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: '#a16207', marginBottom: 4 }}>📌 Register this webhook in Stripe</div>
+        <p style={{ fontSize: 10, color: '#92400e', marginBottom: 6, lineHeight: 1.6 }}>
+          Stripe → Developers → Webhooks → Add endpoint. Listen for events:{' '}
+          <span style={{ fontFamily: 'DM Mono, monospace' }}>checkout.session.completed</span>,{' '}
+          <span style={{ fontFamily: 'DM Mono, monospace' }}>checkout.session.expired</span>,{' '}
+          <span style={{ fontFamily: 'DM Mono, monospace' }}>payment_intent.payment_failed</span>,{' '}
+          <span style={{ fontFamily: 'DM Mono, monospace' }}>charge.refunded</span>.
+        </p>
+        <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, background: 'white', padding: '5px 8px', borderRadius: 3, border: '1px solid #fde68a', wordBreak: 'break-all' }}>
+          {webhookUrl}
+        </div>
+      </div>
+
+      {loading ? <div style={{ fontSize: 11, color: '#9ca3af' }}>Loading…</div> : (
+        <>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+            Secret API Key
+          </label>
+          <input
+            type="password"
+            value={secretKey}
+            onChange={e => setSecretKey(e.target.value)}
+            placeholder="sk_test_… or sk_live_…"
+            style={{ width: '100%', padding: '7px 9px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, outline: 'none', fontFamily: 'DM Mono, monospace', marginBottom: 14 }}
+          />
+
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+            Publishable Key <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional — reserved for future Elements deploy)</span>
+          </label>
+          <input
+            type="text"
+            value={pubKey}
+            onChange={e => setPubKey(e.target.value)}
+            placeholder="pk_test_… or pk_live_…"
+            style={{ width: '100%', padding: '7px 9px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, outline: 'none', fontFamily: 'DM Mono, monospace', marginBottom: 14 }}
+          />
+
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+            Webhook Signing Secret
+          </label>
+          <input
+            type="password"
+            value={whSecret}
+            onChange={e => setWhSecret(e.target.value)}
+            placeholder="whsec_…"
+            style={{ width: '100%', padding: '7px 9px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, outline: 'none', fontFamily: 'DM Mono, monospace', marginBottom: 4 }}
+          />
+          <div style={{ fontSize: 9, color: '#9ca3af', marginBottom: 14 }}>
+            Found under your webhook endpoint in Stripe → "Signing secret" → reveal.
+          </div>
+
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+            Statement Descriptor
+          </label>
+          <input
+            type="text"
+            value={stmtDesc}
+            onChange={e => setStmtDesc(e.target.value.toUpperCase().slice(0, 22))}
+            maxLength={22}
+            placeholder="FERRUM IT PREPAY"
+            style={{ width: '100%', padding: '7px 9px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, outline: 'none', fontFamily: 'DM Mono, monospace', marginBottom: 4 }}
+          />
+          <div style={{ fontSize: 9, color: '#9ca3af', marginBottom: 14 }}>
+            Appears on the customer's card statement (max 22 chars, uppercase).
+          </div>
+
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+            Mode
+          </label>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+            {['test', 'live'].map(m => (
+              <button key={m} onClick={() => setMode(m)} type="button"
+                style={{
+                  flex: 1, padding: '8px 12px', borderRadius: 5,
+                  border: `1px solid ${mode === m ? (m === 'live' ? '#dc2626' : '#7c3aed') : '#d1d5db'}`,
+                  background: mode === m ? (m === 'live' ? '#fef2f2' : '#faf5ff') : 'white',
+                  color:      mode === m ? (m === 'live' ? '#dc2626' : '#7c3aed') : '#6b7280',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.04em',
+                }}>
+                {mode === m ? '● ' : ''}{m}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: 9, color: '#9ca3af', marginBottom: 14 }}>
+            Auto-detected from key prefix. Test mode = no real charges. Live mode = real money.
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={save} disabled={saving}
+              style={{ padding: '7px 18px', background: '#635bff', color: 'white', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+              {saving ? 'Saving…' : 'Save Stripe Settings'}
+            </button>
+            <button onClick={testConnection} disabled={testing || !secretKey}
+              style={{ padding: '7px 14px', background: 'white', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, color: '#374151', cursor: 'pointer', opacity: testing ? 0.6 : 1 }}>
+              {testing ? 'Testing…' : 'Test Connection'}
+            </button>
+            {saved && <span style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>✓ Saved</span>}
+            {testMsg && <span style={{ fontSize: 11, fontWeight: 600, color: testMsg.startsWith('✓') ? '#166534' : '#dc2626' }}>{testMsg}</span>}
+          </div>
+
+          <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 10, lineHeight: 1.6 }}>
+            Keys are stored in Pricing Settings and used server-side only via the stripeProxy Netlify function.
+            You can also set <span style={{ fontFamily: 'DM Mono, monospace' }}>STRIPE_SECRET_KEY</span> and{' '}
+            <span style={{ fontFamily: 'DM Mono, monospace' }}>STRIPE_WEBHOOK_SECRET</span> in Netlify env vars (env takes precedence).
+            The webhook function additionally requires <span style={{ fontFamily: 'DM Mono, monospace' }}>SUPABASE_SERVICE_ROLE_KEY</span> in Netlify env to update payment status.
+          </div>
+        </>
       )}
     </div>
   );
