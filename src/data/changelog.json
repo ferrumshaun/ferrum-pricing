@@ -1,5 +1,26 @@
 [
   {
+    "version": "3.5.4",
+    "date": "2026-04-27",
+    "summary": "Removed legacy Area 2 / Metropolitan +30% surcharge — pricing now flows entirely from real-time market intelligence",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [
+        "Rate Sheet generation in lib/rateSheet.js is now substantially simpler — buildRateSheet no longer applies a +30% surcharge multiplier to remote/onsite/dev/design/PC-setup rates or to fixed fees (same-day/next-day/cancellation/abort/after-hours dispatch). All rates flow straight from the market analysis (analysis.rates) and admin-configured fees (oos_*) without modification",
+        "rateSheet.meta no longer includes area2 or area2SurchargePct fields — saved snapshots from before v3.5.4 keep their old data but new rate sheets won't have these keys, and any consumer that read meta.area2 has been updated to stop checking",
+        "AREA2_CITIES constant and isArea2() function removed from lib/rateSheet.js — they're no longer needed and exporting them would be misleading"
+      ],
+      "fixed": [
+        "FlexIT On-Demand quote page — removed isArea2 import, area2Applied state derivation, the '⚠ Area 2 +30%' line under marketCity, the '(Area 2 +30%)' tooltip on the prepay auto-calc, the '· Area 2 +30% surcharge applies' span in the pricing summary, the yellow 'Area 2 surcharge applied' banner under the Rate Card Preview, and the '⚠ Metropolitan / Extended Area surcharge applies to all charges' notice in the FlexITPaymentModal. Removed the area2Applied prop from FlexITDocumentsPanel and FlexITPaymentModal signatures and from buildFlexITQuoteShape's input shape",
+        "RateSheetModal.js — removed the red 'AREA 2 +X%' badge from the modal header, the '· Area 2 +X% surcharge applied' suffix on the market detail badge, and the entire 'Metropolitan / Extended Area Coverage' yellow callout block listing AK / CA / HI / NV / NY / WA / Canada cities at the bottom of the rate sheet document",
+        "smartPricingTable.js — removed the 'Area 2 Market: Yes/No' SPT custom variable from the proposal payload (was being sent on every rate-sheet export), and removed area2Applied from buildFlexITQuoteShape's destructured props and returned shape",
+        "lib/sptFlexIT.js — removed the 'Metropolitan / Extended Area Coverage (See below)' placeholder line that was conditionally appended to the onsite rate card, removed the entire 'Area 2 Surcharge' HTML block (with the AK/CA/Canada/HI/NV/NY/WA city list and the conditional 'has been applied' notice) from the FlexIT proposal rate-card page, and removed the 'area-2' tag that was being added to FlexIT proposals when the surcharge applied",
+        "The oos_area2_surcharge pricing setting (defaulted 0.30 = 30%) is no longer read by any code path — the row can be safely deleted from pricing_settings via Admin → Pricing Settings, but leaving it in place is harmless"
+      ]
+    }
+  },
+  {
     "version": "3.5.3",
     "date": "2026-04-27",
     "summary": "FlexIT On-Demand — market intelligence now actually runs when no analysis exists for a ZIP",

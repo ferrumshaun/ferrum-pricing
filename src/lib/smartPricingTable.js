@@ -57,7 +57,6 @@ export function buildRateSheetSPTPayload({ rateSheet, quote, proposalName }) {
       { id: 'market_city',  label: 'Market City',       value: meta.city  || '', type: 'single-line' },
       { id: 'market_state', label: 'Market State',      value: meta.state || '', type: 'single-line' },
       { id: 'market_tier',  label: 'Market Tier',       value: meta.tier  || '', type: 'single-line' },
-      { id: 'area2',        label: 'Area 2 Market',     value: meta.area2 ? 'Yes' : 'No', type: 'single-line' },
       { id: 'generated_at', label: 'Rate Sheet Date',   value: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }), type: 'single-line' },
     ],
     tags: ['rate-sheet', 'ferrum-iq'],
@@ -127,7 +126,6 @@ export function buildFlexITQuoteShape(state) {
     remoteRate,
     flexHours,
     flexBlock,        // optional pre-computed { blockPrice, ratePerHour } from calcFlexBlock
-    area2Applied,
     quoteNumber,
   } = state || {};
 
@@ -145,7 +143,6 @@ export function buildFlexITQuoteShape(state) {
     flexHours:            flexHours || 0,
     flexBlockPrice:       flexBlock?.blockPrice  || 0,
     flexBlockRatePerHour: flexBlock?.ratePerHour || 0,
-    area2Applied: !!area2Applied,
     quoteNumber,
   };
 }

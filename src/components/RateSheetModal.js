@@ -76,7 +76,6 @@ export default function RateSheetModal({
             <div style={{ fontSize:15, fontWeight:700, color:'white' }}>Out-of-Scope Rate Schedule</div>
             <div style={{ fontSize:10, color:'#64748b', marginTop:1 }}>
               {clientName || 'Client'}{meta.city ? ` · ${meta.city}, ${meta.state}` : ''} · {meta.tier} market
-              {meta.area2 && <span style={{ marginLeft:6, background:'#dc2626', color:'white', fontSize:9, padding:'1px 5px', borderRadius:2, fontWeight:700 }}>AREA 2 +{meta.area2SurchargePct}%</span>}
             </div>
           </div>
           <button onClick={onClose} style={{ background:'none', border:'none', color:'#64748b', fontSize:22, cursor:'pointer', lineHeight:1 }}>×</button>
@@ -116,7 +115,6 @@ export default function RateSheetModal({
             {meta.city && (
               <div style={{ marginTop:8, padding:'6px 10px', background:'#eff6ff', borderRadius:4, fontSize:10, color:'#1e40af', display:'inline-block' }}>
                 📍 Rates shown for {meta.city}, {meta.state} ({meta.tier} market · {meta.mult}× multiplier)
-                {meta.area2 && ` · Area 2 +${meta.area2SurchargePct}% surcharge applied`}
               </div>
             )}
           </div>
@@ -153,21 +151,6 @@ export default function RateSheetModal({
               </table>
             </div>
           ))}
-
-          {/* Area 2 note */}
-          {!meta.area2 && (
-            <div style={{ background:'#fef3c7', border:'1px solid #fde68a', borderRadius:5, padding:'10px 14px', marginBottom:16 }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#92400e', marginBottom:6 }}>
-                Metropolitan / Extended Area Coverage — Area 2 Surcharge (+{meta.area2SurchargePct}%)
-              </div>
-              <div style={{ fontSize:10, color:'#78350f', lineHeight:1.6 }}>
-                A {meta.area2SurchargePct}% surcharge applies to all charges for work performed in the following locations:
-                Alaska (all cities) · California (San Francisco metro, Oakland, San Jose, Palo Alto area) ·
-                Hawaii (all cities) · Nevada (Las Vegas) · New York (NYC metro and boroughs) ·
-                Washington (Seattle, Mercer Island) · Canada (AB, BC, MB, ON, QC, SK)
-              </div>
-            </div>
-          )}
 
           <div style={{ borderTop:'1px solid #e5e7eb', paddingTop:14, fontSize:10, color:'#9ca3af', lineHeight:1.6 }}>
             Rates effective as of {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}.

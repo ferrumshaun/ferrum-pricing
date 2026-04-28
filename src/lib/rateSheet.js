@@ -1,22 +1,10 @@
 // rateSheet.js — generates market-adjusted out-of-scope rate sheet
-
-// Area 2 (Metro/Extended) locations — +30% surcharge applies
-const AREA2_CITIES = [
-  { state: 'AK' },
-  { state: 'HI' },
-  { state: 'CA', cities: ['San Francisco', 'Berkeley', 'Fremont', 'Milpitas', 'Mountain View', 'Oakland', 'San Jose', 'San Leandro', 'San Mateo', 'Palo Alto', 'Redwood City', 'Richmond', 'Union City'] },
-  { state: 'NV', cities: ['Las Vegas'] },
-  { state: 'NY', cities: ['New York City', 'New York', 'Bronx', 'Brooklyn', 'Manhattan', 'Queens', 'Staten Island', 'Long Island'] },
-  { state: 'WA', cities: ['Seattle', 'Mercer Island'] },
-];
-
-export function isArea2(city, state) {
-  if (!state) return false;
-  const match = AREA2_CITIES.find(a => a.state === state.toUpperCase());
-  if (!match) return false;
-  if (!match.cities) return true; // entire state (AK, HI)
-  return match.cities.some(c => city?.toLowerCase().includes(c.toLowerCase()));
-}
+//
+// All rates are derived from real-time market intelligence (analysis.rates) and
+// the static admin-configured fees in pricing_settings. The legacy +30%
+// "Metropolitan / Extended Area" surcharge was removed in v3.5.4 — it existed
+// as a fail-safe when our hourly was lower than local market rates, which is
+// no longer needed now that pricing comes directly from market analysis.
 
 // Round to nearest $0.50 for cleaner presentation
 function roundRate(r) {
@@ -30,46 +18,41 @@ export function buildRateSheet({ analysis, settings, clientName, recipientContac
   const city  = analysis?.city  || marketOverride?.city  || '';
   const state = analysis?.state || marketOverride?.state || '';
   const tier  = analysis?.market_tier || 'standard';
-  const area2 = isArea2(city, state);
-  const area2Mult = area2 ? (1 + parseFloat(s.oos_area2_surcharge || 0.30)) : 1;
 
-  // Base rates from market analysis (already market-adjusted)
-  const remoteRate   = roundRate((rates.remote_support  || 165) * area2Mult);
-  const onsiteRate   = roundRate((rates.onsite_additional || 165) * area2Mult);
-  const devRate      = roundRate((rates.dev_crm          || 220) * area2Mult);
-  const designRate   = roundRate((rates.design_ux        || 140) * area2Mult);
-  const pcSetup      = roundRate((rates.pc_setup         || 250) * area2Mult);
+  // Base rates — straight from market analysis, no surcharge multiplier
+  const remoteRate   = roundRate(rates.remote_support  || 165);
+  const onsiteRate   = roundRate(rates.onsite_additional || 165);
+  const devRate      = roundRate(rates.dev_crm          || 220);
+  const designRate   = roundRate(rates.design_ux        || 140);
+  const pcSetup      = roundRate(rates.pc_setup         || 250);
 
-  // Fixed fees (flat — don't vary by market, but area2 surcharge applies)
-  const fee = (key, def) => roundRate(parseFloat(s[key] || def) * area2Mult);
-  const fixedFee = (key, def) => parseFloat(s[key] || def); // truly fixed — no mult
+  // Fixed fees — admin-configured, applied as-is
+  const fee = (key, def) => roundRate(parseFloat(s[key] || def));
 
   const sameDayFee       = fee('oos_same_day_fee',             200);
   const nextDayFee       = fee('oos_next_day_fee',             100);
   const cancellationFee  = fee('oos_cancellation_fee',         125);
   const abortFee         = fee('oos_abort_fee',                195);
 
-  // After-hours dispatch (flat, area2 applies)
+  // After-hours dispatch (flat)
   const ahWeekdayDisp    = fee('oos_afterhours_weekday_disp',   300);
   const ahWeekendDisp    = fee('oos_afterhours_weekend_disp',   285);
   const ahSatNightDisp   = fee('oos_afterhours_satnight_disp',  285);
   const ahGraveyardDisp  = fee('oos_afterhours_graveyard_disp', 380);
 
-  // After-hours additional hourly = remote rate * multiplier
+  // After-hours additional hourly = remote rate × multiplier
   const ahStdMult      = parseFloat(s.oos_afterhours_mult_standard  || 1.5);
   const ahGraveMult    = parseFloat(s.oos_afterhours_mult_graveyard || 2.0);
   const ahStdRate      = roundRate(remoteRate * ahStdMult);
   const ahGraveRate    = roundRate(remoteRate * ahGraveMult);
 
   const exceptionalMarkup = (parseFloat(s.oos_exceptional_markup || 0.20) * 100).toFixed(0);
-  const area2SurchargePct = (parseFloat(s.oos_area2_surcharge    || 0.30) * 100).toFixed(0);
 
   return {
     meta: {
       clientName,
       recipientContact,
       city, state, tier, mult,
-      area2, area2SurchargePct,
       generatedAt: new Date().toISOString(),
     },
     sections: [
@@ -122,9 +105,6 @@ export function buildRateSheet({ analysis, settings, clientName, recipientContac
           { service: 'Graveyard & Sundays — Dispatch',         rate: ahGraveyardDisp, unit: '',    minimum: null },
           { service: 'Graveyard & Sundays — Additional',       rate: ahGraveRate,     unit: '/hr', minimum: null },
           { service: 'Exceptional Charges',                    rate: null,            unit: '',    minimum: null, label: `Cost + ${exceptionalMarkup}%` },
-          ...(area2 ? [] : [
-            { service: 'Metropolitan / Extended Area Coverage', rate: null, unit: '', minimum: null, label: `+${area2SurchargePct}% surcharge — applies to all charges` },
-          ]),
         ],
       },
     ],

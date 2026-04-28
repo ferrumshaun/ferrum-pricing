@@ -68,7 +68,7 @@ ${bullets.map(b => `<li>${b}</li>`).join('\n')}
 
 // ── Rate Card ────────────────────────────────────────────────────────────────
 // Reproduces the template's three rate tables but with market-adjusted rates
-// from buildRateSheet(). The Area 2 surcharge prose is included verbatim.
+// from buildRateSheet().
 function rateCardRow(label, rateText) {
   return `<tr>
 <td style="border-color: #95a5a6;">${label}</td>
@@ -102,14 +102,6 @@ function rateCardHtml(rateSheet) {
     ...((afterSection?.items || []).filter(i => i.service === 'Exceptional Charges')),
   ];
 
-  // Area 2 surcharge — show only if NOT already applied (template behavior).
-  if (!rateSheet.meta.area2) {
-    onsiteCombined.push({
-      service: 'Metropolitan / Extended Area Coverage (See below)',
-      label: `+ ${rateSheet.meta.area2SurchargePct}%`,
-    });
-  }
-
   return `<!-- tiny-editor-content -->
 <h3 style="text-align: center;"><strong><span style="color: #ffffff; background-color: #000000; font-size: 36px;">&nbsp;Rate Card&nbsp;</span></strong></h3>
 <p>The following rates apply to all time and materials engagements under the FlexIT Plan. All labor is billed as incurred &mdash; from the moment work begins through completion, including diagnostics, remediation, configuration, vendor coordination, and any associated follow-up. Time is tracked in the increments noted below and invoiced upon completion of each engagement or at the close of the billing period, whichever comes first.</p>
@@ -122,17 +114,7 @@ ${rateCardSectionHtml('Remote Labor &amp; Support', remoteSection?.items || [])}
 ${(devSection?.items || []).map(i => rateCardRow(escHtml(i.service), escHtml(fmtRate(i)))).join('\n')}
 </tbody>
 </table>
-${rateCardSectionHtml('&nbsp;On-Site Labor &amp; Dispatches&nbsp;', onsiteCombined)}
-<h3 style="text-align: center; line-height: 1;"><strong><span style="background-color: #000000; color: #ffffff; font-size: 36px;">&nbsp;Area 2 Surcharge&nbsp;</span></strong></h3>
-<p>* Surcharge must be added to all other charges for work performed in these locations:</p>
-<p><strong>Alaska</strong> - All Cities</p>
-<p><strong>California</strong> - San Francisco and surrounding areas, Berkeley, Fremont, Milpitas, Mountain View, Oakland, San Jose, San Leandro, San Mateo, Palo Alto, Redwood City, Richmond, Union City</p>
-<p><strong>Canada</strong> - Alberta, British Columbia, Manitoba, Ontario, Quebec, Saskatchewan</p>
-<p><strong>Hawaii</strong> - All Cities</p>
-<p><strong>Nevada</strong> - Las Vegas Proper</p>
-<p><strong>New York </strong>- New York City and surrounding boroughs; Bronx, Brooklyn, Long Island, Manhattan, Queens, Staten Island</p>
-<p><strong>Washington</strong> - Seattle and Mercer Island</p>${rateSheet.meta.area2 ? `
-<p style="margin-top:14px;"><strong style="color:#c2410c;">⚠ Area 2 surcharge has been applied to all rates above for ${escHtml(rateSheet.meta.city)}, ${escHtml(rateSheet.meta.state)}.</strong></p>` : ''}`;
+${rateCardSectionHtml('&nbsp;On-Site Labor &amp; Dispatches&nbsp;', onsiteCombined)}`;
 }
 
 // Pulls the dispatch + additional-hourly rates for a window, combines like the template:
@@ -261,7 +243,7 @@ const FLEXIT_DESIGN = {
 // Inputs:
 //   quote      — { proposalName, clientName, clientContact, clientEmail, clientAddress,
 //                  marketCity, marketState, prepayHours, prepayAmount, remoteRate,
-//                  flexHours, flexBlockPrice, flexBlockRatePerHour, area2Applied,
+//                  flexHours, flexBlockPrice, flexBlockRatePerHour,
 //                  quoteNumber }
 //   rateSheet  — output of buildRateSheet({ analysis, settings, ... })
 //   settings   — pricing_settings record (used for hourlyTasks rate hints)
@@ -512,7 +494,6 @@ export function buildFlexITSPTPayload({ quote, rateSheet, settings = {} }) {
       'on-demand',
       'time-and-materials',
       'ferrum-iq',
-      ...(rateSheet.meta.area2 ? ['area-2'] : []),
       ...(quote.flexHours > 0 ? ['flex-block'] : []),
     ],
   };

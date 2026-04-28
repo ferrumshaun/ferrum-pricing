@@ -5,7 +5,7 @@ import { writeQuoteUrlToDeal } from '../lib/hubspot';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfig } from '../contexts/ConfigContext';
 import { lookupZip, lookupZipFromUSPS } from '../lib/pricing';
-import { buildRateSheet, fmtRate, isArea2 } from '../lib/rateSheet';
+import { buildRateSheet, fmtRate } from '../lib/rateSheet';
 import { getOrAnalyzeMarket } from '../lib/marketRates';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import QuoteNotes   from '../components/QuoteNotes';
@@ -116,7 +116,6 @@ export default function FlexITQuotePage() {
   const prepayAmount = overridePrepay && prepayOverride
     ? parseFloat(prepayOverride) || 0
     : Math.round(prepayHours * remoteRate * 100) / 100;
-  const area2Applied = marketAnalysis ? isArea2(marketCity, marketState) : false;
   const flexBlock    = (flexHours && remoteRate) ? calcFlexBlock(flexHours, remoteRate, settings) : null;
 
   // ── Rep effects ──────────────────────────────────────────────────────────────
@@ -338,7 +337,6 @@ export default function FlexITQuotePage() {
               remoteRate,
               flexHours,
               flexBlock,
-              area2Applied,
               quoteNumber: existingQuote?.quote_number,
             });
             return createFlexITSPTProposal({ quote, rateSheet, settings, sptApiKey });
@@ -368,7 +366,7 @@ export default function FlexITQuotePage() {
           <Fld lbl="Zip Code">
             <input value={clientZip} onChange={e => handleZipChange(e.target.value)} placeholder="60601"
               style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, fontFamily:'DM Mono, monospace', outline:'none' }}/>
-            {marketCity && <div style={{ fontSize:9, color:'#6b7280', marginTop:2 }}>{marketCity}, {marketState}{area2Applied ? ' · ⚠ Area 2 +30%' : ''}</div>}
+            {marketCity && <div style={{ fontSize:9, color:'#6b7280', marginTop:2 }}>{marketCity}, {marketState}</div>}
           </Fld>
           <Fld lbl="Quote Status" s={{ marginTop:8 }}>
             <SI v={quoteStatus} s={setQuoteStatus} opts={[['draft','Draft'],['in_review','In Review'],['approved','Approved'],['sent','Sent'],['won','Won'],['lost','Lost'],['expired','Expired']]}/>
@@ -401,7 +399,7 @@ export default function FlexITQuotePage() {
               </button>
             </div>
             <div style={{ fontSize:9, color:'#9ca3af', marginTop:2 }}>
-              Auto: {prepayHours}hr × {fmt$2(remoteRate)}/hr{area2Applied ? ' (Area 2 +30%)' : ''}
+              Auto: {prepayHours}hr × {fmt$2(remoteRate)}/hr
               {marketAnalysis ? ' · market-adjusted' : ' · base rate (enter zip for market rate)'}
             </div>
           </Fld>
@@ -511,7 +509,6 @@ export default function FlexITQuotePage() {
             </table>
             <div style={{ fontSize:9, color:'#9ca3af', marginTop:8, lineHeight:1.5 }}>
               Term: Month to Month · Invoicing: Due Upon Receipt · No monthly recurring fee
-              {area2Applied && <span style={{ marginLeft:8, color:'#dc2626', fontWeight:600 }}>· Area 2 +{rateSheet?.meta?.area2SurchargePct || 30}% surcharge applies</span>}
             </div>
           </div>
 
@@ -549,11 +546,6 @@ export default function FlexITQuotePage() {
                 </div>
               ))
             )}
-            {area2Applied && (
-              <div style={{ marginTop:6, padding:'5px 8px', background:'#fef3c7', borderRadius:4, fontSize:9, color:'#92400e', fontWeight:600 }}>
-                ⚠ Area 2 surcharge (+30%) applied — {marketCity}, {marketState}
-              </div>
-            )}
           </div>
 
           {/* Assumptions preview */}
@@ -579,7 +571,6 @@ export default function FlexITQuotePage() {
             onSPTLinked={(pid) => setSptProposalId(pid)}
             prepayAmount={prepayAmount}
             remoteRate={remoteRate}
-            area2Applied={area2Applied}
           />
 
           {/* Quote Notes */}
@@ -601,7 +592,7 @@ export default function FlexITQuotePage() {
 // ── FlexIT Documents Panel — Rate Sheet only ──────────────────────────────────
 // FlexIT has fixed standard assumptions (shown inline) and no monthly payment schedule.
 // Only the Rate Sheet needs to be managed here for SPT export.
-function FlexITDocumentsPanel({ analysis, settings, clientName, recipientContact, quoteId, quoteNumber, sptProposalId, onSPTLinked, prepayAmount, remoteRate, area2Applied }) {
+function FlexITDocumentsPanel({ analysis, settings, clientName, recipientContact, quoteId, quoteNumber, sptProposalId, onSPTLinked, prepayAmount, remoteRate }) {
   const [showRateSheet, setShowRateSheet] = React.useState(false);
   const [showPayment,   setShowPayment]   = React.useState(false);
   return (
@@ -643,7 +634,7 @@ function FlexITDocumentsPanel({ analysis, settings, clientName, recipientContact
 
       {showPayment && React.createElement(
         FlexITPaymentModal,
-        { onClose: () => setShowPayment(false), prepayAmount, remoteRate, clientName, settings, area2Applied }
+        { onClose: () => setShowPayment(false), prepayAmount, remoteRate, clientName, settings }
       )}
 
       {showRateSheet && React.createElement(
@@ -664,7 +655,7 @@ function FlexITDocumentsPanel({ analysis, settings, clientName, recipientContact
 
 
 // ── FlexIT Payment Schedule Modal ─────────────────────────────────────────────
-function FlexITPaymentModal({ onClose, prepayAmount, remoteRate, clientName, settings, area2Applied }) {
+function FlexITPaymentModal({ onClose, prepayAmount, remoteRate, clientName, settings }) {
   const fmt2 = n => n != null ? `$${Number(n).toFixed(2)}` : '—';
   const checkFee   = parseFloat(settings?.payment_check_fee    || 10);
   const ccSurcharge= parseFloat(settings?.payment_cc_surcharge || 0.02);
@@ -764,12 +755,6 @@ function FlexITPaymentModal({ onClose, prepayAmount, remoteRate, clientName, set
           <div style={{ fontSize:11, color:'#374151', lineHeight:1.7, marginBottom:14 }}>
             All sales of hardware, software, licensing, and third-party services are final. Please review and verify all orders prior to submission, as returns or refunds are not available.
           </div>
-
-          {area2Applied && (
-            <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:5, padding:'8px 12px', fontSize:11, color:'#991b1b', lineHeight:1.6 }}>
-              ⚠ Metropolitan / Extended Area surcharge (+30%) applies to all charges for services rendered at this location.
-            </div>
-          )}
 
         </div>
       </div>
