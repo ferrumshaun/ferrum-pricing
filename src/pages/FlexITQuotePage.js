@@ -275,9 +275,30 @@ export default function FlexITQuotePage() {
           packageName="FlexIT On-Demand" contractTerm={null}
           existingQuoteId={existingQuote?.id} clientName={recipientBiz}
           onConnect={full => {
-            setHubDealId(full.dealId); setHubDealUrl(full.deal.dealurl || '');
+            setHubDealId(full.dealId);
+            setHubDealUrl(full.deal.dealurl || '');
             setHubDealName(full.deal.dealname || '');
-            if (!recipientBiz && full.company?.name) setRecipientBiz(full.company.name);
+            // Company → recipient business name + address + ZIP-driven market analysis
+            if (full.company) {
+              if (full.company.name) setRecipientBiz(full.company.name);
+              const addr = [full.company.address, full.company.address2, full.company.city, full.company.state, full.company.zip].filter(Boolean).join(', ');
+              if (addr) setRecipientAddress(addr);
+              if (full.company.zip) handleZipChange(full.company.zip);
+            } else {
+              // Fallback when deal has no associated company — extract a name from the deal title
+              const extracted = full.deal.dealname?.split(/\s[-–—]\s/)?.[0]?.trim();
+              if (extracted) setRecipientBiz(extracted);
+            }
+            // Contact → name + email
+            if (full.contact) {
+              const name = [full.contact.firstname, full.contact.lastname].filter(Boolean).join(' ');
+              if (name) setRecipientContact(name);
+              if (full.contact.email) setRecipientEmail(full.contact.email);
+            }
+            // Auto-suggest a proposal name when one isn't already set
+            if (!proposalName && full.deal.dealname) {
+              setProposalName(`FerrumIT On-Demand IT Support — ${full.company?.name || full.deal.dealname}`);
+            }
           }}
           onDisconnect={() => { setHubDealId(''); setHubDealUrl(''); setHubDealName(''); }}
         />

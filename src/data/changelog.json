@@ -1,5 +1,21 @@
 [
   {
+    "version": "3.5.1",
+    "date": "2026-04-27",
+    "summary": "FlexIT On-Demand — HubSpot deal connect now pulls in address, contact, and ZIP",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [],
+      "fixed": [
+        "FlexIT On-Demand HubSpot deal connect was only pulling Deal ID, Deal URL, Deal Name, and Recipient Business Name — Business Address, Contact Name, Contact Email, and Client ZIP were never populated, blocking SPT proposal creation since the rate card requires the ZIP to compute market-adjusted rates",
+        "FlexITQuotePage onConnect now mirrors the Managed IT page handler: builds the full address from company.address + address2 + city + state + zip, sets Contact Name from contact.firstname + contact.lastname, sets Contact Email from contact.email, and pipes company.zip through handleZipChange so the market analysis fetch fires automatically",
+        "Proposal name auto-fills as 'FerrumIT On-Demand IT Support — [Company]' when not already set, matching the auto-fill pattern on other quote types",
+        "Falls back to extracting a business name from the deal title when no company is associated with the HubSpot deal"
+      ]
+    }
+  },
+  {
     "version": "3.5.0",
     "date": "2026-04-27",
     "summary": "FlexIT On-Demand → Smart Pricing Table — Create New now builds the full proposal",
