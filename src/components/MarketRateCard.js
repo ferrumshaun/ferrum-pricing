@@ -278,9 +278,22 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted, fa
       )}
 
       {/* ── Compact summary strip (always visible) ─────────────────────── */}
+      {/*
+        Rating semantics: the badge next to each rate describes how the displayed
+        value compares to the underlying market rate. With no override, displayed
+        equals market → FAIR. If a rep overrides up, the badge shifts to SLIGHTLY
+        HIGH / HIGH; overrides below market → LOW. This makes the badge an
+        "override sanity check" attached to the number it's labeling, instead of
+        the previous behavior where getRating(BASE_RATES[key], val) compared
+        Ferrum's published rate to the displayed value — that label rendered
+        adjacent to the market rate but actually described Ferrum's position,
+        making a $288 market rate look "SLIGHTLY HIGH" when really $330 (Ferrum's
+        base) was slightly high vs the $288 market. The detail table below has
+        the Ferrum-vs-market rating in its proper column placement.
+      */}
       <div style={{ padding: '8px 14px', background: 'white', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         {Object.entries(workingRates).map(([key, val]) => {
-          const rating = getRating(BASE_RATES[key], val);
+          const rating = getRating(val, analysis.rates?.[key]);
           const isOverridden = key in overrides;
           return (
             <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

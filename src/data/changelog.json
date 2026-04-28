@@ -1,5 +1,20 @@
 [
   {
+    "version": "3.5.8",
+    "date": "2026-04-27",
+    "summary": "Market Rate Analysis card — fixed the misleading 'SLIGHTLY HIGH' badge that was attached to the wrong rate",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [
+        "MarketRateCard compact summary strip — the colored rating badge next to each rate now describes the displayed value's position vs the underlying market rate (FAIR / SLIGHTLY HIGH / HIGH / LOW). With no rep override the displayed value equals the market rate and shows FAIR. If a rep overrides upward, the badge shifts to SLIGHTLY HIGH or HIGH, warning that they're above market. If a rep overrides downward, LOW warns of underpricing. The badge is now an 'override sanity check' attached to the number it labels"
+      ],
+      "fixed": [
+        "MarketRateCard compact strip — fixed misleading rating placement. Previously getRating(BASE_RATES[key], val) compared Ferrum's published baseline (e.g. $330) to the market-adjusted rate (e.g. $288), producing a 'SLIGHTLY HIGH' label rendered next to the $288 figure — the label looked like it was describing $288 as slightly high, when really it was describing Ferrum's $330 as slightly high vs the $288 market. Reps were seeing 'Dispatch $288 SLIGHTLY HIGH' on a quote where they had accepted the recommended market rate and were correctly puzzled. The detail panel below the strip already had the rating in its proper column placement (next to 'FerrumIT Published'), so this fix only affects the compact strip"
+      ]
+    }
+  },
+  {
     "version": "3.5.7",
     "date": "2026-04-27",
     "summary": "After-hours dispatch fees now track market rates · FlexIT race condition fix · Flex Block replaces prepayment when selected",
