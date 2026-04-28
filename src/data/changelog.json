@@ -1,5 +1,22 @@
 [
   {
+    "version": "3.5.9",
+    "date": "2026-04-27",
+    "summary": "Rate Sheet after-hours rates now match the Market Rate Analysis card exactly — single source of truth",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [
+        "lib/rateSheet.js now imports calcAfterHoursRates from lib/marketRates and uses it as the single source of truth for after-hours dispatches and additional hourly rates. The rate sheet preview, the View Rate Card document, the SPT export, and the Market Rate Analysis card's after-hours preview all read from the same function — they can no longer disagree",
+        "Mapping: rate sheet's 4 windows (Weekday 5-11pm, Weekend 7-5pm, Saturday 5-11pm, Graveyard & Sundays) map to calcAfterHoursRates' 3 categories (weekday_evening, weekend_day, graveyard). Saturday 5-11pm uses weekend_day rates since the previous admin defaults had it priced the same as weekend day"
+      ],
+      "fixed": [
+        "Rate Sheet after-hours rates were diverging from what reps saw in the Market Rate Analysis card. The card uses calcAfterHoursRates(onsite_additional) which scales the Ferrum baseline dispatch fees ($300/$285/$380) proportionally to the local market rate vs the $165 baseline (e.g. $300 × 152/165 ≈ $275 weekday dispatch). The rate sheet was using onsite_block_2hr × multiplier (introduced in v3.5.7) which produced different numbers ($432 weekday dispatch on the same quote). With market onsite_additional = $152 the new math now produces: Weekday $275 dispatch + $230/hr · Weekend $265 + $230/hr · Saturday $265 + $230/hr · Graveyard $350 + $265/hr — exactly matching what the rep sees on the card",
+        "Per-window 'Additional Hourly' rates in the rate sheet are now read from calcAfterHoursRates per window instead of using a single shared ahStdRate value. Previously Weekday/Weekend/Saturday all shared the exact same number, derived as remoteRate × 1.5. Now they pull weekday_evening_rate, weekend_day_rate, etc. from calcAfterHoursRates — which currently produces the same value for all three but means future changes to the formula (e.g. different multipliers for weekend vs weekday) only need to happen in one place"
+      ]
+    }
+  },
+  {
     "version": "3.5.8",
     "date": "2026-04-27",
     "summary": "Market Rate Analysis card — fixed the misleading 'SLIGHTLY HIGH' badge that was attached to the wrong rate",

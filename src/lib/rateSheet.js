@@ -6,6 +6,8 @@
 // as a fail-safe when our hourly was lower than local market rates, which is
 // no longer needed now that pricing comes directly from market analysis.
 
+import { calcAfterHoursRates } from './marketRates';
+
 // Round to nearest $0.50 for cleaner presentation
 function roundRate(r) {
   return Math.round(r * 2) / 2;
@@ -36,23 +38,23 @@ export function buildRateSheet({ analysis, settings, clientName, recipientContac
   const cancellationFee  = fee('oos_cancellation_fee',         125);
   const abortFee         = fee('oos_abort_fee',                195);
 
-  // After-hours hourly multipliers (admin-configurable)
-  const ahStdMult      = parseFloat(s.oos_afterhours_mult_standard  || 1.5);
-  const ahGraveMult    = parseFloat(s.oos_afterhours_mult_graveyard || 2.0);
-
-  // After-hours dispatch fees — derived from the market 2hr on-site block × multiplier.
-  // Previously these were flat admin defaults ($300 / $285 / $285 / $380) which produced
-  // the absurd result of an after-hours dispatch sometimes costing LESS than a daytime
-  // dispatch when the market rate was high. Now they track the market: 1.5× the daytime
-  // 2hr block for evening/weekend/saturday-night, 2× for graveyard/sundays.
-  const ahWeekdayDisp    = roundRate(onsiteBlock2hr * ahStdMult);
-  const ahWeekendDisp    = roundRate(onsiteBlock2hr * ahStdMult);
-  const ahSatNightDisp   = roundRate(onsiteBlock2hr * ahStdMult);
-  const ahGraveyardDisp  = roundRate(onsiteBlock2hr * ahGraveMult);
-
-  // After-hours additional hourly = remote rate × multiplier
-  const ahStdRate      = roundRate(remoteRate * ahStdMult);
-  const ahGraveRate    = roundRate(remoteRate * ahGraveMult);
+  // After-hours rates — single source of truth shared with MarketRateCard.
+  // calcAfterHoursRates(onsite_additional) returns proportionally-scaled values
+  // matching what reps see in the Market Rate Analysis card's after-hours section.
+  // Saturday 5pm-11pm maps to weekend_day (admin default was $285 for both).
+  // The legacy oos_afterhours_mult_* admin settings and the per-window
+  // oos_afterhours_*_disp admin settings are no longer read — the formulas are
+  // baked into calcAfterHoursRates so the rate sheet and the analysis card
+  // can never disagree.
+  const ah = calcAfterHoursRates(onsiteRate);
+  const ahWeekdayDisp    = ah.weekday_evening_dispatch;
+  const ahWeekendDisp    = ah.weekend_day_dispatch;
+  const ahSatNightDisp   = ah.weekend_day_dispatch;
+  const ahGraveyardDisp  = ah.graveyard_dispatch;
+  const ahWeekdayRate    = ah.weekday_evening_rate;
+  const ahWeekendRate    = ah.weekend_day_rate;
+  const ahSatNightRate   = ah.weekend_day_rate;
+  const ahGraveRate      = ah.graveyard_rate;
 
   const exceptionalMarkup = (parseFloat(s.oos_exceptional_markup || 0.20) * 100).toFixed(0);
 
@@ -106,11 +108,11 @@ export function buildRateSheet({ analysis, settings, clientName, recipientContac
         note: null,
         items: [
           { service: 'Weekdays 5pm–11pm — Dispatch',           rate: ahWeekdayDisp,   unit: '',    minimum: null },
-          { service: 'Weekdays 5pm–11pm — Additional',         rate: ahStdRate,       unit: '/hr', minimum: null },
+          { service: 'Weekdays 5pm–11pm — Additional',         rate: ahWeekdayRate,   unit: '/hr', minimum: null },
           { service: 'Weekends 7am–5pm — Dispatch',            rate: ahWeekendDisp,   unit: '',    minimum: null },
-          { service: 'Weekends 7am–5pm — Additional',          rate: ahStdRate,       unit: '/hr', minimum: null },
+          { service: 'Weekends 7am–5pm — Additional',          rate: ahWeekendRate,   unit: '/hr', minimum: null },
           { service: 'Saturday 5pm–11pm — Dispatch',           rate: ahSatNightDisp,  unit: '',    minimum: null },
-          { service: 'Saturday 5pm–11pm — Additional',         rate: ahStdRate,       unit: '/hr', minimum: null },
+          { service: 'Saturday 5pm–11pm — Additional',         rate: ahSatNightRate,  unit: '/hr', minimum: null },
           { service: 'Graveyard & Sundays — Dispatch',         rate: ahGraveyardDisp, unit: '',    minimum: null },
           { service: 'Graveyard & Sundays — Additional',       rate: ahGraveRate,     unit: '/hr', minimum: null },
           { service: 'Exceptional Charges',                    rate: null,            unit: '',    minimum: null, label: `Cost + ${exceptionalMarkup}%` },
