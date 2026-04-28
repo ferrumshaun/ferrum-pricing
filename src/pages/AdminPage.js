@@ -635,6 +635,7 @@ function SettingsAdmin() {
   const [loading,  setLoading]  = useState(true);
   const [editing,  setEditing]  = useState(null);
   const [saving,   setSaving]   = useState(false);
+  const [search,   setSearch]   = useState('');
   const { profile } = useAuth();
 
   async function load() {
@@ -656,12 +657,39 @@ function SettingsAdmin() {
     setSaving(false);
   }
 
+  const filteredSettings = settings.filter(s => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (s.key || '').toLowerCase().includes(q)
+        || (s.label || '').toLowerCase().includes(q)
+        || (s.description || '').toLowerCase().includes(q)
+        || (s.value || '').toString().toLowerCase().includes(q);
+  });
+
   return (
     <div>
       <div style={{ marginBottom: 14 }}>
         <h2 style={{ fontSize: 14, fontWeight: 700, color: '#0f1e3c' }}>Pricing Settings</h2>
         <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>Global rates: onboarding costs, stack costs, burdened rate, contract discounts</p>
       </div>
+
+      {/* Search — consistent with IT & Security Products and Voice Hardware tabs */}
+      <div style={{ display:'flex', gap:6, marginBottom:10, alignItems:'center' }}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by key, label, value, or description..."
+          style={{ padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none', width:320 }}/>
+        {search && (
+          <>
+            <button onClick={()=>setSearch('')}
+              style={{ padding:'4px 10px', borderRadius:4, border:'1px solid #e5e7eb', background:'white', color:'#374151', fontSize:10, fontWeight:500, cursor:'pointer' }}>
+              Clear
+            </button>
+            <span style={{ fontSize:10, color:'#6b7280', marginLeft:'auto' }}>
+              {filteredSettings.length} of {settings.length} shown
+            </span>
+          </>
+        )}
+      </div>
+
       {loading ? <div style={{ padding: 20, color: '#6b7280', fontSize: 12 }}>Loading...</div> : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, tableLayout:'fixed' }}>
           <thead>
@@ -671,7 +699,12 @@ function SettingsAdmin() {
             </tr>
           </thead>
           <tbody>
-            {settings.map((s, i) => (
+            {filteredSettings.length === 0 && (
+              <tr><td colSpan={4} style={{ padding:'20px 10px', textAlign:'center', color:'#9ca3af', fontSize:11 }}>
+                {search ? `No settings match "${search}"` : 'No settings found'}
+              </td></tr>
+            )}
+            {filteredSettings.map((s, i) => (
               <tr key={s.id} style={{ borderBottom: '1px solid #f3f4f6', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                 <td style={{ padding: '8px 10px', fontWeight: 600, color: '#374151' }}>{s.label || s.key}</td>
                 <td style={{ padding: '8px 10px', maxWidth: 280, overflow: 'hidden' }}>

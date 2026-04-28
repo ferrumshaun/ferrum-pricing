@@ -1,5 +1,19 @@
 [
   {
+    "version": "3.4.10",
+    "date": "2026-04-27",
+    "summary": "Search bar on Admin → Pricing Settings tab",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Search bar on Admin → Pricing Settings — searches across setting key, label, value, and description fields. Same visual pattern as the IT & Security Products and Voice Hardware tabs (320px input, Clear button, live count of matched/total settings on the right when a query is active). Empty state shows 'No settings match \"<query>\"' if the filter returns zero rows"
+      ],
+      "improved": [
+        "Three of the four catalog/config tabs in Admin (IT & Security Products, Voice Hardware, Pricing Settings) now share an identical search-bar pattern, making navigation between them feel consistent. Voice Fax Packages and Market Tiers will get the same treatment if their lists grow large enough to need it"
+      ]
+    }
+  },
+  {
     "version": "3.4.9",
     "date": "2026-04-27",
     "summary": "Hotfix — Bundle and Multi-Site quote pages crashed on render due to undefined flex-time variables",
