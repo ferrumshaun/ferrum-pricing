@@ -62,6 +62,7 @@ export default function BundleQuotePage() {
   // Shared client fields
   const [proposalName,     setProposalName]     = useState('');
   const [pricingSnapshot, setPricingSnapshot] = useState(null);
+  const [acceptedRates,   setAcceptedRates]   = useState(null);  // locked-in market rates from MarketRateCard accept
   const [sptProposalId,   setSptProposalId]   = useState(null);
   const [priceLockDate,   setPriceLockDate]   = useState(null);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
@@ -144,7 +145,11 @@ export default function BundleQuotePage() {
       setHubDealUrl(data.hubspot_deal_url || '');
       setHubDealName(data.inputs?.hubspotDealName || '');
       if (data.rep_id) setRepId(data.rep_id);
-      if (data.pricing_snapshot) { setPricingSnapshot(data.pricing_snapshot); setPriceLockDate(data.price_locked_at); }
+      if (data.pricing_snapshot) {
+        setPricingSnapshot(data.pricing_snapshot);
+        setPriceLockDate(data.price_locked_at);
+        if (data.pricing_snapshot.acceptedRates) setAcceptedRates(data.pricing_snapshot.acceptedRates);
+      }
       if (data.spt_proposal_id) setSptProposalId(data.spt_proposal_id);
       if (data.inputs?.flexHours) setFlexHours(data.inputs.flexHours);
       if (data.inputs?.it)    setItInputs({ ...DEF_IT, ...data.inputs.it });
@@ -283,8 +288,14 @@ export default function BundleQuotePage() {
   // Flex Time block — same pattern as QuotePage / MultiSiteQuotePage.
   // flexHours is null when no flex block is selected; both flexBlock and flexLaborCost
   // gracefully evaluate to null/0 in that case so the cost-model panel renders cleanly.
+  // Rate chain: accepted (live) → snapshotted accepted → package default → market_tier (legacy) → 165 floor.
+  const flexBlockRate  = acceptedRates?.remote_support
+    ?? pricingSnapshot?.acceptedRates?.remote_support
+    ?? selectedPkg?.rates?.remote_support
+    ?? selectedMkt?.rates?.remote_support
+    ?? 165;
   const flexBlock      = (itResult && flexHours)
-    ? calcFlexBlock(itResult.svcHrs, flexHours, settings) : null;
+    ? calcFlexBlock(flexHours, flexBlockRate, settings) : null;
   const burdenedRate   = parseFloat(settings?.burdened_hourly_rate || 125);
   const flexLaborCost  = flexBlock ? flexBlock.hours * burdenedRate : 0;
   const flexBlockMRR   = flexBlock?.blockPrice || 0;
@@ -354,7 +365,7 @@ export default function BundleQuotePage() {
       totals,
       hubspot_deal_id: hubDealId || null, hubspot_deal_url: hubDealUrl || null,
       rep_id:     repId || profile?.id || null,
-      ...(quoteStatus === 'approved' && !pricingSnapshot ? { pricing_snapshot: { lockedAt: new Date().toISOString() }, price_locked_at: new Date().toISOString(), price_locked_by: profile?.id } : {}),
+      ...(quoteStatus === 'approved' && !pricingSnapshot ? { pricing_snapshot: { lockedAt: new Date().toISOString(), acceptedRates: acceptedRates || null }, price_locked_at: new Date().toISOString(), price_locked_by: profile?.id } : {}),
       ...(pricingSnapshot ? { pricing_snapshot: pricingSnapshot, price_locked_at: priceLockDate } : {}),
       updated_by: profile?.id,
     };
@@ -967,6 +978,7 @@ export default function BundleQuotePage() {
                 clientZip={clientZip}
                 fallbackMarket={selectedMkt}
                 onRatesAccepted={(rates, suggestedTier) => {
+                  if (rates) setAcceptedRates(rates);
                   if (suggestedTier && marketTiers.length) {
                     const tier = marketTiers.find(t => t.tier_key === suggestedTier);
                     if (tier) setSelectedMkt(tier);

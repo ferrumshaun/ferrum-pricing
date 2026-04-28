@@ -73,6 +73,7 @@ export default function QuotePage() {
   const [repProfile,         setRepProfile]         = useState(null);
   const [teamMembers,        setTeamMembers]        = useState([]);
   const [acceptedMktTier,    setAcceptedMktTier]    = useState(null);
+  const [acceptedRates,      setAcceptedRates]      = useState(null);  // remote_support, onsite_*, dev_crm, etc — the locked-in market rates
   const [aiMultiplier,       setAiMultiplier]       = useState(null); // from accepted market analysis
   const [aiMultiplierTier,   setAiMultiplierTier]   = useState(null); // label e.g. "Standard"
   const [showMktRecommend,   setShowMktRecommend]   = useState(false);
@@ -133,7 +134,13 @@ export default function QuotePage() {
       if (data.inputs?.aiMultiplier != null) { setAiMultiplier(data.inputs.aiMultiplier); setAiMultiplierTier(data.inputs.aiMultiplierTier || null); }
       if (data.onboarding_incentive?.mode) setObIncentive(data.onboarding_incentive);
       if (data.rep_id) setRepId(data.rep_id);
-      if (data.pricing_snapshot) { setPricingSnapshot(data.pricing_snapshot); setPriceLockDate(data.price_locked_at); }
+      if (data.pricing_snapshot) {
+        setPricingSnapshot(data.pricing_snapshot);
+        setPriceLockDate(data.price_locked_at);
+        // Restore accepted rates from snapshot so the flex block picks them up
+        // immediately on reopen, before MarketRateCard re-fires onRatesAccepted.
+        if (data.pricing_snapshot.acceptedRates) setAcceptedRates(data.pricing_snapshot.acceptedRates);
+      }
       if (data.spt_proposal_id) setSptProposalId(data.spt_proposal_id);
       if (data.inputs?.flexHours) setFlexHours(data.inputs.flexHours);
       setQuoteStatus(data.status || 'draft');
@@ -410,6 +417,11 @@ export default function QuotePage() {
     package:   selectedPkg  ? { ...selectedPkg }  : null,
     products:  products.filter(p => (inputs.selectedProducts||[]).includes(p.id)).map(p => ({ ...p })),
     settings:  { ...settings },
+    // The market rates the rep negotiated/accepted at lock time. Without this
+    // the flex block falls back to the package's default $165 after reopen,
+    // and the rate card has no rates to display when the underlying market
+    // analysis row gets evicted.
+    acceptedRates: acceptedRates || null,
   });
 
   // Use snapshot rates if locked, live rates otherwise
@@ -427,8 +439,15 @@ export default function QuotePage() {
       });
 
   // Flex block add-on cost (added to MRR and TCV)
+  // Flex block honors the locked-in labor rate from MarketRateCard accept.
+  // Chain: accepted (live) → snapshotted accepted (after lock) → package default → market_tier (legacy) → 165 floor
+  const flexBlockRate = acceptedRates?.remote_support
+    ?? pricingSnapshot?.acceptedRates?.remote_support
+    ?? calcPkg?.rates?.remote_support
+    ?? selectedMkt?.rates?.remote_support
+    ?? 165;
   const flexBlock = (result && flexHours)
-    ? calcFlexBlock(flexHours, calcPkg?.rates?.remote_support || selectedMkt?.rates?.remote_support || 165, calcSettings)
+    ? calcFlexBlock(flexHours, flexBlockRate, calcSettings)
     : null;
   const flexBlockMRR    = flexBlock?.blockPrice   || 0;
   const effectiveFinalMRR  = result ? result.finalMRR + flexBlockMRR : 0;
@@ -1144,6 +1163,9 @@ export default function QuotePage() {
                     clientZip={clientZip}
                     fallbackMarket={selectedMkt}
                     onRatesAccepted={(rates, suggestedTier, analysis) => {
+                      // Capture the accepted rates so flex block + FlexTimeSelector use them
+                      // (and so the snapshot can persist them on lock).
+                      if (rates) setAcceptedRates(rates);
                       if (analysis?.pricing_multiplier != null) {
                         setPendingMultiplier({
                           multiplier: analysis.pricing_multiplier,
@@ -1160,7 +1182,7 @@ export default function QuotePage() {
                   {/* Flex Time Add-On */}
                   {selectedPkg && selectedPkg.flex_time_model !== 'all_inclusive' && (
                     <FlexTimeSelector
-                      remoteRate={selectedMkt?.rates?.remote_support || 165}
+                      remoteRate={flexBlockRate}
                       settings={settings}
                       selectedHours={flexHours}
                       onChange={hrs => setFlexHours(hrs)}

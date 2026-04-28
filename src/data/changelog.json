@@ -1,5 +1,26 @@
 [
   {
+    "version": "3.5.6",
+    "date": "2026-04-27",
+    "summary": "Rate locking now actually preserves the locked rates — and Flex Time blocks honor them",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [
+        "Market Rate Analysis card on saved/locked quotes now displays the locked-in rates instead of disappearing or showing blank values. When MarketRateCard finds an accepted rate sheet for a quote it now synthesizes a full analysis object from it (city, state, accepted_rates, market_zip) so the entire card body renders with the actual locked rates, ratings vs Ferrum baseline, and the 'Rate locked' label",
+        "Refresh button on the Market Rate Analysis card now requires explicit confirmation when the quote has accepted/locked rates — clicking it now warns 'This quote has locked-in rates. Refreshing will pull current market rates and replace what was locked. Continue?' Prevents accidentally wiping out negotiated rates by clicking refresh out of habit"
+      ],
+      "fixed": [
+        "Managed IT QuotePage — Flex Time block calculation now uses the accepted/locked market labor rate instead of the package default ($165) or the empty market_tiers row. New rate chain: live acceptedRates.remote_support → snapshotted acceptedRates → package default → market_tier (legacy) → 165 floor. So accepting $200 in the Market Rate Analysis card now produces flex blocks priced off $200 instead of $165",
+        "Managed IT QuotePage — FlexTimeSelector picker now also uses the accepted labor rate, so the per-block discount tiers shown to the rep match what will actually be calculated when they select one",
+        "Managed IT QuotePage — onRatesAccepted callback now captures the accepted rates into a new acceptedRates state (was previously discarding them and only keeping suggestedTier and pricing_multiplier)",
+        "Managed IT QuotePage — pricing_snapshot now persists acceptedRates alongside package/products/settings, so the locked labor rate survives quote reopen. On load, acceptedRates is restored from pricing_snapshot.acceptedRates immediately — the flex block picks them up before MarketRateCard re-fires onRatesAccepted from the saved rate sheet",
+        "Bundle quote — same acceptedRates flow as Managed IT (state, capture from MarketRateCard, persist in pricing_snapshot, restore on load, flex block uses the chain). Also fixes a separate bug: calcFlexBlock was being called with swapped arguments — calcFlexBlock(itResult.svcHrs, flexHours, settings) — so it was using svcHrs as the block size and flexHours as the labor rate. Now correctly calls calcFlexBlock(flexHours, flexBlockRate, settings)",
+        "Multi-Site quote — already pulls flex block rate from per-location market analysis (locationResults[0].analysis.rates.remote_support) so no fix needed there. FlexIT On-Demand also already uses marketAnalysis.rates.remote_support directly. Both inherit the MarketRateCard display improvements automatically"
+      ]
+    }
+  },
+  {
     "version": "3.5.5",
     "date": "2026-04-27",
     "summary": "FlexIT On-Demand — Market Rate Analysis card now shown on the quote (parity with IT/Voice/Bundle/Multi-Site)",

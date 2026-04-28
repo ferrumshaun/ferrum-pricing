@@ -79,6 +79,21 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted, fa
         setWorkingRates(sheet.accepted_rates);
         setOverrides(sheet.overrides || {});
         setAccepted(true);
+        // Build a synthetic analysis from the saved rate sheet so the card body
+        // can render the locked rates. Without this, `analysis` stays null and
+        // line 184 returns null — making the entire card disappear when a
+        // quote has accepted rates. With this, reps see what they locked in.
+        setAnalysis({
+          id:                 sheet.market_analysis_id || null,
+          city:               sheet.market_city  || '',
+          state:              sheet.market_state || '',
+          market_tier:        'Locked',
+          pricing_multiplier: 1,
+          rates:              sheet.accepted_rates,
+          col_index:          '—',
+          analyzed_at:        null, // → renders as "Rate locked" (existing behavior at line 227)
+          analysis_source:    'locked',
+        });
         onRatesAccepted?.(sheet.accepted_rates, null);
       }
       setRateSheetChecked(true); // always ungate, whether sheet found or not
@@ -97,6 +112,16 @@ export default function MarketRateCard({ quoteId, clientZip, onRatesAccepted, fa
   }, [rateSheetChecked, clientZip, quoteId]);
 
   async function handleRefresh() {
+    // Guard: refreshing on a locked/accepted quote will replace the locked
+    // rates with current market data. That's sometimes intentional (renewal,
+    // YoY repricing) but if it happens by accident the rep loses the rates
+    // they negotiated with the client. Make them confirm.
+    if (accepted) {
+      const ok = window.confirm(
+        'This quote has locked-in rates. Refreshing will pull current market rates and replace what was locked. Continue?'
+      );
+      if (!ok) return;
+    }
     setRefreshing(true);
     try {
       const { analysis: result } = await getOrAnalyzeMarket(clientZip, true);
