@@ -8,23 +8,21 @@ import { supabase } from '../lib/supabase';
 //   clientName                        — default search term + new proposal name
 //   quoteNumber                       — included in new proposal name
 //   settings                          — pricing_settings (for spt_api_key)
+//   quoteTypeLabel                    — phrase used in the auto-generated proposal
+//                                       name. Defaults to "Managed IT Services".
+//                                       FlexIT passes "On-Demand IT Support".
+//   customCreate({ sptApiKey, name }) — optional. When provided, doCreate calls
+//                                       this instead of the built-in minimal
+//                                       createProposal. Should return the raw
+//                                       proxy response (object containing the
+//                                       new proposal id at .id, .proposal.id,
+//                                       or .proposal_id). FlexIT passes a
+//                                       function that calls
+//                                       createFlexITSPTProposal so the new
+//                                       proposal includes the FlexIT cover,
+//                                       billing, rate card, and payment pages.
 //   onConnect(id, name, url)          — called when proposal is linked
 //   onDisconnect()                    — called when unlinked
-//
-// Optional props (used by quote types that need a fully-structured proposal,
-// e.g. FlexIT On-Demand):
-//   quoteTypeLabel  — string used in the auto-filled proposal name. Defaults
-//                     to 'Managed IT Services'. Pass 'On-Demand IT Support'
-//                     for FlexIT, 'Hosted Voice Services' for Voice, etc.
-//   defaultTags     — string[] passed to SPT on default empty-proposal create.
-//                     Ignored when customCreate is provided.
-//   customCreate    — async ({ sptApiKey, name }) => { id, ... }. When
-//                     provided, runs INSTEAD of the default empty-proposal
-//                     POST. Use this to push a fully-built proposal payload
-//                     (e.g. createFlexITSPTProposal). Should return an object
-//                     with at least an `id` field — the ID is then linked to
-//                     the quote and saved to spt_proposal_id exactly as with
-//                     the default flow.
 
 export default function SPTConnect({
   proposalId,
@@ -33,11 +31,10 @@ export default function SPTConnect({
   clientName,
   quoteNumber,
   settings,
+  quoteTypeLabel,
+  customCreate,
   onConnect,
   onDisconnect,
-  quoteTypeLabel = 'Managed IT Services',
-  defaultTags = ['ferrum-iq'],
-  customCreate,
 }) {
   const [open,       setOpen]       = useState(false);
   const [mode,       setMode]       = useState('search'); // 'search' | 'create'
@@ -57,7 +54,8 @@ export default function SPTConnect({
 
   // Auto-fill new proposal name
   useEffect(() => {
-    setNewName(`${clientName || 'Client'} — ${quoteTypeLabel}${quoteNumber ? ` (${quoteNumber})` : ''}`);
+    const label = quoteTypeLabel || 'Managed IT Services';
+    setNewName(`${clientName || 'Client'} — ${label}${quoteNumber ? ` (${quoteNumber})` : ''}`);
   }, [clientName, quoteNumber, quoteTypeLabel]);
 
   // Fetch proposal name from SPT if we have ID but no name
@@ -118,13 +116,13 @@ export default function SPTConnect({
     setCreating(true); setMsg('Creating proposal in Smart Pricing Table...');
     try {
       let data;
-      if (customCreate) {
-        // Quote-type-specific structured proposal (e.g. FlexIT). The parent
-        // builds the full payload from current quote state and calls the
-        // proxy itself. We just consume the returned { id, ... }.
+      if (typeof customCreate === 'function') {
+        // Quote-type-specific structured proposal builder. FlexIT uses this so
+        // the proposal includes the cover, billing, market-adjusted rate card,
+        // payment schedule, and acceptance terms — not just an empty shell.
         data = await customCreate({ sptApiKey: sptKey, name: newName.trim() });
       } else {
-        // Default flow: empty proposal with just name + recipient.
+        // Default: minimal create (just name + recipient name).
         const res = await fetch('/.netlify/functions/sptProxy', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -137,7 +135,7 @@ export default function SPTConnect({
                   name: clientName || '',
                 },
               },
-              tags: defaultTags,
+              tags: ['ferrum-iq'],
             },
             sptApiKey: sptKey,
           }),
@@ -145,7 +143,16 @@ export default function SPTConnect({
         data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Create failed');
       }
-      const pid = data?.id;
+
+      // SPT's response shape can vary by endpoint and proxy version: top-level
+      // id, nested proposal.id, snake-cased proposal_id, or under data. Try
+      // every plausible path before giving up — otherwise reps see "No
+      // proposal ID returned" even though the proposal was actually created.
+      const pid = data?.id
+        || data?.proposal?.id
+        || data?.proposal_id
+        || data?.data?.id
+        || data?.data?.proposal?.id;
       if (!pid) throw new Error('No proposal ID returned');
       const url = `https://web.smartpricingtable.com/proposals/${pid}`;
       setMsg(`✓ Created: ${newName.trim()}`);
@@ -359,9 +366,8 @@ export default function SPTConnect({
             {mode === 'create' && (
               <div style={{ flex:1 }}>
                 <div style={{ fontSize:11, color:'#6b7280', marginBottom:14, lineHeight:1.6 }}>
-                  {customCreate
-                    ? 'Builds a full proposal in Smart Pricing Table from this quote — cover page, billing, assumptions, market-adjusted rate card, payment schedule, and acceptance terms — and links it.'
-                    : 'Creates a new proposal in Smart Pricing Table and links it to this quote. Open it in SPT to add pricing pages and content.'}
+                  Creates a new proposal in Smart Pricing Table and links it to this quote.
+                  Open it in SPT to add pricing pages and content.
                 </div>
                 <label style={{ display:'block', fontSize:10, fontWeight:700, color:'#374151', marginBottom:4 }}>
                   Proposal Name
@@ -377,7 +383,7 @@ export default function SPTConnect({
                 )}
                 <button onClick={doCreate} disabled={creating || !newName.trim() || !sptKey}
                   style={{ width:'100%', padding:'10px', background: sptKey ? '#2563eb' : '#9ca3af', color:'white', border:'none', borderRadius:5, fontSize:12, fontWeight:700, cursor: (creating || !newName.trim() || !sptKey) ? 'not-allowed' : 'pointer' }}>
-                  {creating ? 'Creating...' : (customCreate ? '✚ Build & Create Proposal in SPT' : '✚ Create Proposal in SPT')}
+                  {creating ? 'Creating...' : '✚ Create Proposal in SPT'}
                 </button>
                 {!sptKey && (
                   <div style={{ fontSize:10, color:'#dc2626', marginTop:6, textAlign:'center' }}>
@@ -385,9 +391,7 @@ export default function SPTConnect({
                   </div>
                 )}
                 <div style={{ fontSize:9, color:'#9ca3af', marginTop:8, textAlign:'center', lineHeight:1.5 }}>
-                  {customCreate
-                    ? 'After creating, click "Open in SPT" to review and send to the client.'
-                    : 'After creating, click "Open in SPT" to add pricing tables and send to the client.'}
+                  After creating, click "Open in SPT" to add pricing tables and send to the client.
                 </div>
               </div>
             )}

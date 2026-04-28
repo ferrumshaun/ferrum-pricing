@@ -1,5 +1,22 @@
 [
   {
+    "version": "3.5.12",
+    "date": "2026-04-27",
+    "summary": "SPT Create on FlexIT now actually generates the structured FlexIT proposal — fixes 'No proposal ID returned' error",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [
+        "components/SPTConnect.js now accepts two new props: customCreate({ sptApiKey, name }) and quoteTypeLabel. customCreate lets a quote page hand SPTConnect a structured proposal builder (FlexIT passes one that calls createFlexITSPTProposal so the new SPT proposal includes the cover, billing summary, market-adjusted rate card, payment schedule, and acceptance terms — instead of an empty shell with just a name). quoteTypeLabel replaces the hardcoded 'Managed IT Services' suffix in the auto-generated proposal name; FlexIT passes 'On-Demand IT Support' so its proposals are named correctly",
+        "components/SPTConnect.js doCreate now extracts the new proposal id robustly — tries data.id, then data.proposal.id, data.proposal_id, data.data.id, data.data.proposal.id in turn. SPT's API response shape varies between endpoints and proxy versions; the previous code only checked data.id directly and would throw 'No proposal ID returned' even when the proposal had actually been created"
+      ],
+      "fixed": [
+        "FlexIT On-Demand quote — the 'New' / 'Create' button in the SPT Connect strip now generates the full FlexIT proposal in Smart Pricing Table. Previously SPTConnect ignored FlexIT's customCreate prop entirely (it wasn't declared in the component signature), so the click ran SPTConnect's built-in minimal create path which shipped just a name + recipient name. Worse: that built-in path was throwing 'No proposal ID returned' on some SPT responses where the id came back nested. With customCreate now wired AND robust id extraction, FlexIT reps get a fully structured proposal (cover, billing, rate card, payment schedule, acceptance terms) on first click",
+        "SPT Connect strip — auto-generated proposal name on FlexIT no longer reads 'Client — Managed IT Services'. Now uses the quoteTypeLabel prop so FlexIT proposals are named 'Client — On-Demand IT Support'. IT/Voice/Bundle/Multi-Site continue to default to 'Managed IT Services' since they don't pass quoteTypeLabel"
+      ]
+    }
+  },
+  {
     "version": "3.5.11",
     "date": "2026-04-27",
     "summary": "FlexIT Payment Schedule document now mirrors the on-screen Flex-Block-vs-Prepayment logic",
