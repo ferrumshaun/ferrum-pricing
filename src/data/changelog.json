@@ -1,5 +1,17 @@
 [
   {
+    "version": "3.5.20",
+    "date": "2026-04-28",
+    "summary": "Sales Agent dropdown \u2014 commission rate no longer displayed next to rep name",
+    "audience": "all",
+    "categories": {
+      "improved": [
+        "Cleaner Sales Agent dropdown across all quote types. The rep's commission percentage is no longer shown next to their name in the dropdown options \u2014 just the name. The commission still calculates and posts to the Billing Summary the same way; only the visual prefix is removed",
+        "Applied to all 5 quote pages: Managed IT, Voice, Bundle, Multi-Site, and FlexIT"
+      ]
+    }
+  },
+  {
     "version": "3.5.19",
     "date": "2026-04-28",
     "summary": "Soft gate on manual Stripe payment send \u2014 prevents accidentally collecting payment before contract is signed",

@@ -548,7 +548,7 @@ export default function QuotePage() {
               <option value="">— select rep —</option>
               {teamMembers.map(m => (
                 <option key={m.id} value={m.id}>
-                  {m.full_name || m.email?.split('@')[0]}{m.commission_rate != null ? ` (${(m.commission_rate*100).toFixed(1)}% comm)` : ' (global rate)'}
+                  {m.full_name || m.email?.split('@')[0]}
                 </option>
               ))}
             </select>

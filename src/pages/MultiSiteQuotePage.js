@@ -592,7 +592,7 @@ export default function MultiSiteQuotePage() {
                   style={{ width:'100%', padding:'4px 7px', border:'1px solid #d1d5db', borderRadius:4, fontSize:10, background:'white', outline:'none' }}>
                   <option value="">— select rep —</option>
                   {teamMembers.map(m => (
-                    <option key={m.id} value={m.id}>{m.full_name || m.email?.split('@')[0]}{m.commission_rate != null ? ` (${(m.commission_rate*100).toFixed(1)}%)` : ''}</option>
+                    <option key={m.id} value={m.id}>{m.full_name || m.email?.split('@')[0]}</option>
                   ))}
                 </select>
               </Fld>
