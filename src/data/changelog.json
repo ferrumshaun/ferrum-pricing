@@ -1,116 +1,37 @@
 [
   {
-    "version": "3.4.10",
+    "version": "3.5.0",
     "date": "2026-04-27",
-    "summary": "Search bar on Admin → Pricing Settings tab",
+    "summary": "FlexIT On-Demand → Smart Pricing Table — Create New now builds the full proposal",
     "audience": "all",
     "categories": {
       "new": [
-        "Search bar on Admin → Pricing Settings — searches across setting key, label, value, and description fields. Same visual pattern as the IT & Security Products and Voice Hardware tabs (320px input, Clear button, live count of matched/total settings on the right when a query is active). Empty state shows 'No settings match \"<query>\"' if the filter returns zero rows"
+        "⚡ Click Create New on a FlexIT quote and SPT now receives a fully-structured proposal — cover page, Service & Billing scope with the prepayment as a real line item, 7 standard T&M assumptions, market-adjusted Rate Card (Chicago $173.25/hr instead of the template's $165.00/hr boilerplate), Payment Schedule with Month to Month / Due Upon Receipt placeholders wired to SPT custom variables, and the full Acceptance Terms with all MSA exhibits",
+        "Flex Block pre-purchases come through as a second line item on the SPT scope when the rep selected a block — name reads 'Flex Block — Xhrs Pre-Purchase', priced at the discounted block rate",
+        "Area 2 surcharge handling — when the client ZIP is in a metro market, the inline +30% row is suppressed in the rate card (rates already include it) and a notice line is added so the client sees that the surcharge has been applied",
+        "Proposal name auto-fills as '[Client] — On-Demand IT Support (FIT-FLEX-####)' on FlexIT quotes (was incorrectly 'Managed IT Services' before)"
       ],
       "improved": [
-        "Three of the four catalog/config tabs in Admin (IT & Security Products, Voice Hardware, Pricing Settings) now share an identical search-bar pattern, making navigation between them feel consistent. Voice Fax Packages and Market Tiers will get the same treatment if their lists grow large enough to need it"
-      ]
-    }
-  },
-  {
-    "version": "3.4.9",
-    "date": "2026-04-27",
-    "summary": "Hotfix — Bundle and Multi-Site quote pages crashed on render due to undefined flex-time variables",
-    "audience": "all",
-    "categories": {
-      "fixed": [
-        "Bundle quote page rendered as a white screen with ReferenceError: flexLaborCost is not defined. The IT cost-model panel referenced flexBlock and flexLaborCost (copy-pasted from QuotePage during the original bundle build) but neither was ever declared on the bundle page. Added the canonical flex-time block calculation right after itResult is computed — same pattern as QuotePage.js — so the cost-model panel now renders cleanly whether or not a flex block is selected",
-        "Multi-Site quote page rendered as a white screen with TDZ error 'Cannot access bt before initialization'. The flex-time block declarations existed at lines 381-385 but were referenced 163 lines earlier at lines 218-219 — the minifier flagged the temporal dead zone. Moved flexBlock / flexBlockMRR / burdenedRate / flexLaborCost declarations to immediately after finalMRR is computed (line 199) so they are defined before every use. Also added the missing useState declaration for flexHours which had a setFlexHours call but no backing state — would have crashed on any saved Multi-Site quote with flexHours stored in inputs",
-        "Console noise — Admin → IT & Security Products tab fired a 406 on every page load when the product_categories row did not exist in pricing_settings. Switched .single() to .maybeSingle() so a missing row returns null cleanly instead of throwing a 406; the page already had a fallback to DEFAULT_CATEGORIES so behavior is unchanged"
-      ]
-    }
-  },
-  {
-    "version": "3.4.8",
-    "date": "2026-04-27",
-    "summary": "Saved Quotes UX — onboarding column fix, unified quote type tags, Products tab search",
-    "audience": "all",
-    "categories": {
-      "fixed": [
-        "Saved Quotes — Onboarding column was reading totals.onboarding which only exists on IT, Bundle, FlexIT, and Multi-Site quotes. Voice quotes save totals.nrc, so the column always rendered $0 for any voice quote regardless of actual one-time fees. Now reads totals.onboarding ?? totals.nrc so the right value shows for every quote type, including all existing voice quotes — no DB migration required",
-        "Voice quote saves now also write totals.onboarding alongside totals.nrc going forward, so the schema is consistent across quote types for HubSpot sync, reporting, and any future integrations"
+        "SPTConnect gained three optional props — quoteTypeLabel, defaultTags, customCreate — so any quote type can supply its own structured-proposal builder without forking the component. Voice / Bundle / Multi-Site keep their existing empty-proposal create flow unchanged for now",
+        "Create modal copy adapts to the customCreate path — button reads 'Build & Create Proposal in SPT' on FlexIT, and the helper text explains that a fully populated proposal is being built rather than an empty shell",
+        "If a rep clicks Create on a FlexIT quote before entering a ZIP, the modal now shows '✗ Enter a ZIP code first to compute market-adjusted rates' instead of failing silently"
       ],
-      "new": [
-        "Quote type tag system on Saved Quotes — every quote now gets a colored tag prefix on the client column (IT was previously unmarked). Five distinct colors mapped to a single source of truth (QUOTE_TYPES taxonomy in QuotesPage): IT = blue (#2563eb), Voice = purple (#7c3aed), Bundle = deep violet (#6d28d9), Multi-Site = teal (#0f766e), FlexIT = orange (#f97316). Same palette as the + New Quote dropdown for visual consistency",
-        "Tag styling unified — all tags now use the same shape (uppercase, 0.02em letter spacing, 46px min-width for alignment), removed the inconsistent linear-gradient on Bundle that didn't match the rest of the system",
-        "Type filter dropdown on Saved Quotes — filter the list to one type (Managed IT, Voice, Bundle, Multi-Site, FlexIT) using the same widget pattern as the Status filter",
-        "Search bar on Admin → IT & Security Products — searches name, category, sub-category, and description. Quick-filter chips below the search bar let admins narrow to a single category. Live count of filtered/total products on the right when a filter is active. Same visual pattern as the Voice Hardware tab so navigation feels consistent across the Admin section"
-      ]
-    }
-  },
-  {
-    "version": "3.4.7",
-    "date": "2026-04-27",
-    "summary": "Admin page UX cleanup — clearer IT vs Voice product separation",
-    "audience": "all",
-    "categories": {
-      "improved": [
-        "Renamed Admin tab Products → IT & Security Products to make clear it does not contain voice catalog items (voice hardware and fax packages live under their own dedicated tabs)",
-        "Renamed Admin tab Packages → Managed IT Packages to align with the IT & Security naming and prevent confusion with Voice Fax Packages",
-        "Updated the IT & Security Products tab header subtitle from generic 'Manage all add-on products' to a clarifying explanation: 'Add-on products for Managed IT and Bundle quotes — sell prices, costs, and per-product flags. Voice hardware and fax packages are managed separately under their own tabs.'",
-        "Fixed the + Add Product button alignment on the IT & Security Products tab — it was floating in the middle of the screen because the flex container was distributing three direct children equally. Now both the + Add Product and ⚙ Categories buttons are grouped on the right side, with Categories appearing first (less prominent) and Add Product as the primary action on the far right"
-      ]
-    }
-  },
-  {
-    "version": "3.4.6",
-    "date": "2026-04-27",
-    "summary": "Virtual Fax pricing — DB-backed sell + cost split, accurate gross margin on Voice and Bundle quotes",
-    "audience": "all",
-    "categories": {
-      "fixed": [
-        "calcVoice() in lib/voicePricing.js was computing fax cost as a hardcoded 60% of sell price (cost: faxMRR * 0.6) — every fax line on every voice and bundle quote had a fictional cost that distorted gross margin",
-        "Same 60% placeholder was applied to extra-user and extra-DID lines, compounding the error on Business and Infinity packages where extras are common"
-      ],
-      "new": [
-        "voice_fax_packages table — full sell + cost split per tier: sell_mrr, cost_mrr, included_users/pages/dids, overage_sell_per_page, overage_cost_per_page, extra_user_sell/cost, extra_did_sell/cost, description, sort_order, active. RLS read for all authed, write for admin only",
-        "Admin → Voice Fax Packages tab — full CRUD mirroring the Voice Hardware tab UX. Sell + cost columns side-by-side with live GM% in the row, edit modal with grouped sections (Pricing / Included / Overage / Extras), live GM% recalculates as cost is typed",
-        "Live cost + GM display on Voice quote fax picker — each option shows sell · cost · GM% next to the suggested badge so reps can see margin before clicking",
-        "Live cost + GM strip under Bundle quote fax selector — same shape as the 3CX/Lightsail breakdown already present on the seat configuration",
-        "$0 cost warning callout on quote pages when a fax package has been selected but its cost has not been configured — directs admins to Admin → Voice Fax Packages"
-      ],
-      "improved": [
-        "FAX_PACKAGES constant in lib/voicePricing.js retained as a fallback (now with cost: 0 defaults) when DB rows aren't yet loaded — quote pages stay functional during initial mount or DB error",
-        "calcVoice() signature extended to calcVoice(v, settings, faxPackages) — third arg optional, defaults to fallback constant. Existing callers without the third arg keep working",
-        "New getFaxPackages(dbRows) helper in voicePricing.js merges DB rows into the FAX_PACKAGES shape, keyed by package_key",
-        "Bundle quote fax picker is now driven from the same DB rows — adding or removing a package in Admin reflects immediately on both Voice and Bundle quotes without code changes"
-      ]
-    }
-  },
-  {
-    "version": "3.4.5",
-    "date": "2026-04-27",
-    "summary": "International Dialing Waiver — status parity with LOA on Voice Documents panel",
-    "audience": "all",
-    "categories": {
-      "improved": [
-        "Voice quote parent page now tracks intlWaiverDocRecord alongside loaDocRecord — restored from inputs.signwellDocuments (filtered by type === 'intl_waiver') when reopening a saved quote",
-        "IntlDialingWaiver modal now receives existingDocRecord and onDocSaved props — exact contract match with LOAModal — so the parent stays in sync as the rep sends, signs, and uploads to HubSpot",
-        "International Dialing Waiver card on the Voice Documents panel is now status-aware: card flips red ⚠ → green ✓ when a signed record exists",
-        "Inline status badges on the waiver card — SENT — AWAITING SIGNATURE (amber) or SIGNED (green) based on record.status or record.signed_at; second badge ↗ HUBSPOT (orange) appears when hubspot_uploaded_at or hubspot_file_id is set",
-        "Button label flips Open Waiver → View Status when a record exists, so reps know they are returning to the SignWell status panel rather than starting a new send"
-      ]
+      "fixed": []
     }
   },
   {
     "version": "3.4.4",
     "date": "2026-04-27",
-    "summary": "UX fixes — SPT button blue, product categories editable, voice LOA document card",
+    "summary": "UX fixes \u2014 SPT button blue, product categories editable, voice LOA document card",
     "audience": "all",
     "categories": {
       "fixed": [
-        "Smart Pricing Table S button was orange (#f97316) — now matches the blue (#2563eb) used in Admin → Integrations → Smart Pricing Table. Consistent across all quote pages",
-        "LOA document card in Voice Documents panel was missing its Open button — setShowLOA was never called. Card now correctly opens the LOA drawer",
-        "Product categories were hardcoded in AdminPage.js — 'Cloud & Email Security', 'Endpoint Security', etc. with no way to add more without a code change"
+        "Smart Pricing Table S button was orange (#f97316) \u2014 now matches the blue (#2563eb) used in Admin \u2192 Integrations \u2192 Smart Pricing Table. Consistent across all quote pages",
+        "LOA document card in Voice Documents panel was missing its Open button \u2014 setShowLOA was never called. Card now correctly opens the LOA drawer",
+        "Product categories were hardcoded in AdminPage.js \u2014 'Cloud & Email Security', 'Endpoint Security', etc. with no way to add more without a code change"
       ],
       "new": [
-        "Product categories are now editable in Admin → Products — click ⚙ Categories button to expand the manager. Add new categories (Enter or click Add), remove existing ones with ×. Sorted alphabetically, saved to pricing_settings",
+        "Product categories are now editable in Admin \u2192 Products \u2014 click \u2699 Categories button to expand the manager. Add new categories (Enter or click Add), remove existing ones with \u00d7. Sorted alphabetically, saved to pricing_settings",
         "First load uses the hardcoded defaults. Any changes persist to the DB and load from there on all subsequent visits. Removing a category doesn't affect existing products"
       ]
     }
@@ -118,30 +39,30 @@
   {
     "version": "3.4.3",
     "date": "2026-04-27",
-    "summary": "HubSpot quote URL write-back — field picker in Admin, auto-updates on every save",
+    "summary": "HubSpot quote URL write-back \u2014 field picker in Admin, auto-updates on every save",
     "audience": "all",
     "categories": {
       "new": [
-        "Admin → Integrations → HubSpot: new Quote URL Field Mapping section. Click Load Fields to fetch all string/text deal properties from HubSpot, select the custom URL field, save — takes effect immediately",
+        "Admin \u2192 Integrations \u2192 HubSpot: new Quote URL Field Mapping section. Click Load Fields to fetch all string/text deal properties from HubSpot, select the custom URL field, save \u2014 takes effect immediately",
         "On every quote save, if a HubSpot deal is connected and the field is configured, the full Ferrum IQ quote URL is written to the selected deal property via HubSpot PATCH API",
         "Works across all quote types: Managed IT (/quotes/), Voice (/voice/), Bundle (/bundle/), FlexIT (/flexIT/)",
         "Anyone in HubSpot can click the URL field on the deal to open the quote directly in Ferrum IQ",
-        "Fails silently with console warning — never blocks a quote save if HubSpot write-back fails"
+        "Fails silently with console warning \u2014 never blocks a quote save if HubSpot write-back fails"
       ]
     }
   },
   {
     "version": "3.4.2",
     "date": "2026-04-27",
-    "summary": "MarketRateCard — fixed acceptance state persistence, yellow for non-baseline rates",
+    "summary": "MarketRateCard \u2014 fixed acceptance state persistence, yellow for non-baseline rates",
     "audience": "all",
     "categories": {
       "fixed": [
-        "Race condition on saved quote load — getRateSheet() and loadAnalysis() fired in parallel. If loadAnalysis resolved last it would reset accepted=false, stomping the DB-restored accepted state. Fixed with a rateSheetChecked gate — loadAnalysis now waits for the DB check to complete before running. If a rate sheet exists, analysis never runs at all",
-        "Accepted state now persists correctly on all pages — IT, Voice, Bundle, FlexIT — when reopening a saved quote the card shows green ACCEPTED as expected"
+        "Race condition on saved quote load \u2014 getRateSheet() and loadAnalysis() fired in parallel. If loadAnalysis resolved last it would reset accepted=false, stomping the DB-restored accepted state. Fixed with a rateSheetChecked gate \u2014 loadAnalysis now waits for the DB check to complete before running. If a rate sheet exists, analysis never runs at all",
+        "Accepted state now persists correctly on all pages \u2014 IT, Voice, Bundle, FlexIT \u2014 when reopening a saved quote the card shows green ACCEPTED as expected"
       ],
       "new": [
-        "Yellow state — when market rates differ from baseline and haven't been accepted yet, the card shows a yellow border and ⚠ RATES DIFFER FROM BASELINE — REVIEW badge",
+        "Yellow state \u2014 when market rates differ from baseline and haven't been accepted yet, the card shows a yellow border and \u26a0 RATES DIFFER FROM BASELINE \u2014 REVIEW badge",
         "Three clear visual states: grey = baseline rates (no action needed), yellow = non-baseline or pending review, green = accepted and in use on the rate schedule"
       ]
     }
@@ -149,33 +70,33 @@
   {
     "version": "3.4.1",
     "date": "2026-04-27",
-    "summary": "Signed documents upload to HubSpot — LOA and International Dialing Waiver",
+    "summary": "Signed documents upload to HubSpot \u2014 LOA and International Dialing Waiver",
     "audience": "all",
     "categories": {
       "new": [
-        "After a document is signed via SignWell, an orange '↗ Upload to HubSpot' button appears in the status panel (only visible when a HubSpot deal is connected)",
+        "After a document is signed via SignWell, an orange '\u2197 Upload to HubSpot' button appears in the status panel (only visible when a HubSpot deal is connected)",
         "One click: fetches signed PDF bytes from SignWell server-side, uploads to HubSpot Files API under /Ferrum IQ Signed Documents, creates a Note with file attachment on the deal",
         "Works for both the International Dialing Waiver and the Letter of Authorization",
-        "Signed documents visible in HubSpot under Deal → Notes and Attachments tabs"
+        "Signed documents visible in HubSpot under Deal \u2192 Notes and Attachments tabs"
       ]
     }
   },
   {
     "version": "3.4.0",
     "date": "2026-04-27",
-    "summary": "Port Document Readiness — secure client upload portal, LOA + Invoice + CSR tracking",
+    "summary": "Port Document Readiness \u2014 secure client upload portal, LOA + Invoice + CSR tracking",
     "audience": "all",
     "categories": {
       "new": [
-        "Port Readiness Card added to Voice quote right column — appears automatically when portingNumbers > 0. Three-item checklist: LOA (from SignWell status), Phone Bill/Invoice, Customer Service Record (CSR). Shows green/red per item with a running count",
-        "Send Upload Link — rep enters client email and optional message, system generates a secure 7-day token and emails a branded link. Client receives a link with no login required",
-        "Public upload portal at /portal/upload/:token — branded Ferrum page, mobile-friendly, upload slots per document type, client can replace documents if wrong version uploaded",
-        "Secure token system — 7-day expiring tokens stored in portal_upload_tokens table. Validates doc type, enforces 10MB file size limit, accepts PDF/Word/JPG/PNG/TIFF",
-        "Documents stored in Supabase Storage (port-documents bucket) — separate from general quote data, appropriate for legal porting artifacts",
+        "Port Readiness Card added to Voice quote right column \u2014 appears automatically when portingNumbers > 0. Three-item checklist: LOA (from SignWell status), Phone Bill/Invoice, Customer Service Record (CSR). Shows green/red per item with a running count",
+        "Send Upload Link \u2014 rep enters client email and optional message, system generates a secure 7-day token and emails a branded link. Client receives a link with no login required",
+        "Public upload portal at /portal/upload/:token \u2014 branded Ferrum page, mobile-friendly, upload slots per document type, client can replace documents if wrong version uploaded",
+        "Secure token system \u2014 7-day expiring tokens stored in portal_upload_tokens table. Validates doc type, enforces 10MB file size limit, accepts PDF/Word/JPG/PNG/TIFF",
+        "Documents stored in Supabase Storage (port-documents bucket) \u2014 separate from general quote data, appropriate for legal porting artifacts",
         "Rep notification email sent on each upload. Auto-marks token completed when all requested docs received",
         "Per-document actions in Port Readiness Card: download via signed URL, sync to HubSpot deal (uploads file + creates attached note), delete/replace",
-        "HubSpot sync — uploads file to HubSpot Files API under /Ferrum IQ Signed Documents folder, creates a note with attachment on the deal",
-        "All three documents (LOA + Invoice + CSR) must be green before port submission to Telnyx/Skyetel — foundation for future port submission integration",
+        "HubSpot sync \u2014 uploads file to HubSpot Files API under /Ferrum IQ Signed Documents folder, creates a note with attachment on the deal",
+        "All three documents (LOA + Invoice + CSR) must be green before port submission to Telnyx/Skyetel \u2014 foundation for future port submission integration",
         "supabase_port_documents.sql migration creates: port-documents storage bucket, port_documents table, portal_upload_tokens table. Requires SUPABASE_SERVICE_ROLE_KEY in Netlify env vars"
       ]
     }
@@ -183,32 +104,32 @@
   {
     "version": "3.3.7",
     "date": "2026-04-27",
-    "summary": "Bug fixes — voice quote blank screen, import errors, LOA document card",
+    "summary": "Bug fixes \u2014 voice quote blank screen, import errors, LOA document card",
     "audience": "all",
     "categories": {
       "fixed": [
-        "Voice quote blank screen — suggestFaxPackage and ATA_MODELS were used in JSX but missing from the import statement",
-        "LOA document card was missing Open button — setShowLOA was never called from the Documents panel. Card now appears when portingNumbers > 0",
-        "Previous voice page deploys were overwriting the import fix — consolidated into a single clean file"
+        "Voice quote blank screen \u2014 suggestFaxPackage and ATA_MODELS were used in JSX but missing from the import statement",
+        "LOA document card was missing Open button \u2014 setShowLOA was never called from the Documents panel. Card now appears when portingNumbers > 0",
+        "Previous voice page deploys were overwriting the import fix \u2014 consolidated into a single clean file"
       ]
     }
   },
   {
     "version": "3.3.6",
     "date": "2026-04-27",
-    "summary": "Voice quote — true cost model with 3CX licensing + AWS Lightsail, multi-term TCV",
+    "summary": "Voice quote \u2014 true cost model with 3CX licensing + AWS Lightsail, multi-term TCV",
     "audience": "all",
     "categories": {
       "new": [
-        "Hosted Voice now auto-calculates true Ferrum costs: 3CX license (annual ÷ 12 amortized) + AWS Lightsail instance cost (small/medium/large tier by seat count)",
-        "Cost breakdown shown inline in Seat Configuration: 3CX tier, Lightsail instance, total monthly cost, implied gross margin — updates live as you change seat count and sell price",
+        "Hosted Voice now auto-calculates true Ferrum costs: 3CX license (annual \u00f7 12 amortized) + AWS Lightsail instance cost (small/medium/large tier by seat count)",
+        "Cost breakdown shown inline in Seat Configuration: 3CX tier, Lightsail instance, total monthly cost, implied gross margin \u2014 updates live as you change seat count and sell price",
         "Multi-term TCV strip: 12/24/36 month cards showing total contract value and gross margin for each term. Current contract term highlighted",
-        "3CX license tiers now configurable in Admin → Pricing Settings (cx_license_pro_8, cx_license_pro_16, etc.) — update when 3CX changes annual pricing without a code deploy",
-        "Lightsail instance tiers configurable: voice_lightsail_small ($24, ≤20 seats), voice_lightsail_medium ($48, ≤50 seats), voice_lightsail_large ($96, 51+ seats)",
+        "3CX license tiers now configurable in Admin \u2192 Pricing Settings (cx_license_pro_8, cx_license_pro_16, etc.) \u2014 update when 3CX changes annual pricing without a code deploy",
+        "Lightsail instance tiers configurable: voice_lightsail_small ($24, \u226420 seats), voice_lightsail_medium ($48, \u226450 seats), voice_lightsail_large ($96, 51+ seats)",
         "supabase_voice_costs.sql seeds all new settings keys"
       ],
       "fixed": [
-        "seatCost was defaulting to 0 — no 3CX or Lightsail cost was being applied to hosted voice quotes, making gross margin appear artificially high",
+        "seatCost was defaulting to 0 \u2014 no 3CX or Lightsail cost was being applied to hosted voice quotes, making gross margin appear artificially high",
         "CX_TIERS were hardcoded with no way to update license costs without a code change"
       ]
     }
@@ -220,16 +141,16 @@
     "audience": "all",
     "categories": {
       "new": [
-        "Market Tier section added to Voice quote left column — matches IT quote design with color-coded full-width rows per tier and pricing multiplier shown on right",
-        "market_tier now saves and restores on Voice quotes — was previously not persisted to the database",
-        "Programming & Configuration fee auto-computed from seats × voice_programming_fee rate — no more manual entry",
-        "OnboardingIncentive component added to Voice programming fee — market-aware recommendations: major metro = full fee, mid market = split/modest discount, regional = 20-30% off, secondary/rural = 50-100% waive (competitors rarely charge setup in rural markets)"
+        "Market Tier section added to Voice quote left column \u2014 matches IT quote design with color-coded full-width rows per tier and pricing multiplier shown on right",
+        "market_tier now saves and restores on Voice quotes \u2014 was previously not persisted to the database",
+        "Programming & Configuration fee auto-computed from seats \u00d7 voice_programming_fee rate \u2014 no more manual entry",
+        "OnboardingIncentive component added to Voice programming fee \u2014 market-aware recommendations: major metro = full fee, mid market = split/modest discount, regional = 20-30% off, secondary/rural = 50-100% waive (competitors rarely charge setup in rural markets)"
       ],
       "fixed": [
         "Manual programmingFee field removed from Contract & Status section",
-        "marketTiers not destructured from useConfig in Voice — caused crash when HubSpot connected a deal with a ZIP code",
-        "selectedMkt state missing from VoiceQuotePage — crashed onConnect handler before contact name/email could populate",
-        "MarketRateCard moved to right column (consistent with IT/Bundle) — was incorrectly placed in left column"
+        "marketTiers not destructured from useConfig in Voice \u2014 caused crash when HubSpot connected a deal with a ZIP code",
+        "selectedMkt state missing from VoiceQuotePage \u2014 crashed onConnect handler before contact name/email could populate",
+        "MarketRateCard moved to right column (consistent with IT/Bundle) \u2014 was incorrectly placed in left column"
       ]
     }
   },
@@ -240,48 +161,48 @@
     "audience": "all",
     "categories": {
       "new": [
-        "SMS / 10DLC section moved up the card list — now its own dedicated section above call recording",
-        "SMS auto-enables when SMS-Enabled DIDs > 0 — toggle is locked on, cannot be disabled while SMS DIDs are active. Yellow warning badge in Numbers section when DIDs are set",
-        "Campaigns are now a named list (+ Add Campaign) — each has a description field (e.g. Customer Notifications, Marketing, Support) for 10DLC compliance documentation. Replaces simple count field",
-        "Call recording section separated from add-ons — base $35/mo includes 30-day retention",
+        "SMS / 10DLC section moved up the card list \u2014 now its own dedicated section above call recording",
+        "SMS auto-enables when SMS-Enabled DIDs > 0 \u2014 toggle is locked on, cannot be disabled while SMS DIDs are active. Yellow warning badge in Numbers section when DIDs are set",
+        "Campaigns are now a named list (+ Add Campaign) \u2014 each has a description field (e.g. Customer Notifications, Marketing, Support) for 10DLC compliance documentation. Replaces simple count field",
+        "Call recording section separated from add-ons \u2014 base $35/mo includes 30-day retention",
         "Extended recording retention selector: 30/60/90/180/365 days at $35/$50/$65/$110/$195/mo respectively. Base $35 + $15 per additional 30-day period"
       ],
       "fixed": [
-        "SMS toggle was in generic Add-ons section — separated into dedicated section for clarity"
+        "SMS toggle was in generic Add-ons section \u2014 separated into dedicated section for clarity"
       ]
     }
   },
   {
     "version": "3.3.3",
     "date": "2026-04-27",
-    "summary": "Voice fax & ATA redesign — package selector + separate ATA section",
+    "summary": "Voice fax & ATA redesign \u2014 package selector + separate ATA section",
     "audience": "all",
     "categories": {
       "new": [
         "Fax section rebuilt: enter fax users + DID numbers, system auto-suggests the right package with a green 'suggested' badge",
-        "Fax packages displayed as selectable rows (not dropdown) — name, price, and description visible at a glance",
+        "Fax packages displayed as selectable rows (not dropdown) \u2014 name, price, and description visible at a glance",
         "Extra user/DID charges calculated automatically when count exceeds package base (Business + Infinity tiers)",
-        "ATA Devices section completely separate from fax packages — add/remove individual ATA units each with model, quantity, hardware NRC, and monthly service fee",
-        "ATA model dropdown: Grandstream HT802/812/814/818 and BYOD ATA — hardware NRC and monthly fee pre-filled, fully editable per row",
+        "ATA Devices section completely separate from fax packages \u2014 add/remove individual ATA units each with model, quantity, hardware NRC, and monthly service fee",
+        "ATA model dropdown: Grandstream HT802/812/814/818 and BYOD ATA \u2014 hardware NRC and monthly fee pre-filled, fully editable per row",
         "Running NRC and MRR totals shown at bottom of ATA section",
-        "ATA removed from fax packages list — fax packages now cover virtual fax only, ATAs are standalone"
+        "ATA removed from fax packages list \u2014 fax packages now cover virtual fax only, ATAs are standalone"
       ]
     }
   },
   {
     "version": "3.3.2",
     "date": "2026-04-27",
-    "summary": "Letter of Authorization — number porting e-signature via SignWell",
+    "summary": "Letter of Authorization \u2014 number porting e-signature via SignWell",
     "audience": "all",
     "categories": {
       "new": [
-        "Letter of Authorization (LOA) document in Voice Documents panel — appears automatically when portingNumbers > 0",
+        "Letter of Authorization (LOA) document in Voice Documents panel \u2014 appears automatically when portingNumbers > 0",
         "LOA drawer collects: current carrier name, account number, billing name, account type (business/residential/wireless), wireless PIN if applicable, service address (pre-filled from quote), numbers to port (pre-filled from porting DID list)",
         "Service address pre-populated from quote billing address with smart parsing",
         "Important reminders callout in drawer: info must match phone bill exactly, no disconnect before port completes, no account changes, balance must be paid",
         "Document includes Ferrum authorization statement, carrier account details, service address, full number list, DSL/alarm disclaimer, and SignWell signature block",
-        "Sends via SignWell same as International Dialing Waiver — client receives email link, signs electronically, audit trail stored",
-        "Admin → Integrations → SignWell now shows both Intl Dialing Waiver and LOA template ID fields (both configurable independently)",
+        "Sends via SignWell same as International Dialing Waiver \u2014 client receives email link, signs electronically, audit trail stored",
+        "Admin \u2192 Integrations \u2192 SignWell now shows both Intl Dialing Waiver and LOA template ID fields (both configurable independently)",
         "Document preview toggle shows full LOA before sending",
         "Status tracking: Check Status, Send Reminder, Download Signed PDF buttons appear after sending"
       ]
@@ -290,16 +211,16 @@
   {
     "version": "3.3.1",
     "date": "2026-04-27",
-    "summary": "Voice quote — port fee label, toll-free rate override, porting DID list",
+    "summary": "Voice quote \u2014 port fee label, toll-free rate override, porting DID list",
     "audience": "all",
     "categories": {
       "fixed": [
-        "Numbers to Port label was hardcoded $25 — now reads voice_port_fee from Pricing Settings (correct value: $6)",
-        "Toll-free per-minute rate was display-only — added editable rate input with $0.019/min floor and contextual labels (Floor rate / Custom rate / Standard rate)",
+        "Numbers to Port label was hardcoded $25 \u2014 now reads voice_port_fee from Pricing Settings (correct value: $6)",
+        "Toll-free per-minute rate was display-only \u2014 added editable rate input with $0.019/min floor and contextual labels (Floor rate / Custom rate / Standard rate)",
         "Pricing engine now uses tollFreePerMinRate override instead of the boolean flag"
       ],
       "new": [
-        "Porting DID list — when portingNumbers > 0, a callout section appears with a textarea for listing specific numbers to port (one per line). Stored on the quote and feeds directly into the LOA document",
+        "Porting DID list \u2014 when portingNumbers > 0, a callout section appears with a textarea for listing specific numbers to port (one per line). Stored on the quote and feeds directly into the LOA document",
         "Validation warning shown if more numbers are entered than the port quantity"
       ]
     }
@@ -307,43 +228,43 @@
   {
     "version": "3.3.0",
     "date": "2026-04-27",
-    "summary": "Voice hardware compatibility catalog — 3CX BYOH validation",
+    "summary": "Voice hardware compatibility catalog \u2014 3CX BYOH validation",
     "audience": "all",
     "categories": {
       "new": [
-        "Voice Hardware Catalog — Admin → Voice Hardware tab with full 3CX compatibility database pre-loaded (100+ devices from 3CX sip-phones page)",
-        "Four compatibility tiers: Preferred (green — Fanvil, Snom, Yealink current), Supported/Limited (amber — 3rd party or EOL firmware), Legacy/Manual Config (orange — Cisco, Avaya, old Polycom), Not Compatible (red — not in database)",
-        "BYOH picker replaces free-form text entry — rep searches by manufacturer or model, dropdown shows compatibility badge, notes, firmware warnings, and auto-provisioning flag",
+        "Voice Hardware Catalog \u2014 Admin \u2192 Voice Hardware tab with full 3CX compatibility database pre-loaded (100+ devices from 3CX sip-phones page)",
+        "Four compatibility tiers: Preferred (green \u2014 Fanvil, Snom, Yealink current), Supported/Limited (amber \u2014 3rd party or EOL firmware), Legacy/Manual Config (orange \u2014 Cisco, Avaya, old Polycom), Not Compatible (red \u2014 not in database)",
+        "BYOH picker replaces free-form text entry \u2014 rep searches by manufacturer or model, dropdown shows compatibility badge, notes, firmware warnings, and auto-provisioning flag",
         "Unverified devices (not in database) still addable but flagged red with explicit warning",
         "Admin can add, edit, toggle active/inactive, or delete devices. Filter by category or search by name",
         "Warnings shown at bottom of BYOH section when manual config or unverified devices are present"
       ],
       "fixed": [
-        "supabase_voice_hardware.sql migration ships with the release — run once in Supabase SQL Editor to seed the catalog"
+        "supabase_voice_hardware.sql migration ships with the release \u2014 run once in Supabase SQL Editor to seed the catalog"
       ]
     }
   },
   {
     "version": "3.2.3",
     "date": "2026-04-27",
-    "summary": "Market rate locking — saved quotes never auto-refresh, 3-month stale threshold",
+    "summary": "Market rate locking \u2014 saved quotes never auto-refresh, 3-month stale threshold",
     "audience": "all",
     "categories": {
       "new": [
-        "Market rates now LOCK on saved quotes — opening a saved IT, Voice, or Bundle quote reads the existing DB analysis only. No AI call, no rate change. Rates stay at what was pulled when the quote was created",
-        "readOnly mode added to getOrAnalyzeMarket() — fifth parameter, passes through the entire call chain. Guaranteed no AI will fire in readOnly mode regardless of staleness",
-        "fallbackMarket prop on MarketRateCard — if no DB record exists for the quote's ZIP, the card builds a synthetic display from the locked market tier on the quote. Card never disappears"
+        "Market rates now LOCK on saved quotes \u2014 opening a saved IT, Voice, or Bundle quote reads the existing DB analysis only. No AI call, no rate change. Rates stay at what was pulled when the quote was created",
+        "readOnly mode added to getOrAnalyzeMarket() \u2014 fifth parameter, passes through the entire call chain. Guaranteed no AI will fire in readOnly mode regardless of staleness",
+        "fallbackMarket prop on MarketRateCard \u2014 if no DB record exists for the quote's ZIP, the card builds a synthetic display from the locked market tier on the quote. Card never disappears"
       ],
       "improved": [
-        "STALE_MONTHS changed from 6 → 3 months — market analyses are considered stale after 3 months. Market Intelligence tab shows updated badge: '3+ months — refresh needed'",
+        "STALE_MONTHS changed from 6 \u2192 3 months \u2014 market analyses are considered stale after 3 months. Market Intelligence tab shows updated badge: '3+ months \u2014 refresh needed'",
         "MarketRateCard shows 'Rate locked' instead of epoch date (12/31/1969) when analyzed_at is null on fallback object",
-        "Stale badge suppressed when analyzed_at is null — fallback display objects are not incorrectly flagged as stale",
-        "MultiSiteQuotePage uses readOnly=true when loading saved quotes — per-location market analyses read DB only",
-        "getMarketByZip() now searches both the zip column AND the zip_codes array — previously only searched primary ZIP, causing misses for markets with multiple associated ZIPs (root cause of blank rates and epoch date on FIT-2026-1000)"
+        "Stale badge suppressed when analyzed_at is null \u2014 fallback display objects are not incorrectly flagged as stale",
+        "MultiSiteQuotePage uses readOnly=true when loading saved quotes \u2014 per-location market analyses read DB only",
+        "getMarketByZip() now searches both the zip column AND the zip_codes array \u2014 previously only searched primary ZIP, causing misses for markets with multiple associated ZIPs (root cause of blank rates and epoch date on FIT-2026-1000)"
       ],
       "fixed": [
-        "MarketRateCard was re-fetching and potentially calling AI every time a saved quote was opened — clientZip being restored from saved data triggered the useEffect unconditionally",
-        "FIT-2026-1000 showing 12/31/1969 stale + blank rates — ZIP 61081 is a secondary ZIP in zip_codes array, not the primary zip column. getMarketByZip was returning null causing fallback synthetic object with no rates to display",
+        "MarketRateCard was re-fetching and potentially calling AI every time a saved quote was opened \u2014 clientZip being restored from saved data triggered the useEffect unconditionally",
+        "FIT-2026-1000 showing 12/31/1969 stale + blank rates \u2014 ZIP 61081 is a secondary ZIP in zip_codes array, not the primary zip column. getMarketByZip was returning null causing fallback synthetic object with no rates to display",
         "Market Intelligence admin controls confirmed intact: per-market Refresh and Delete buttons, Analyze new market, stale badge at correct 3-month threshold"
       ]
     }
@@ -351,61 +272,61 @@
   {
     "version": "3.2.2",
     "date": "2026-04-27",
-    "summary": "HubSpot Voice fixes — contact population and crash on connect",
+    "summary": "HubSpot Voice fixes \u2014 contact population and crash on connect",
     "audience": "all",
     "categories": {
       "fixed": [
-        "marketTiers was not destructured from useConfig() in VoiceQuotePage — caused crash when HubSpot connected a deal with a ZIP code on file",
-        "selectedMkt state was missing entirely from VoiceQuotePage — setSelectedMkt() call in onConnect handler crashed mid-execution, preventing contact name and email from populating",
-        "Contact Name and Contact Email now populate correctly from HubSpot on Voice quotes — these were blank because the onConnect handler was crashing before reaching those lines",
-        "All 15 state setters in Voice onConnect handler audited and verified — no further undeclared state variables"
+        "marketTiers was not destructured from useConfig() in VoiceQuotePage \u2014 caused crash when HubSpot connected a deal with a ZIP code on file",
+        "selectedMkt state was missing entirely from VoiceQuotePage \u2014 setSelectedMkt() call in onConnect handler crashed mid-execution, preventing contact name and email from populating",
+        "Contact Name and Contact Email now populate correctly from HubSpot on Voice quotes \u2014 these were blank because the onConnect handler was crashing before reaching those lines",
+        "All 15 state setters in Voice onConnect handler audited and verified \u2014 no further undeclared state variables"
       ]
     }
   },
   {
     "version": "3.2.1",
     "date": "2026-04-27",
-    "summary": "Hosted Voice — Assumptions & Exclusions document + out-of-scope rate schedule",
+    "summary": "Hosted Voice \u2014 Assumptions & Exclusions document + out-of-scope rate schedule",
     "audience": "all",
     "categories": {
       "new": [
-        "Voice Assumptions & Exclusions modal — voice-specific document separate from Managed IT assumptions. Covers: customer story/discovery notes, current provider, why switching, seats/DIDs/locations, number porting (none/partial/full with DID list), feature flags (auto-attendant, voicemail, call recording), fax lines, internet notes, hardware notes, current PBX type, network/firewall notes, compliance requirements (HIPAA/SOC2, PCI/CMMC)",
+        "Voice Assumptions & Exclusions modal \u2014 voice-specific document separate from Managed IT assumptions. Covers: customer story/discovery notes, current provider, why switching, seats/DIDs/locations, number porting (none/partial/full with DID list), feature flags (auto-attendant, voicemail, call recording), fax lines, internet notes, hardware notes, current PBX type, network/firewall notes, compliance requirements (HIPAA/SOC2, PCI/CMMC)",
         "10 pre-populated standard voice exclusions: end-user training, cabling, internet connectivity, third-party integrations, number porting limits, international calling, on-site support, off-scope config changes, hardware procurement, fax beyond agreed scope",
-        "Out-of-scope rate schedule added to Voice Documents panel — same market-adjusted T&M rate card as IT/Bundle/FlexIT quotes. Applies to all labor outside contracted voice scope",
+        "Out-of-scope rate schedule added to Voice Documents panel \u2014 same market-adjusted T&M rate card as IT/Bundle/FlexIT quotes. Applies to all labor outside contracted voice scope",
         "Voice Documents panel now shows three cards in order: Out-of-Scope Rate Schedule, Assumptions & Exclusions, International Dialing Waiver",
-        "Bundle strategy: IT assumptions and Voice assumptions are permanently separate documents — each quote type owns its own. Bundle will stack both independently"
+        "Bundle strategy: IT assumptions and Voice assumptions are permanently separate documents \u2014 each quote type owns its own. Bundle will stack both independently"
       ],
       "improved": [
-        "Voice quote fetches market_rate_analyses on ZIP entry to power the rate sheet — synthetic fallback built from selectedMkt if no DB record exists"
+        "Voice quote fetches market_rate_analyses on ZIP entry to power the rate sheet \u2014 synthetic fallback built from selectedMkt if no DB record exists"
       ]
     }
   },
   {
     "version": "3.2.0",
     "date": "2026-04-27",
-    "summary": "SignWell e-signature integration — International Dialing Waiver",
+    "summary": "SignWell e-signature integration \u2014 International Dialing Waiver",
     "audience": "all",
     "categories": {
       "new": [
-        "SignWell e-signature integration — International Dialing Waiver sent automatically from Voice quote Documents panel with one click",
-        "Admin → Integrations → SignWell: API key and International Dialing Waiver Template ID are now configurable in the UI — no code changes needed when templates are replaced",
+        "SignWell e-signature integration \u2014 International Dialing Waiver sent automatically from Voice quote Documents panel with one click",
+        "Admin \u2192 Integrations \u2192 SignWell: API key and International Dialing Waiver Template ID are now configurable in the UI \u2014 no code changes needed when templates are replaced",
         "Test Connection button on SignWell integration card verifies API key before saving",
-        "Waiver document uses SignWell text tags ({{signature}}, {{text}}, {{date}}) for automatic field placement — no manual field setup required",
+        "Waiver document uses SignWell text tags ({{signature}}, {{text}}, {{date}}) for automatic field placement \u2014 no manual field setup required",
         "Signature block includes Full Legal Name, Company Name, Title/Role (blank fields for client to complete) and auto-locked signing date from audit trail",
-        "Waiver drawer includes Proposal/Deal Name (auto-populated from quote), Reference # (quote number), and Authorized Scope / Account field — specifies which location or account the authorization covers",
+        "Waiver drawer includes Proposal/Deal Name (auto-populated from quote), Reference # (quote number), and Authorized Scope / Account field \u2014 specifies which location or account the authorization covers",
         "SignWell webhook handler auto-updates quote status when client signs",
         "Send Reminder and Check Status buttons on waiver panel for tracking pending signatures",
         "Preview Document toggle shows full waiver content before sending"
       ],
       "improved": [
-        "Signature block fields sized to 550×26px (text) and 550×80px (signature) for legible signed output",
-        "Date field replaced with static document date — actual signing timestamp captured in SignWell audit trail (legally more defensible than client-entered date)",
-        "DOCUMENT REFERENCE table in waiver header ties authorization to a specific proposal, quote number, and account scope — critical for clients with multiple locations",
-        "Proxy now surfaces full SignWell error JSON instead of generic HTTP status code — much easier to debug"
+        "Signature block fields sized to 550\u00d726px (text) and 550\u00d780px (signature) for legible signed output",
+        "Date field replaced with static document date \u2014 actual signing timestamp captured in SignWell audit trail (legally more defensible than client-entered date)",
+        "DOCUMENT REFERENCE table in waiver header ties authorization to a specific proposal, quote number, and account scope \u2014 critical for clients with multiple locations",
+        "Proxy now surfaces full SignWell error JSON instead of generic HTTP status code \u2014 much easier to debug"
       ],
       "fixed": [
         "SignWell was rejecting requests due to wrong field names (signees vs recipients, fields vs signing_elements, [[]] vs {{}} text tag format)",
-        "Documents going to drafts instead of sending — signing_elements:[] was overriding text tags; removed, replaced with with_signature_page then text_tags approach",
+        "Documents going to drafts instead of sending \u2014 signing_elements:[] was overriding text tags; removed, replaced with with_signature_page then text_tags approach",
         "draft:false added explicitly to ensure documents send immediately"
       ]
     }
@@ -413,24 +334,24 @@
   {
     "version": "3.1.0",
     "date": "2026-04-26",
-    "summary": "Voice quote — hardware mix & match, BYOH, international dialing waiver, flex time removed",
+    "summary": "Voice quote \u2014 hardware mix & match, BYOH, international dialing waiver, flex time removed",
     "audience": "all",
     "categories": {
       "new": [
-        "Hardware mix & match — select multiple Yealink models with quantities on a single quote (e.g., 10 T33G + 5 T46U + 2 W60B). Added Yealink T57W and W60B models",
-        "BYOH (Bring Your Own Handset) — new hardware option for client-owned 3CX-compatible devices. Enter model and quantity; wipe & register fee applied per device at configurable rate (Admin → Pricing Settings → voice_byoh_fee, default $20)",
-        "Evergreen Lease vs Outright Purchase are now clearly mutually exclusive — radio button selection prevents mixing",
-        "📦 Shipping notice on purchase orders — 'billed at end of implementation at then-current UPS rates' displayed as a prominent note",
-        "⚠ International Dialing Authorization & Liability Waiver — new document. Opens from Voice Documents panel when international dialing is enabled, or can be created manually at any time",
+        "Hardware mix & match \u2014 select multiple Yealink models with quantities on a single quote (e.g., 10 T33G + 5 T46U + 2 W60B). Added Yealink T57W and W60B models",
+        "BYOH (Bring Your Own Handset) \u2014 new hardware option for client-owned 3CX-compatible devices. Enter model and quantity; wipe & register fee applied per device at configurable rate (Admin \u2192 Pricing Settings \u2192 voice_byoh_fee, default $20)",
+        "Evergreen Lease vs Outright Purchase are now clearly mutually exclusive \u2014 radio button selection prevents mixing",
+        "\ud83d\udce6 Shipping notice on purchase orders \u2014 'billed at end of implementation at then-current UPS rates' displayed as a prominent note",
+        "\u26a0 International Dialing Authorization & Liability Waiver \u2014 new document. Opens from Voice Documents panel when international dialing is enabled, or can be created manually at any time",
         "Waiver captures: client entity, authorized contact, title, dialing tier selection. Three tiers: Standard International, Extended International, Full Open Access",
         "Full waiver text: toll fraud liability, no cap on charges, client assumes 100% financial responsibility, security responsibility, right to suspend, indemnification clause",
         "Waiver exports directly to Smart Pricing Table via API for client signature or can be saved to the quote"
       ],
       "improved": [
-        "Voice Documents panel added to right column — shows waiver status (red Required badge when international dialing is active)"
+        "Voice Documents panel added to right column \u2014 shows waiver status (red Required badge when international dialing is active)"
       ],
       "fixed": [
-        "FlexTimeMeter removed from Hosted Voice quote — voice quotes have no included flex time; onsite support requires a Managed IT contract"
+        "FlexTimeMeter removed from Hosted Voice quote \u2014 voice quotes have no included flex time; onsite support requires a Managed IT contract"
       ]
     }
   },
@@ -442,7 +363,7 @@
     "categories": {
       "new": [
         "FlexTimeMeter component now appears on all managed IT quote types: IT, Hosted Voice, Bundle (IT+Voice), and Multi-Location",
-        "Two-tone progress bar: blue segment = included time from package, orange segment = purchased add-on block time — instantly visible distinction",
+        "Two-tone progress bar: blue segment = included time from package, orange segment = purchased add-on block time \u2014 instantly visible distinction",
         "Legend below bar shows exact hours for each segment with color-coded labels",
         "When an add-on block is selected on the IT quote, the meter updates live to show combined total hours per month"
       ],
@@ -451,26 +372,26 @@
         "Meter shows 'By Request' state when package has no included time and no block purchased, with a prompt to purchase a block"
       ],
       "fixed": [
-        "FlexTimeMeter extracted from inline IIFE in QuotePage into a shared reusable component — now consistent across all four IT quote types"
+        "FlexTimeMeter extracted from inline IIFE in QuotePage into a shared reusable component \u2014 now consistent across all four IT quote types"
       ]
     }
   },
   {
     "version": "3.0.0",
     "date": "2026-04-26",
-    "summary": "Flex Time Blocks — managed IT monthly add-on and FlexIT pre-purchase annual blocks",
+    "summary": "Flex Time Blocks \u2014 managed IT monthly add-on and FlexIT pre-purchase annual blocks",
     "audience": "all",
     "categories": {
       "new": [
-        "⏱ Flex Time Blocks added to all managed IT quotes — five standard blocks: 5hr (Starter), 10hr (Standard), 20hr (Extended), 30hr (Pro), 40hr (Enterprise)",
-        "Market-adjusted pricing: each block is priced at a discount off the market T&M remote support rate (10–25% depending on block size)",
-        "⚡ FlexIT On-Demand block purchasing — same blocks available as one-time pre-purchases on FlexIT quotes. Valid 12 months, refillable at the original agreed rate",
+        "\u23f1 Flex Time Blocks added to all managed IT quotes \u2014 five standard blocks: 5hr (Starter), 10hr (Standard), 20hr (Extended), 30hr (Pro), 40hr (Enterprise)",
+        "Market-adjusted pricing: each block is priced at a discount off the market T&M remote support rate (10\u201325% depending on block size)",
+        "\u26a1 FlexIT On-Demand block purchasing \u2014 same blocks available as one-time pre-purchases on FlexIT quotes. Valid 12 months, refillable at the original agreed rate",
         "Rate lock on FlexIT blocks: if client refills within 30 days of depletion or expiration, original rate is honored. After 30 days a new quote at current rates is required",
         "Tier 3 exclusion clearly stated: network design/engineering, server projects, firewall/SAN deployment, email migration, DR, software engineering, and security audits are bid separately at the Tier 3 rate and cannot be pooled in blocks",
-        "Admin → Packages: new Flex Time Model selector per package — None / Included (X min/WS/mo) / Required / All-Inclusive"
+        "Admin \u2192 Packages: new Flex Time Model selector per package \u2014 None / Included (X min/WS/mo) / Required / All-Inclusive"
       ],
       "improved": [
-        "FlexIT billing summary updates when a flex block is selected — shows block purchase as a separate line with 12-month validity note",
+        "FlexIT billing summary updates when a flex block is selected \u2014 shows block purchase as a separate line with 12-month validity note",
         "Flex Time block detail card shows: effective rate per hour, T&M comparison rate, savings amount, and full terms with Tier 3 exclusion"
       ],
       "fixed": []
@@ -479,17 +400,17 @@
   {
     "version": "2.9.7",
     "date": "2026-04-26",
-    "summary": "FlexIT Payment Schedule & Terms — full legal document matching SPT template",
+    "summary": "FlexIT Payment Schedule & Terms \u2014 full legal document matching SPT template",
     "audience": "all",
     "categories": {
       "new": [
-        "💳 Payment Schedule & Terms document added to FlexIT documents panel — opens as a right-side drawer matching the SPT template exactly",
+        "\ud83d\udcb3 Payment Schedule & Terms document added to FlexIT documents panel \u2014 opens as a right-side drawer matching the SPT template exactly",
         "Payment schedule shows: Month to Month term, Payment #1 (prepayment at signing, non-refundable), out-of-scope language",
         "Full legal billing sections included: Automatic Payments (Required) with billing portal link, Invoicing Terms (Due Upon Receipt), Paper Check Payments ($10 fee), Purchase Orders, Setup Services Fee, Declined/Returned Payments ($50 fee), Hardware/Software/Licensing all sales final",
         "Area 2 surcharge notice automatically shown when client location is in a metro surcharge market"
       ],
       "improved": [
-        "FlexIT documents panel now shows two cards: Rate Card and Payment Schedule — each with View/Export action"
+        "FlexIT documents panel now shows two cards: Rate Card and Payment Schedule \u2014 each with View/Export action"
       ],
       "fixed": []
     }
@@ -502,24 +423,24 @@
     "categories": {
       "new": [],
       "improved": [
-        "FlexIT documents panel now shows Rate Sheet only — Assumptions and Payment Schedule cards removed (assumptions are the fixed 7-bullet T&M language shown inline; payment schedule replaced by FlexIT-specific billing summary)",
+        "FlexIT documents panel now shows Rate Sheet only \u2014 Assumptions and Payment Schedule cards removed (assumptions are the fixed 7-bullet T&M language shown inline; payment schedule replaced by FlexIT-specific billing summary)",
         "FlexIT billing summary on the quote page corrected to reflect T&M model: Payment #1 prepayment at signing + Ongoing Labor billed as consumed, invoiced on completion. No monthly recurring fee language"
       ],
       "fixed": [
-        "FlexIT was showing managed IT payment schedule (NET 20, monthly billing commencement) — replaced with correct Due Upon Receipt, month-to-month T&M structure"
+        "FlexIT was showing managed IT payment schedule (NET 20, monthly billing commencement) \u2014 replaced with correct Due Upon Receipt, month-to-month T&M structure"
       ]
     }
   },
   {
     "version": "2.9.5",
     "date": "2026-04-26",
-    "summary": "FlexIT MSA language removed — break/fix description corrected",
+    "summary": "FlexIT MSA language removed \u2014 break/fix description corrected",
     "audience": "all",
     "categories": {
       "new": [],
       "improved": [],
       "fixed": [
-        "Removed 'No MSA Required' from FlexIT quote page header and nav dropdown — all Ferrum agreements require a signed MSA. Description updated to 'Time & Materials — Break/Fix' in both locations"
+        "Removed 'No MSA Required' from FlexIT quote page header and nav dropdown \u2014 all Ferrum agreements require a signed MSA. Description updated to 'Time & Materials \u2014 Break/Fix' in both locations"
       ]
     }
   },
@@ -531,37 +452,37 @@
     "categories": {
       "new": [],
       "improved": [
-        "⚡ FlexIT On-Demand now appears in the top navigation bar New Quote dropdown alongside all other quote types"
+        "\u26a1 FlexIT On-Demand now appears in the top navigation bar New Quote dropdown alongside all other quote types"
       ],
       "fixed": [
-        "FlexIT was only appearing in the Saved Quotes page dropdown — missing from the always-visible nav bar dropdown in Layout.js"
+        "FlexIT was only appearing in the Saved Quotes page dropdown \u2014 missing from the always-visible nav bar dropdown in Layout.js"
       ]
     }
   },
   {
     "version": "2.9.3",
     "date": "2026-04-26",
-    "summary": "QuotesPage crash fix — showNewMenu state missing",
+    "summary": "QuotesPage crash fix \u2014 showNewMenu state missing",
     "audience": "all",
     "categories": {
       "new": [],
       "improved": [],
       "fixed": [
-        "Saved Quotes page crashed on load — showNewMenu state variable referenced in JSX but never declared. Fixed with useState(false) declaration"
+        "Saved Quotes page crashed on load \u2014 showNewMenu state variable referenced in JSX but never declared. Fixed with useState(false) declaration"
       ]
     }
   },
   {
     "version": "2.9.2",
     "date": "2026-04-26",
-    "summary": "FlexIT save payload fix — removed non-existent DB columns",
+    "summary": "FlexIT save payload fix \u2014 removed non-existent DB columns",
     "audience": "all",
     "categories": {
       "new": [],
       "improved": [],
       "fixed": [
-        "FlexIT quotes failed to save — payload included quote_type, contract_term_months, monthly_fee, onboarding_fee, contract_value columns that don't exist in the quotes table",
-        "Removed next_quote_sequence RPC call that doesn't exist — quote numbers are auto-generated by the DB trigger like all other quote types",
+        "FlexIT quotes failed to save \u2014 payload included quote_type, contract_term_months, monthly_fee, onboarding_fee, contract_value columns that don't exist in the quotes table",
+        "Removed next_quote_sequence RPC call that doesn't exist \u2014 quote numbers are auto-generated by the DB trigger like all other quote types",
         "Financial data now stored in totals JSONB field consistent with other quote types"
       ]
     }
@@ -569,30 +490,30 @@
   {
     "version": "2.9.1",
     "date": "2026-04-26",
-    "summary": "VoiceQuotePage crash fix — sptProposalId state missing",
+    "summary": "VoiceQuotePage crash fix \u2014 sptProposalId state missing",
     "audience": "all",
     "categories": {
       "new": [],
       "improved": [],
       "fixed": [
-        "Hosted Voice quote page crashed on load — sptProposalId and setSptProposalId referenced in SPTConnect component but state was never declared. Added useState(null) declaration and DB restore on quote load"
+        "Hosted Voice quote page crashed on load \u2014 sptProposalId and setSptProposalId referenced in SPTConnect component but state was never declared. Added useState(null) declaration and DB restore on quote load"
       ]
     }
   },
   {
     "version": "2.9.0",
     "date": "2026-04-26",
-    "summary": "FlexIT On-Demand quote type — time & materials with market-adjusted rate card",
+    "summary": "FlexIT On-Demand quote type \u2014 time & materials with market-adjusted rate card",
     "audience": "all",
     "categories": {
       "new": [
-        "⚡ FlexIT On-Demand — new quote type for time & materials / break-fix engagements with no MSA required",
+        "\u26a1 FlexIT On-Demand \u2014 new quote type for time & materials / break-fix engagements with no MSA required",
         "New Quote button upgraded to a dropdown menu listing all five quote types: Managed IT, Hosted Voice, Bundle, Multi-Location IT, FlexIT On-Demand",
         "FlexIT quotes auto-generate a market-adjusted Rate Card from the market intelligence data for the client's ZIP code",
-        "Prepayment calculator: enter hours (default 2) × market remote support rate = prepayment amount. Override available if needed",
+        "Prepayment calculator: enter hours (default 2) \u00d7 market remote support rate = prepayment amount. Override available if needed",
         "Area 2 surcharge (+30%) automatically applied and shown when client ZIP is in a metro surcharge market",
         "Full document suite: Rate Sheet export, Assumptions (7 fixed T&M bullets from the SPT template), Payment Schedule (Month to Month, Due Upon Receipt)",
-        "HubSpot deal connect and SPT proposal link/create — same as all other quote types",
+        "HubSpot deal connect and SPT proposal link/create \u2014 same as all other quote types",
         "FlexIT quotes appear in Saved Quotes list with an orange FlexIT badge",
         "Quote number format: FIT-FLEX-####"
       ],
@@ -603,44 +524,44 @@
   {
     "version": "2.8.3",
     "date": "2026-04-26",
-    "summary": "MultiSite page crash fix — inputs undefined in DocumentsPanel",
+    "summary": "MultiSite page crash fix \u2014 inputs undefined in DocumentsPanel",
     "audience": "all",
     "categories": {
       "new": [],
       "improved": [],
       "fixed": [
-        "MultiSite page crashed on load — DocumentsPanel was referencing an inputs object that doesn't exist on MultiSite (which uses individual state vars). Fixed by constructing the inputs object from actual MultiSite state variables (locations, contractTerm, compliance)"
+        "MultiSite page crashed on load \u2014 DocumentsPanel was referencing an inputs object that doesn't exist on MultiSite (which uses individual state vars). Fixed by constructing the inputs object from actual MultiSite state variables (locations, contractTerm, compliance)"
       ]
     }
   },
   {
     "version": "2.8.2",
     "date": "2026-04-26",
-    "summary": "SPTConnect JSX build fix — malformed closing tags on all four quote pages",
+    "summary": "SPTConnect JSX build fix \u2014 malformed closing tags on all four quote pages",
     "audience": "all",
     "categories": {
       "new": [],
       "improved": [],
       "fixed": [
-        "Build failure caused by SPTConnect insertion landing inside HubSpotConnect props — HubSpotConnect closing /> was missing and SPTConnect had a stray />. Fixed on all four quote pages (IT, Voice, Bundle, MultiSite)"
+        "Build failure caused by SPTConnect insertion landing inside HubSpotConnect props \u2014 HubSpotConnect closing /> was missing and SPTConnect had a stray />. Fixed on all four quote pages (IT, Voice, Bundle, MultiSite)"
       ]
     }
   },
   {
     "version": "2.8.1",
     "date": "2026-04-26",
-    "summary": "SPTConnect — link or create SPT proposals from all quote pages",
+    "summary": "SPTConnect \u2014 link or create SPT proposals from all quote pages",
     "audience": "all",
     "categories": {
       "new": [
-        "SPTConnect widget added to all four quote types (IT, Voice, Bundle, Multi-Site) — sits directly below HubSpotConnect in the left column",
-        "🔍 Link Existing mode — searches your Smart Pricing Table account, shows proposal name, status (DRAFT/SENT/WON/LOST), last updated date and creator. Click any row to link",
-        "✚ Create New mode — pre-fills proposal name as [Client] — Managed IT Services ([Quote#]), creates empty proposal in SPT via API and links it instantly",
-        "Open in SPT → link shows on connected quotes. Unlink (✕) removes the association without deleting the SPT proposal",
-        "If SPT API key is not configured, both actions show a clear message directing to Admin → Integrations"
+        "SPTConnect widget added to all four quote types (IT, Voice, Bundle, Multi-Site) \u2014 sits directly below HubSpotConnect in the left column",
+        "\ud83d\udd0d Link Existing mode \u2014 searches your Smart Pricing Table account, shows proposal name, status (DRAFT/SENT/WON/LOST), last updated date and creator. Click any row to link",
+        "\u271a Create New mode \u2014 pre-fills proposal name as [Client] \u2014 Managed IT Services ([Quote#]), creates empty proposal in SPT via API and links it instantly",
+        "Open in SPT \u2192 link shows on connected quotes. Unlink (\u2715) removes the association without deleting the SPT proposal",
+        "If SPT API key is not configured, both actions show a clear message directing to Admin \u2192 Integrations"
       ],
       "improved": [
-        "SPT proposal name fetched from API on quote load — shows actual proposal name instead of truncated ID"
+        "SPT proposal name fetched from API on quote load \u2014 shows actual proposal name instead of truncated ID"
       ],
       "fixed": []
     }
@@ -652,18 +573,18 @@
     "audience": "all",
     "categories": {
       "new": [
-        "Documents panel (Rate Sheet, Assumptions, Payment Schedule) added to Bundle and Multi-Site quote pages — consistent across all IT quote types",
-        "✨ Generate Assumptions with AI — button below the Customer Story field. Rep types raw discovery notes, AI generates structured professional assumptions: environment overview, user assumptions, infrastructure notes, cloud/technology, key requirements, compliance notes",
-        "AI uses claude-haiku for fast generation — output saved with the quote and shown as a collapsible preview"
+        "Documents panel (Rate Sheet, Assumptions, Payment Schedule) added to Bundle and Multi-Site quote pages \u2014 consistent across all IT quote types",
+        "\u2728 Generate Assumptions with AI \u2014 button below the Customer Story field. Rep types raw discovery notes, AI generates structured professional assumptions: environment overview, user assumptions, infrastructure notes, cloud/technology, key requirements, compliance notes",
+        "AI uses claude-haiku for fast generation \u2014 output saved with the quote and shown as a collapsible preview"
       ],
       "improved": [
-        "Assumptions: Mobile/Field Technicians section renamed to Task Workers vs Power Users — clearer explanation of why these workers are excluded from Power User pricing",
+        "Assumptions: Mobile/Field Technicians section renamed to Task Workers vs Power Users \u2014 clearer explanation of why these workers are excluded from Power User pricing",
         "Assumptions: Laptops & Workstations field added at the top of the Infrastructure section",
         "Assumptions: Why switching text area added under Current Provider for additional context beyond checkboxes",
         "Bundle DocumentsPanel uses IT-side inputs, package, products, and compliance for assumptions generation"
       ],
       "fixed": [
-        "MultiSite obIncentive state was missing — page crashed on load with white screen"
+        "MultiSite obIncentive state was missing \u2014 page crashed on load with white screen"
       ]
     }
   },
@@ -690,10 +611,10 @@
     "audience": "all",
     "categories": {
       "new": [
-        "🔍 Link Existing button in Rate Sheet drawer — searches your Smart Pricing Table account and links any existing proposal to the Ferrum IQ quote",
-        "SPT search modal shows proposal name, client, status (DRAFT/SENT/WON), last updated date, and creator — click any row to link",
-        "Unlink option in the Rate Sheet drawer — removes the association (proposal stays in SPT)",
-        "Documents panel shows green SPT ✓ badge when a proposal is linked"
+        "\ud83d\udd0d Link Existing button in Rate Sheet drawer \u2014 searches your Smart Pricing Table account and links any existing proposal to the Ferrum IQ quote",
+        "SPT search modal shows proposal name, client, status (DRAFT/SENT/WON), last updated date, and creator \u2014 click any row to link",
+        "Unlink option in the Rate Sheet drawer \u2014 removes the association (proposal stays in SPT)",
+        "Documents panel shows green SPT \u2713 badge when a proposal is linked"
       ],
       "improved": [
         "SPT export bar replaced with full connect experience: Link Existing + Create New buttons, status indicator, and Open in SPT link"
@@ -706,20 +627,20 @@
   {
     "version": "2.7.0",
     "date": "2026-04-26",
-    "summary": "Documents panel — Out-of-Scope Rate Sheet, Assumptions & Exclusions, Payment Schedule with Smart Pricing Table integration",
+    "summary": "Documents panel \u2014 Out-of-Scope Rate Sheet, Assumptions & Exclusions, Payment Schedule with Smart Pricing Table integration",
     "audience": "all",
     "categories": {
       "new": [
-        "📄 Documents panel on every IT quote — three document cards: Out-of-Scope Rate Sheet, Assumptions & Exclusions, Payment Schedule",
+        "\ud83d\udcc4 Documents panel on every IT quote \u2014 three document cards: Out-of-Scope Rate Sheet, Assumptions & Exclusions, Payment Schedule",
         "Out-of-Scope Rate Sheet: market-adjusted rates for all four sections (Remote Labor, Dev/App, On-Site, After Hours) pulled directly from market analysis data. Area 2 surcharge (+30%) auto-applied for NYC, SF, Seattle, Chicago metro, Hawaii, Alaska, Las Vegas, Canada",
-        "Smart Pricing Table integration — export any document to SPT via API. API key stored in Admin → Integrations → Smart Pricing Table",
-        "SPT proxy Netlify function keeps API key server-side — never exposed to browser",
+        "Smart Pricing Table integration \u2014 export any document to SPT via API. API key stored in Admin \u2192 Integrations \u2192 Smart Pricing Table",
+        "SPT proxy Netlify function keeps API key server-side \u2014 never exposed to browser",
         "Assumptions & Exclusions form saves discovery notes, user list, field tech details, infrastructure inventory, M365/cloud services, modernization opportunities, deliverables, and exclusions back to the quote",
         "Payment Schedule shows term header, Payment #1 onboarding at signing, monthly billing commencement trigger, incentive adjustments, and all billing terms",
         "spt_proposal_id and spt_synced_at added to quotes table to track SPT linkage"
       ],
       "improved": [
-        "All fixed OOS fees (same-day, next-day, cancellation, abort, after-hours dispatch, Area 2 surcharge) stored in pricing_settings — admin-editable without a deploy"
+        "All fixed OOS fees (same-day, next-day, cancellation, abort, after-hours dispatch, Area 2 surcharge) stored in pricing_settings \u2014 admin-editable without a deploy"
       ],
       "fixed": []
     }
@@ -731,13 +652,13 @@
     "audience": "all",
     "categories": {
       "new": [
-        "zip_codes array on each market record — every ZIP that resolves to a city is accumulated over time (e.g., Elgin accumulates 60120, 60123, 60124)",
+        "zip_codes array on each market record \u2014 every ZIP that resolves to a city is accumulated over time (e.g., Elgin accumulates 60120, 60123, 60124)",
         "ZIP codes shown as tag pills in both the market table row and the expanded detail panel",
-        "Admin delete button on each market row (admin only) — removes the record with confirmation. Next analysis re-creates it fresh from USPS + AI. No more SQL needed for cleanup"
+        "Admin delete button on each market row (admin only) \u2014 removes the record with confirmation. Next analysis re-creates it fresh from USPS + AI. No more SQL needed for cleanup"
       ],
       "improved": [
-        "Search now checks the full zip_codes array — searching 60120 returns Elgin even if only 60124 is the primary stored zip",
-        "saveMarketAnalysis now merges new zips into the zip_codes array on every lookup — builds the mapping automatically over time"
+        "Search now checks the full zip_codes array \u2014 searching 60120 returns Elgin even if only 60124 is the primary stored zip",
+        "saveMarketAnalysis now merges new zips into the zip_codes array on every lookup \u2014 builds the mapping automatically over time"
       ],
       "fixed": []
     }
@@ -745,19 +666,19 @@
   {
     "version": "2.6.4",
     "date": "2026-04-26",
-    "summary": "Price lock — approved quotes freeze rates to prevent unexpected pricing changes",
+    "summary": "Price lock \u2014 approved quotes freeze rates to prevent unexpected pricing changes",
     "audience": "all",
     "categories": {
       "new": [
-        "Price lock triggers automatically when a quote is saved with Approved status — rates, package pricing, and settings are frozen at that moment",
-        "🔒 Prices locked banner appears at the top of any locked quote showing the lock date and package name",
+        "Price lock triggers automatically when a quote is saved with Approved status \u2014 rates, package pricing, and settings are frozen at that moment",
+        "\ud83d\udd12 Prices locked banner appears at the top of any locked quote showing the lock date and package name",
         "Unlock Pricing button visible to the assigned rep (their own quotes) or any admin user",
         "Unlock confirmation modal warns about price discrepancy risk if quote has already been sent or exported to Smart Pricing Table",
         "Unlocking writes an entry to quote revision history for a full audit trail",
         "Price lock applies across all quote types: Managed IT, Hosted Voice, Bundle, Multi-Site"
       ],
       "improved": [
-        "calcQuote now accepts a pricing snapshot — uses frozen rates when locked, live rates for draft/in-review quotes"
+        "calcQuote now accepts a pricing snapshot \u2014 uses frozen rates when locked, live rates for draft/in-review quotes"
       ],
       "fixed": []
     }
@@ -769,30 +690,30 @@
     "audience": "all",
     "categories": {
       "new": [
-        "Onboarding Incentive added to Bundle and Multi-Site quotes — applies to combined onboarding/NRC fee",
-        "Onboarding incentive selections now write to quote revision history — rep can see when and what incentive was applied or changed"
+        "Onboarding Incentive added to Bundle and Multi-Site quotes \u2014 applies to combined onboarding/NRC fee",
+        "Onboarding incentive selections now write to quote revision history \u2014 rep can see when and what incentive was applied or changed"
       ],
       "improved": [
-        "Market intelligence ZIP lookup now uses USPS data before calling AI — fixes cities like Elgin (60124) being returned as Aurora",
-        "Onboarding incentive card no longer disappears after selecting an option — stays visible so rep can change selection at any time",
+        "Market intelligence ZIP lookup now uses USPS data before calling AI \u2014 fixes cities like Elgin (60124) being returned as Aurora",
+        "Onboarding incentive card no longer disappears after selecting an option \u2014 stays visible so rep can change selection at any time",
         "No Incentive option keeps the card visible and marks it selected rather than dismissing",
         "Modify button returns to the selection screen without resetting",
         "Contract TCV KPI card now correctly reflects the applied onboarding discount"
       ],
       "fixed": [
-        "Onboarding incentive selection was not updating the Contract TCV pricing card — TCV now uses effectiveFee"
+        "Onboarding incentive selection was not updating the Contract TCV pricing card \u2014 TCV now uses effectiveFee"
       ]
     }
   },
   {
     "version": "2.6.2",
     "date": "2026-04-26",
-    "summary": "Bundle quote layout — Combined Deal Summary on right column, consistent with other quote types",
+    "summary": "Bundle quote layout \u2014 Combined Deal Summary on right column, consistent with other quote types",
     "audience": "all",
     "categories": {
       "new": [],
       "improved": [
-        "Combined Deal Summary moved to the right column — matches IT and Voice quote layout",
+        "Combined Deal Summary moved to the right column \u2014 matches IT and Voice quote layout",
         "Voice card now stacks under Managed IT card in the left column",
         "Quote Notes and Quote History moved under Combined Deal Summary in the right column",
         "Cost Model card in left column below Voice breakdown"
@@ -810,13 +731,13 @@
     "categories": {
       "new": [],
       "improved": [
-        "Market Intelligence search now correctly matches city, state, and zip — null city/state values no longer break the entire search",
+        "Market Intelligence search now correctly matches city, state, and zip \u2014 null city/state values no longer break the entire search",
         "Packages tab in Admin now shows a clear error message when save fails instead of silently doing nothing",
-        "Market Intelligence refresh now works for markets without a zip code — uses city+state for analysis",
+        "Market Intelligence refresh now works for markets without a zip code \u2014 uses city+state for analysis",
         "Market Intelligence refresh shows a blue spinning status indicator while AI analysis is running"
       ],
       "fixed": [
-        "Packages save was failing silently — $location and other display-only fields were being sent to Supabase which rejected them",
+        "Packages save was failing silently \u2014 $location and other display-only fields were being sent to Supabase which rejected them",
         "Market Intelligence search was throwing a TypeError on null city/state fields, returning no results",
         "Market Intelligence refresh button was broken for markets with bad/non-numeric zip codes (like MOBIL)"
       ]
@@ -829,20 +750,20 @@
     "audience": "all",
     "categories": {
       "new": [
-        "Market Intelligence moved from Admin tab to main navigation — accessible to all team members",
-        "All users can view market data, search, filter, and analyze new markets — admin-only for editing rates and refreshing",
-        "Quote Notes now present on Voice and Multi-Site quote pages — matches IT quote behavior",
-        "Assigned Sales Rep added to Voice and Bundle Proposal Details sections — consistent across all four quote types",
-        "Proposal Details section renamed from Client Details on Bundle — uniform naming across all pages"
+        "Market Intelligence moved from Admin tab to main navigation \u2014 accessible to all team members",
+        "All users can view market data, search, filter, and analyze new markets \u2014 admin-only for editing rates and refreshing",
+        "Quote Notes now present on Voice and Multi-Site quote pages \u2014 matches IT quote behavior",
+        "Assigned Sales Rep added to Voice and Bundle Proposal Details sections \u2014 consistent across all four quote types",
+        "Proposal Details section renamed from Client Details on Bundle \u2014 uniform naming across all pages"
       ],
       "improved": [
-        "Bundle page Quote Status moved to Package section — consistent with IT and Voice pages",
+        "Bundle page Quote Status moved to Package section \u2014 consistent with IT and Voice pages",
         "Bundle helper functions (Sec, Fld, TI, NI, SI, Tog, LI) updated to match IT page font sizes and spacing",
         "Voice and Bundle Proposal Details now include rep selector with commission rate display",
         "Contract term and status now appear at the top of the left column on Voice quotes"
       ],
       "fixed": [
-        "QuoteNotes was wrapped in existingQuote conditional on Voice and MultiSite — matched IT page pattern (unconditional with optional chaining)",
+        "QuoteNotes was wrapped in existingQuote conditional on Voice and MultiSite \u2014 matched IT page pattern (unconditional with optional chaining)",
         "Market Intelligence tab renamed to Market Intelligence throughout",
         "ZIP codes with non-numeric values (city abbreviations from seed data) now display blank instead of the raw text",
         "Market Intelligence zip search now normalizes both query and stored value to 5 digits"
@@ -856,39 +777,39 @@
     "audience": "all",
     "categories": {
       "new": [
-        "HubSpotConnect shared component — consistent connect/search/sync/disconnect across all four quote types",
-        "Deal Description / Information field in HubSpot panel — syncs to HubSpot on save",
-        "View Deal link and Sync button in HubSpot panel — available on all quote types"
+        "HubSpotConnect shared component \u2014 consistent connect/search/sync/disconnect across all four quote types",
+        "Deal Description / Information field in HubSpot panel \u2014 syncs to HubSpot on save",
+        "View Deal link and Sync button in HubSpot panel \u2014 available on all quote types"
       ],
       "improved": [
-        "Duplicate Deal Description fields removed from IT, Voice, and Bundle right columns — now lives exclusively in the HubSpot panel",
+        "Duplicate Deal Description fields removed from IT, Voice, and Bundle right columns \u2014 now lives exclusively in the HubSpot panel",
         "Voice quote Deal Summary moved up to match IT quote position",
         "Multi-Site left column width matched to IT quote (345px)",
         "Rate abbreviations standardized to WS/US/LOC across all pages and Admin"
       ],
       "fixed": [
-        "Voice and Bundle pages were missing Sync, View link, deal description, and disconnect — all now present via shared component"
+        "Voice and Bundle pages were missing Sync, View link, deal description, and disconnect \u2014 all now present via shared component"
       ]
     }
   },
   {
     "version": "2.5.0",
     "date": "2026-04-26",
-    "summary": "Multi-Site IT Quotes — fair market pricing across multiple locations with volume discount",
+    "summary": "Multi-Site IT Quotes \u2014 fair market pricing across multiple locations with volume discount",
     "audience": "all",
     "categories": {
       "new": [
-        "Multi-Site IT quote type (FIT-MS- prefix) — New Quote → 🏢 Multi-Site IT",
-        "Location builder — add unlimited locations, each with name, address, zip, type, users, workstations, servers, endpoints",
-        "Standard vs Restricted location types — Standard includes site management fee and network layer; Restricted (co-work/shared/3rd-party) is users and devices only, no network layer, no site fee",
-        "Site management fee pulls from the selected package (pkg.location_rate) — never hardcoded",
-        "Per-location market analysis — zip code triggers AI market rate lookup, pricing multiplier applied per location",
+        "Multi-Site IT quote type (FIT-MS- prefix) \u2014 New Quote \u2192 \ud83c\udfe2 Multi-Site IT",
+        "Location builder \u2014 add unlimited locations, each with name, address, zip, type, users, workstations, servers, endpoints",
+        "Standard vs Restricted location types \u2014 Standard includes site management fee and network layer; Restricted (co-work/shared/3rd-party) is users and devices only, no network layer, no site fee",
+        "Site management fee pulls from the selected package (pkg.location_rate) \u2014 never hardcoded",
+        "Per-location market analysis \u2014 zip code triggers AI market rate lookup, pricing multiplier applied per location",
         "Multi-location volume discount: 2-4 locations = 3%, 5-9 = 5%, 10-19 = 8%, 20+ = 10% (stored in pricing_settings, fully configurable)",
         "Contract term discount stacks on top of multi-location discount",
-        "Add-on products applied once at quote level — qty scales to total users/workstations across all locations",
+        "Add-on products applied once at quote level \u2014 qty scales to total users/workstations across all locations",
         "Per-location on-site and dispatch rate card shown in the expanded location breakdown",
-        "Covered Locations section on the quote — legally binding list of all addresses covered under the agreement",
-        "Convert to Single Location — opens a new standard IT quote with location 1 data, multi-site quote stays in history",
+        "Covered Locations section on the quote \u2014 legally binding list of all addresses covered under the agreement",
+        "Convert to Single Location \u2014 opens a new standard IT quote with location 1 data, multi-site quote stays in history",
         "SPT export includes full covered_locations_assumption field with every address listed",
         "HubSpot connect, Quote Notes, Send for Review, version history all work on multi-site quotes"
       ],
@@ -906,16 +827,16 @@
     "audience": "all",
     "categories": {
       "new": [
-        "Company logo on login page — shown on a dark background to match logo styling",
+        "Company logo on login page \u2014 shown on a dark background to match logo styling",
         "Company logo in the top-left navigation bar replacing the placeholder F icon",
-        "Logo upload in Admin → Integrations — upload a PNG/SVG/JPG file or paste a public URL",
-        "Logo stored in pricing_settings and loaded dynamically — update without redeploying"
+        "Logo upload in Admin \u2192 Integrations \u2014 upload a PNG/SVG/JPG file or paste a public URL",
+        "Logo stored in pricing_settings and loaded dynamically \u2014 update without redeploying"
       ],
       "improved": [
-        "Term Comparison and Compliance Recommendation panels moved above the KPI cards — no longer inside the 4-column grid, so Contract TCV stays inline with Monthly MRR, Onboarding, and Implied GM"
+        "Term Comparison and Compliance Recommendation panels moved above the KPI cards \u2014 no longer inside the 4-column grid, so Contract TCV stays inline with Monthly MRR, Onboarding, and Implied GM"
       ],
       "fixed": [
-        "opSubtotal ReferenceError — variable was referenced in calcQuote return but not declared after discount logic rewrite — caused white screen on all pages"
+        "opSubtotal ReferenceError \u2014 variable was referenced in calcQuote return but not declared after discount logic rewrite \u2014 caused white screen on all pages"
       ]
     }
   },
@@ -926,73 +847,73 @@
     "audience": "admin",
     "categories": {
       "new": [
-        "No Discount flag on products — MSRP products pass through at full vendor price, never discounted",
-        "No Commission flag on products — vendor pass-through products excluded from rep commission base",
-        "Assigned Sales Rep field on every Managed IT quote — defaults to the logged-in user, changeable at any time",
-        "Per-user commission rate in Admin → Users — set individually per team member (e.g. 8%, 10%, 12%)",
-        "Global commission rate fallback in Admin → Pricing Settings — applies when no user rate is set",
-        "Commission priority chain: rep rate → global rate → 0%",
-        "Commission line in cost model shows rep name, rate, and commissionable base — fully transparent",
+        "No Discount flag on products \u2014 MSRP products pass through at full vendor price, never discounted",
+        "No Commission flag on products \u2014 vendor pass-through products excluded from rep commission base",
+        "Assigned Sales Rep field on every Managed IT quote \u2014 defaults to the logged-in user, changeable at any time",
+        "Per-user commission rate in Admin \u2192 Users \u2014 set individually per team member (e.g. 8%, 10%, 12%)",
+        "Global commission rate fallback in Admin \u2192 Pricing Settings \u2014 applies when no user rate is set",
+        "Commission priority chain: rep rate \u2192 global rate \u2192 0%",
+        "Commission line in cost model shows rep name, rate, and commissionable base \u2014 fully transparent",
         "Net MRR after commission and GM after commission shown in cost model",
-        "Protected product revenue shown as separate line — clear audit trail of what's protected",
-        "Flags visible in Admin → Products table — 🔒 No Discount · 💼 No Comm badges",
-        "Compliance-based product recommendations — HIPAA/SOC 2 and PCI/CMMC products highlighted in amber on the product list with reason text",
-        "Compliance badges on each product: ⚠ HIPAA/SOC2 or ⚠ PCI/CMMC when unselected, ✓ Compliance when added",
+        "Protected product revenue shown as separate line \u2014 clear audit trail of what's protected",
+        "Flags visible in Admin \u2192 Products table \u2014 \ud83d\udd12 No Discount \u00b7 \ud83d\udcbc No Comm badges",
+        "Compliance-based product recommendations \u2014 HIPAA/SOC 2 and PCI/CMMC products highlighted in amber on the product list with reason text",
+        "Compliance badges on each product: \u26a0 HIPAA/SOC2 or \u26a0 PCI/CMMC when unselected, \u2713 Compliance when added",
         "Recommendation panel above the summary strip shows all unselected compliance products with one-click Add",
-        "Multi-term pricing preview — 12/24/36 month comparison cards above the quote summary, clickable to switch term",
-        "TCV shown for all three terms at a glance — no need to manually toggle to see other options",
-        "Payment method surcharge panel in cost model — ACH free, check +$10 admin, CC +2% surcharge with live dollar estimate",
-        "Payment fees stored in Admin → Pricing Settings — fully configurable as rates change"
+        "Multi-term pricing preview \u2014 12/24/36 month comparison cards above the quote summary, clickable to switch term",
+        "TCV shown for all three terms at a glance \u2014 no need to manually toggle to see other options",
+        "Payment method surcharge panel in cost model \u2014 ACH free, check +$10 admin, CC +2% surcharge with live dollar estimate",
+        "Payment fees stored in Admin \u2192 Pricing Settings \u2014 fully configurable as rates change"
       ],
       "improved": [
-        "Contract term discounts now only apply to labor + discountable add-ons — MSRP products added after discount calculation",
+        "Contract term discounts now only apply to labor + discountable add-ons \u2014 MSRP products added after discount calculation",
         "Risk/compliance multipliers scoped to discountable revenue only"
       ],
       "fixed": [
-        "Previously a contract discount applied to full MRR including MSRP products — costing unrecoverable margin on every deal with security tooling"
+        "Previously a contract discount applied to full MRR including MSRP products \u2014 costing unrecoverable margin on every deal with security tooling"
       ]
     }
   },
   {
     "version": "2.3.1",
     "date": "2026-04-26",
-    "summary": "Fix market tier / AI analysis disconnect — AI multiplier now drives Managed IT pricing",
+    "summary": "Fix market tier / AI analysis disconnect \u2014 AI multiplier now drives Managed IT pricing",
     "audience": "all",
     "categories": {
       "new": [
-        "AI Market Recommendation banner appears in the Market Tier section when analysis is accepted — shows city, market tier, and exact pricing multiplier",
+        "AI Market Recommendation banner appears in the Market Tier section when analysis is accepted \u2014 shows city, market tier, and exact pricing multiplier",
         "Apply AI Rate button applies the AI-derived pricing multiplier directly to the quote calculation",
         "Keep Manual option dismisses the recommendation and keeps the manually selected tier",
         "Active AI rate shown as a green indicator above the tier list with one-click removal",
-        "Clicking any manual tier removes the AI override — clear visual feedback on which is active",
+        "Clicking any manual tier removes the AI override \u2014 clear visual feedback on which is active",
         "AI multiplier saved with the quote and restored on reload"
       ],
       "fixed": [
-        "Market Rate Analysis card and Market Tier selector were completely disconnected — AI returned 'standard/adjusted/secondary/premium' but DB tiers use 'major_metro/mid_market/small_market' — now bypassed entirely with a precise pricing_multiplier",
-        "Static -10% / -20% tier labels no longer conflict with AI recommendations — both systems coexist cleanly"
+        "Market Rate Analysis card and Market Tier selector were completely disconnected \u2014 AI returned 'standard/adjusted/secondary/premium' but DB tiers use 'major_metro/mid_market/small_market' \u2014 now bypassed entirely with a precise pricing_multiplier",
+        "Static -10% / -20% tier labels no longer conflict with AI recommendations \u2014 both systems coexist cleanly"
       ],
       "improved": [
-        "calcQuote now accepts aiMultiplierOverride — takes precedence over DB tier labor_multiplier when AI analysis is active"
+        "calcQuote now accepts aiMultiplierOverride \u2014 takes precedence over DB tier labor_multiplier when AI analysis is active"
       ]
     }
   },
   {
     "version": "2.3.0",
     "date": "2026-04-26",
-    "summary": "Bundle / Unbundle — convert any IT or Voice quote to a Bundle and back",
+    "summary": "Bundle / Unbundle \u2014 convert any IT or Voice quote to a Bundle and back",
     "audience": "all",
     "categories": {
       "new": [
-        "Bundle with Voice button on saved Managed IT quotes — carries all client details, devices, users, products, HubSpot link, and market data into a new Bundle quote with IT pre-populated",
-        "Bundle with IT button on saved Hosted Voice quotes — carries all voice configuration, seat counts, hardware, and client details into a new Bundle quote with Voice pre-populated",
-        "Unbundle button on all Bundle quotes — opens a modal to choose Keep IT Only or Keep Hosted Voice Only",
-        "Keep IT Only — creates a new standalone IT quote with all device/user/product settings from the bundle intact",
-        "Keep Hosted Voice Only — creates a new standalone Voice quote with all seat/license/hardware settings from the bundle intact",
-        "Bundle quote remains in history after unbundling — nothing is deleted",
+        "Bundle with Voice button on saved Managed IT quotes \u2014 carries all client details, devices, users, products, HubSpot link, and market data into a new Bundle quote with IT pre-populated",
+        "Bundle with IT button on saved Hosted Voice quotes \u2014 carries all voice configuration, seat counts, hardware, and client details into a new Bundle quote with Voice pre-populated",
+        "Unbundle button on all Bundle quotes \u2014 opens a modal to choose Keep IT Only or Keep Hosted Voice Only",
+        "Keep IT Only \u2014 creates a new standalone IT quote with all device/user/product settings from the bundle intact",
+        "Keep Hosted Voice Only \u2014 creates a new standalone Voice quote with all seat/license/hardware settings from the bundle intact",
+        "Bundle quote remains in history after unbundling \u2014 nothing is deleted",
         "All conversions preserve: client name, zip, market tier, HubSpot deal link, proposal details, and notes"
       ],
       "improved": [
-        "Routes /quotes/new, /voice/new, and /bundle/new added — enables navigation with pre-loaded state without clashing with existing quote IDs"
+        "Routes /quotes/new, /voice/new, and /bundle/new added \u2014 enables navigation with pre-loaded state without clashing with existing quote IDs"
       ],
       "fixed": []
     }
@@ -1000,18 +921,18 @@
   {
     "version": "2.2.0",
     "date": "2026-04-26",
-    "summary": "Onboarding Incentive Engine — AI-recommended split payments and discounts on every Managed IT quote",
+    "summary": "Onboarding Incentive Engine \u2014 AI-recommended split payments and discounts on every Managed IT quote",
     "audience": "all",
     "categories": {
       "new": [
-        "Onboarding Incentive card appears on every Managed IT quote below the one-time fee — AI recommends split payment or discount based on market tier and fee size",
-        "Split Payment option: $500–750 up to 3 months, $750–1500 up to 6 months, $1500+ up to 12 months — monthly installment added to MRR for the split period",
-        "Discount option: 10%, 20%, 30%, 50%, or Full Waive — reduces effective one-time fee",
-        "AI recommendation shown with reasoning — e.g. 'Secondary market — 50% discount can be the difference between winning and losing'",
-        "Accept or override the recommendation — both modes fully configurable",
-        "Legal default recovery note built in — all incentives forfeited on contract breach, full fee recoverable per MSA",
+        "Onboarding Incentive card appears on every Managed IT quote below the one-time fee \u2014 AI recommends split payment or discount based on market tier and fee size",
+        "Split Payment option: $500\u2013750 up to 3 months, $750\u20131500 up to 6 months, $1500+ up to 12 months \u2014 monthly installment added to MRR for the split period",
+        "Discount option: 10%, 20%, 30%, 50%, or Full Waive \u2014 reduces effective one-time fee",
+        "AI recommendation shown with reasoning \u2014 e.g. 'Secondary market \u2014 50% discount can be the difference between winning and losing'",
+        "Accept or override the recommendation \u2014 both modes fully configurable",
+        "Legal default recovery note built in \u2014 all incentives forfeited on contract breach, full fee recoverable per MSA",
         "Effective onboarding fee flows through to Contract Value, TCV, and quote save",
-        "Incentive details saved with the quote — mode, effective fee, monthly adder, discount pct, full original fee",
+        "Incentive details saved with the quote \u2014 mode, effective fee, monthly adder, discount pct, full original fee",
         "formatIncentiveForExport() prepares incentive for Smart Pricing Table injection"
       ],
       "improved": [
@@ -1024,49 +945,49 @@
   {
     "version": "2.1.2",
     "date": "2026-04-26",
-    "summary": "Admin → Market Rates tab + fix AI analysis engine",
+    "summary": "Admin \u2192 Market Rates tab + fix AI analysis engine",
     "audience": "admin",
     "categories": {
       "new": [
-        "Admin → Market Rates tab — full index of all analyzed markets with search, tier filter, and expand-to-edit",
-        "Analyze New Market — type any zip, city, or state and run a fresh AI analysis on demand, no quote required",
+        "Admin \u2192 Market Rates tab \u2014 full index of all analyzed markets with search, tier filter, and expand-to-edit",
+        "Analyze New Market \u2014 type any zip, city, or state and run a fresh AI analysis on demand, no quote required",
         "Expand any market row to view all rates, edit individual rates, and save manual overrides",
-        "Re-run AI Analysis button per market — refreshes with latest market intelligence",
-        "Stale indicators on markets older than 6 months — badge in table and count in header"
+        "Re-run AI Analysis button per market \u2014 refreshes with latest market intelligence",
+        "Stale indicators on markets older than 6 months \u2014 badge in table and count in header"
       ],
       "improved": [
-        "AI analysis engine now always returns city and state — cleaner DB matching and zip indexing",
-        "Fixed model name in AI analysis function — was using an invalid model string causing all analyses to fail",
-        "New market feedback — loading message now says 'Checking database — if this is a new market, we'll run an AI analysis. Stand by...' and a blue banner confirms when a new market has been analyzed and saved"
+        "AI analysis engine now always returns city and state \u2014 cleaner DB matching and zip indexing",
+        "Fixed model name in AI analysis function \u2014 was using an invalid model string causing all analyses to fail",
+        "New market feedback \u2014 loading message now says 'Checking database \u2014 if this is a new market, we'll run an AI analysis. Stand by...' and a blue banner confirms when a new market has been analyzed and saved"
       ],
       "fixed": [
-        "Market Rate Analysis card now correctly triggers from zip code alone — was silently failing because lookupZip does not return city/state fields"
+        "Market Rate Analysis card now correctly triggers from zip code alone \u2014 was silently failing because lookupZip does not return city/state fields"
       ]
     }
   },
   {
     "version": "2.1.0",
     "date": "2026-04-26",
-    "summary": "Market Rate Intelligence Engine — AI-powered, per-market labor rate analysis on every quote",
+    "summary": "Market Rate Intelligence Engine \u2014 AI-powered, per-market labor rate analysis on every quote",
     "audience": "all",
     "categories": {
       "new": [
-        "Market Rate Analysis card on all three quote types — triggers automatically when zip code is applied",
+        "Market Rate Analysis card on all three quote types \u2014 triggers automatically when zip code is applied",
         "AI-powered market analysis for any city/state using CoL index, median income, local labor rates, and MSP market intelligence",
-        "61 markets pre-loaded from Ferrum market research (Apr 2026) — AI handles any market not in the seed data",
+        "61 markets pre-loaded from Ferrum market research (Apr 2026) \u2014 AI handles any market not in the seed data",
         "Rates analyzed: Remote Support, On-Site Dispatch (2hr block), On-Site Additional Hourly, Dev/CRM/Web, Design/UX, PC Setup",
-        "After-hours rates auto-calculated at 1.5× the market on-site rate — dispatch fees scale with market CoL",
+        "After-hours rates auto-calculated at 1.5\u00d7 the market on-site rate \u2014 dispatch fees scale with market CoL",
         "FAIR / SLIGHTLY HIGH / HIGH / LOW rating for each rate vs. FerrumIT published rates",
-        "Accept All Rates button saves the market rate sheet to the quote — or override individual lines before accepting",
-        "Managed IT pricing multiplier recommendation shown — apply via the Market Tier selector to align package rates with market",
-        "Market intelligence notes per market — primary industries, MSP selling angles, compliance hooks",
-        "Last analyzed date always visible — auto-refreshes if analysis is older than 6 months",
+        "Accept All Rates button saves the market rate sheet to the quote \u2014 or override individual lines before accepting",
+        "Managed IT pricing multiplier recommendation shown \u2014 apply via the Market Tier selector to align package rates with market",
+        "Market intelligence notes per market \u2014 primary industries, MSP selling angles, compliance hooks",
+        "Last analyzed date always visible \u2014 auto-refreshes if analysis is older than 6 months",
         "Manual Refresh button available on every market card",
         "Analysis source shown: imported (from Apr 2026 research) or AI-generated (new markets)"
       ],
       "improved": [
-        "Static Area 2 surcharge (+30%) removed — replaced by real market rate analysis per city",
-        "Market tier selection now guided by AI recommendation — shows suggested tier and pricing multiplier"
+        "Static Area 2 surcharge (+30%) removed \u2014 replaced by real market rate analysis per city",
+        "Market tier selection now guided by AI recommendation \u2014 shows suggested tier and pricing multiplier"
       ],
       "fixed": []
     }
@@ -1079,8 +1000,8 @@
     "categories": {
       "new": [],
       "improved": [
-        "Deal connect status messages now show in context-appropriate colors — blue for loading/fetching, amber for warnings, green for success, red for errors (was always red)",
-        "Deal Summary panel now shows 'Business Name' instead of 'Client' — more accurate before a deal is won"
+        "Deal connect status messages now show in context-appropriate colors \u2014 blue for loading/fetching, amber for warnings, green for success, red for errors (was always red)",
+        "Deal Summary panel now shows 'Business Name' instead of 'Client' \u2014 more accurate before a deal is won"
       ],
       "fixed": []
     }
@@ -1094,9 +1015,9 @@
       "new": [],
       "improved": [],
       "fixed": [
-        "HubSpot deal View link now uses correct URL format — old format was returning a HubSpot 404",
+        "HubSpot deal View link now uses correct URL format \u2014 old format was returning a HubSpot 404",
         "Deals with no company associated in HubSpot now extract the business name from the deal name automatically",
-        "Warning message shown when no company is linked — prompts user to add address manually or link a company in HubSpot",
+        "Warning message shown when no company is linked \u2014 prompts user to add address manually or link a company in HubSpot",
         "Fix applies across all three quote types: Managed IT, Voice, and Bundle"
       ]
     }
@@ -1104,13 +1025,13 @@
   {
     "version": "2.0.2",
     "date": "2026-04-26",
-    "summary": "Fix HubSpot deal pull-in — business name, address, and zip now populate correctly",
+    "summary": "Fix HubSpot deal pull-in \u2014 business name, address, and zip now populate correctly",
     "audience": "all",
     "categories": {
       "new": [],
       "improved": [],
       "fixed": [
-        "Recipient Business Name, Business Address, and Client Zip now populate when connecting a HubSpot deal — fixed by handling both v3 and v4 HubSpot association API response formats",
+        "Recipient Business Name, Business Address, and Client Zip now populate when connecting a HubSpot deal \u2014 fixed by handling both v3 and v4 HubSpot association API response formats",
         "If company name is blank in HubSpot, deal name is used as fallback for Recipient Business Name",
         "Voice Quote: connecting a HubSpot deal now auto-applies the market tier from the client zip code (was setting zip but not updating tier)"
       ]
@@ -1125,31 +1046,31 @@
       "new": [],
       "improved": [],
       "fixed": [
-        "ReviewBanner: moved useState and useEffect above conditional early return — prevented runtime crash when opening an in-review quote"
+        "ReviewBanner: moved useState and useEffect above conditional early return \u2014 prevented runtime crash when opening an in-review quote"
       ]
     }
   },
   {
     "version": "2.0.0",
     "date": "2026-04-26",
-    "summary": "Send for Review workflow — route quotes for approval with email notification and HubSpot sync",
+    "summary": "Send for Review workflow \u2014 route quotes for approval with email notification and HubSpot sync",
     "audience": "all",
     "categories": {
       "new": [
-        "Send for Review button on all quote types — appears after first save",
-        "Pick any team member as reviewer from a dropdown — sends them a direct email link",
+        "Send for Review button on all quote types \u2014 appears after first save",
+        "Pick any team member as reviewer from a dropdown \u2014 sends them a direct email link",
         "Optional note to reviewer: explain the discount, flag the competitive situation, etc.",
-        "Review banner shown to the reviewer at the top of the quote — yellow, hard to miss",
+        "Review banner shown to the reviewer at the top of the quote \u2014 yellow, hard to miss",
         "Reviewer can Approve (turns quote green, status = Approved) or Return with Comments (back to Draft)",
-        "Feedback required before returning — reviewer must leave a comment",
+        "Feedback required before returning \u2014 reviewer must leave a comment",
         "Both request and response automatically post as Quote Notes and to HubSpot activity timeline",
         "Rep gets an email back with the decision and full feedback text",
-        "New quote statuses: In Review (amber) and Approved (green) — visible in Saved Quotes list",
+        "New quote statuses: In Review (amber) and Approved (green) \u2014 visible in Saved Quotes list",
         "SPT export gate: Approved status is the future hook for Smart Pricing Table integration (noted in code)"
       ],
       "improved": [
         "Saved Quotes status filter now includes In Review and Approved options",
-        "Status badges updated — In Review shows amber, Approved shows green"
+        "Status badges updated \u2014 In Review shows amber, Approved shows green"
       ],
       "fixed": []
     }
@@ -1157,23 +1078,23 @@
   {
     "version": "1.9.0",
     "date": "2026-04-26",
-    "summary": "Quote revision history — automatic field-level diff tracking on every save",
+    "summary": "Quote revision history \u2014 automatic field-level diff tracking on every save",
     "audience": "all",
     "categories": {
       "new": [
-        "Revision History panel on every quote — below Quote Notes, above nothing",
-        "Every save automatically creates a version snapshot — no manual steps required",
-        "Field-level diff view: see exactly what changed between saves (Users: 10 → 11, Package: Essentials → Plus, etc.)",
+        "Revision History panel on every quote \u2014 below Quote Notes, above nothing",
+        "Every save automatically creates a version snapshot \u2014 no manual steps required",
+        "Field-level diff view: see exactly what changed between saves (Users: 10 \u2192 11, Package: Essentials \u2192 Plus, etc.)",
         "Changes grouped by category: Quote, Details, Managed IT, Products, Voice, Pricing",
-        "Product adds and removes tracked explicitly — Added / Removed with product name",
-        "MRR delta shown per revision — +50/mo in red, -5/mo in green at a glance",
+        "Product adds and removes tracked explicitly \u2014 Added / Removed with product name",
+        "MRR delta shown per revision \u2014 +50/mo in red, -5/mo in green at a glance",
         "Auto-generated one-line summary per revision: \"Package, Users, Contract Term\"",
-        "v1 always saved as Initial Save — clean starting point for every quote",
-        "Skips saving if nothing changed — no noise from accidental re-saves",
+        "v1 always saved as Initial Save \u2014 clean starting point for every quote",
+        "Skips saving if nothing changed \u2014 no noise from accidental re-saves",
         "Works across all three quote types: Managed IT, Voice, and Bundle"
       ],
       "improved": [
-        "What's New changelog added to portal — full release history from v1.0.0",
+        "What's New changelog added to portal \u2014 full release history from v1.0.0",
         "Unread badge on What's New nav link shows how many releases since last visit"
       ],
       "fixed": []
@@ -1186,13 +1107,13 @@
     "audience": "all",
     "categories": {
       "new": [
-        "Bundle Quote type — combines Managed IT + Voice into a single quote with one quote number",
+        "Bundle Quote type \u2014 combines Managed IT + Voice into a single quote with one quote number",
         "Bundle quotes get FIT-B- prefix for instant identification in the Saved Quotes list",
         "Tiered voice bundle discount: 12-month IT = 5% off voice, 24-month = 10%, 36-month = 15%",
-        "Free phone qualification: 36-month contract + IT base MRR ≥ $750/mo (base package rates only — no add-ons)",
+        "Free phone qualification: 36-month contract + IT base MRR \u2265 $750/mo (base package rates only \u2014 no add-ons)",
         "Bundle savings banner shows monthly savings and total savings over contract term",
         "Near-miss indicator: shows how much more IT MRR is needed to qualify for free phones",
-        "Collapsible IT and Voice sections in bundle form — each shows live MRR in header badge",
+        "Collapsible IT and Voice sections in bundle form \u2014 each shows live MRR in header badge",
         "Combined cost model and gross margin across both services in one view"
       ],
       "improved": [
@@ -1210,20 +1131,20 @@
     "audience": "all",
     "categories": {
       "new": [
-        "Deal Description / Information field replaces Internal Notes — syncs to HubSpot deal description property on every save",
-        "Quote Notes log: append-only timestamped activity feed per quote — who added it, when, and what they said",
+        "Deal Description / Information field replaces Internal Notes \u2014 syncs to HubSpot deal description property on every save",
+        "Quote Notes log: append-only timestamped activity feed per quote \u2014 who added it, when, and what they said",
         "Notes post to HubSpot as engagement notes, appearing in the deal's activity timeline with quote number and client name prefix",
-        "Notes are visible to all team members — full audit trail, no editing or deleting",
+        "Notes are visible to all team members \u2014 full audit trail, no editing or deleting",
         "Ctrl+Enter keyboard shortcut to submit notes quickly",
         "HubSpot badge on individual notes confirms they were successfully posted",
-        "Save confirmation shows '· HubSpot updated' when description sync succeeds"
+        "Save confirmation shows '\u00b7 HubSpot updated' when description sync succeeds"
       ],
       "improved": [
         "Both Managed IT and Voice quote pages use the same QuoteNotes component",
-        "Notes input disabled until quote is saved — prompts to save first"
+        "Notes input disabled until quote is saved \u2014 prompts to save first"
       ],
       "fixed": [
-        "HubSpot note posting uses engagement notes API — appears in deal timeline, not just deal properties"
+        "HubSpot note posting uses engagement notes API \u2014 appears in deal timeline, not just deal properties"
       ]
     }
   },
@@ -1236,19 +1157,19 @@
       "new": [
         "Voice Quote module with three quote types: Hosted Seats (per user), Hybrid Hosting (BYOPBX), SIP Trunking Only",
         "Hosted Seats: Pro and Enterprise license tiers (3CX Pro/Enterprise), billable seat pricing, non-billable devices at $0 for full transparency",
-        "Hybrid Hosting: 3CX license tiers (Pro/Enterprise × 8/16/24 paths), AWS hosting, optional enhanced VM instance, Managed IT clients billed hosting-only",
+        "Hybrid Hosting: 3CX license tiers (Pro/Enterprise \u00d7 8/16/24 paths), AWS hosting, optional enhanced VM instance, Managed IT clients billed hosting-only",
         "SIP Trunking: flat $19.95/concurrent call path",
         "Crossover analysis: live comparison showing when hybrid hosting is cheaper than per-seat pricing",
         "Numbers & DIDs: local DIDs ($1.50 w/CNAM), SMS-enabled DIDs (+$1.25), toll-free ($5.00), E911 ($2.50 flat), number porting ($25 NRC)",
-        "International dialing policy: none / standard / full open — waiver language auto-displays for elevated access",
+        "International dialing policy: none / standard / full open \u2014 waiver language auto-displays for elevated access",
         "Virtual Fax packages: Email-Only ($9.95), Solo ($12), Team ($29), Business ($59), Infinity ($119), ATA device ($15 + $150 NRC)",
         "Call recording, SMS/MMS with 10DLC registration and campaign fees, metered per-segment rates displayed for client acknowledgment",
-        "Yealink hardware: T33G/T43U/T46U/T48U — evergreen lease or outright purchase",
+        "Yealink hardware: T33G/T43U/T46U/T48U \u2014 evergreen lease or outright purchase",
         "Hardware discount logic: 36-month = free, 24-month = 50% off option",
         "Estimated taxes card (20-30% configurable) with disclaimer language",
         "Bundle discount: Managed IT clients toggle applies configurable % off voice MRR",
-        "All 18 voice pricing settings stored in Supabase — editable in Admin → Pricing Settings",
-        "HubSpot Connect Deal modal — auto-populates client details from deal company and contact",
+        "All 18 voice pricing settings stored in Supabase \u2014 editable in Admin \u2192 Pricing Settings",
+        "HubSpot Connect Deal modal \u2014 auto-populates client details from deal company and contact",
         "Voice quotes saved with purple Voice badge in Saved Quotes list"
       ],
       "improved": [
@@ -1265,12 +1186,12 @@
     "audience": "admin",
     "categories": {
       "new": [
-        "cost_qty_driver field on products — sell price and cost price can now use different quantity bases",
+        "cost_qty_driver field on products \u2014 sell price and cost price can now use different quantity bases",
         "SaaSAlerts: sells per user, costs per user (shared mailboxes no longer inflate cost)",
-        "INKY: sells and costs per mailbox (users + shared) — bills correctly for shared mailboxes",
-        "Mobile Devices field added to People & Devices section — phones and tablets",
-        "mobile_device qty driver added — products can now be priced per mobile device",
-        "Admin → Products shows both Qty Driver (Sell) and Qty Driver (Cost) fields",
+        "INKY: sells and costs per mailbox (users + shared) \u2014 bills correctly for shared mailboxes",
+        "Mobile Devices field added to People & Devices section \u2014 phones and tablets",
+        "mobile_device qty driver added \u2014 products can now be priced per mobile device",
+        "Admin \u2192 Products shows both Qty Driver (Sell) and Qty Driver (Cost) fields",
         "Quote line items show cost basis note when sell and cost drivers differ"
       ],
       "improved": [
@@ -1287,13 +1208,13 @@
     "audience": "admin",
     "categories": {
       "new": [
-        "Market tier multiplier now applies to sell rates (WS, user, server, location, tenant, vendor) — not internal cost",
+        "Market tier multiplier now applies to sell rates (WS, user, server, location, tenant, vendor) \u2014 not internal cost",
         "Clients in smaller markets pay lower prices; FerrumIT maintains consistent margins everywhere",
         "Floor protection ($350/mo minimum) still applies regardless of market adjustment"
       ],
       "improved": [
         "Market tier label updated from '-10% labor' to '-10% pricing' throughout the app",
-        "Admin → Market Tiers field label updated to 'Pricing Multiplier' with clear description",
+        "Admin \u2192 Market Tiers field label updated to 'Pricing Multiplier' with clear description",
         "Labor line in cost model no longer shows market multiplier (it no longer applies to cost)"
       ],
       "fixed": []
@@ -1309,17 +1230,17 @@
         "Flex time per package: configurable minutes per workstation per month (0 = not included, positive = minutes, -1 = unlimited)",
         "Flex time visual card on quote output: shows total hours/month with progress bar, or 'By Request' / 'Unlimited' banners",
         "Non-rollover indicator on flex time card",
-        "Add Package button in Admin → Packages — create new tiers from scratch",
-        "Activate/Deactivate toggle on packages — disable without deleting"
+        "Add Package button in Admin \u2192 Packages \u2014 create new tiers from scratch",
+        "Activate/Deactivate toggle on packages \u2014 disable without deleting"
       ],
       "improved": [
-        "Admin → Packages table now shows location rate column",
+        "Admin \u2192 Packages table now shows location rate column",
         "Package modal title correctly shows 'New Package' vs 'Edit Package'"
       ],
       "fixed": [
-        "Product save was silently failing — now shows error messages in the modal",
+        "Product save was silently failing \u2014 now shows error messages in the modal",
         "Product edit modal clears previous errors when opening a new record",
-        "Reload Config button now shows '✓ Reloaded' confirmation feedback",
+        "Reload Config button now shows '\u2713 Reloaded' confirmation feedback",
         "Products admin calls global config reload after saving so quote builder reflects changes immediately"
       ]
     }
@@ -1331,23 +1252,23 @@
     "audience": "all",
     "categories": {
       "new": [
-        "Connect Deal modal on quote form — search open HubSpot deals by name",
+        "Connect Deal modal on quote form \u2014 search open HubSpot deals by name",
         "Selecting a deal auto-populates: client name, contact name, contact email, business address, zip code",
         "Zip code auto-extracts from company address and sets market tier automatically",
         "Stage names now show human-readable labels (e.g. 'Appointment Scheduled') not numeric IDs",
         "Closed/Lost and Closed/Won deals filtered from search results using stage label matching",
-        "Netlify Function proxy routes all HubSpot API calls server-side — CORS resolved",
-        "Admin → Integrations tab: paste HubSpot token, Test Connection button",
+        "Netlify Function proxy routes all HubSpot API calls server-side \u2014 CORS resolved",
+        "Admin \u2192 Integrations tab: paste HubSpot token, Test Connection button",
         "Deal sync button pushes updated MRR and contract value back to HubSpot deal",
         "Proposal Name, Recipient Business Name, Contact Name, Contact Email, Business Address fields added to quote form"
       ],
       "improved": [
-        "HubSpot token stored securely in Supabase — never in code or environment variables",
+        "HubSpot token stored securely in Supabase \u2014 never in code or environment variables",
         "Test Connection routes through proxy (fixed network error on direct browser call)"
       ],
       "fixed": [
         "Zip code 60124 (Elgin, IL) now correctly shows Chicago suburbs instead of Hartford, CT",
-        "Full ZIP name lookup table expanded — 300+ metro areas with correct 3-digit prefix mapping"
+        "Full ZIP name lookup table expanded \u2014 300+ metro areas with correct 3-digit prefix mapping"
       ]
     }
   },
@@ -1358,12 +1279,12 @@
     "audience": "all",
     "categories": {
       "new": [
-        "Microsoft M365 SSO login — single click, no passwords, uses existing FerrumIT accounts",
+        "Microsoft M365 SSO login \u2014 single click, no passwords, uses existing FerrumIT accounts",
         "Auto-creates Supabase profile on first login from Microsoft identity",
         "Admin panel with tabs: Products, Packages, Market Tiers, Pricing Settings, Users, Integrations",
         "Full CRUD on products: name, category, sell price, cost price, qty driver, exclusive groups",
         "Gross margin preview in product edit modal",
-        "Activate/Deactivate toggle on products — historical quotes not affected",
+        "Activate/Deactivate toggle on products \u2014 historical quotes not affected",
         "Market Tiers admin: add/edit tiers, set pricing multipliers",
         "Pricing Settings admin: edit any rate (onboarding, stack costs, burdened rate, contract discounts) without code changes",
         "Users admin: set roles (admin/user), view last login",
@@ -1377,7 +1298,7 @@
         "User avatar with initials shown in top nav"
       ],
       "fixed": [
-        "Supabase invite links pointed to localhost — fixed by updating Site URL in Supabase Auth settings"
+        "Supabase invite links pointed to localhost \u2014 fixed by updating Site URL in Supabase Auth settings"
       ]
     }
   },
@@ -1391,16 +1312,16 @@
         "Managed IT quote builder with live pricing engine",
         "Package selection: Business Essentials, Business Plus, Enterprise",
         "People & Devices inputs: users, shared mailboxes, workstations, endpoints, servers, locations, cloud tenants, vendors",
-        "Market tier selection with zip code lookup — auto-detects metro area and suggests tier",
+        "Market tier selection with zip code lookup \u2014 auto-detects metro area and suggests tier",
         "Risk & Compliance multipliers: industry risk, compliance level, complexity, coverage hours",
         "Add-on product catalog: Cloud & Email Security, Endpoint Security, Backup & Recovery, Security Awareness, SIEM & SOC, Network & Connectivity, Strategic Advisory",
-        "Exclusive group logic — selecting one INKY tier deselects others automatically",
+        "Exclusive group logic \u2014 selecting one INKY tier deselects others automatically",
         "Contract term discounts: 12mo (5%), 24mo (10%), 36mo (20%)",
         "Executive reporting flag triggers Enterprise package recommendation",
-        "Cost model: tooling cost + service hours × burdened rate = total cost with implied GM",
+        "Cost model: tooling cost + service hours \u00d7 burdened rate = total cost with implied GM",
         "Onboarding fee calculator with $500 floor",
         "Smart Pricing Table JSON export on every saved quote",
-        "All pricing data stored in Supabase — zero hardcoded rates",
+        "All pricing data stored in Supabase \u2014 zero hardcoded rates",
         "Supabase Auth with email/password, RLS policies on all tables",
         "Deployed to Netlify with GitHub auto-deploy"
       ],

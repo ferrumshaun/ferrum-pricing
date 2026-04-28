@@ -14,6 +14,7 @@ import SPTConnect     from '../components/SPTConnect';
 import RateSheetModalComp from '../components/RateSheetModal';
 import FlexTimeSelector from '../components/FlexTimeSelector';
 import { calcFlexBlock } from '../lib/flexTime';
+import { createFlexITSPTProposal, buildFlexITQuoteShape } from '../lib/smartPricingTable';
 import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
 
 // ── FlexIT fixed assumptions (from PDF) ──────────────────────────────────────
@@ -113,6 +114,7 @@ export default function FlexITQuotePage() {
     ? parseFloat(prepayOverride) || 0
     : Math.round(prepayHours * remoteRate * 100) / 100;
   const area2Applied = marketAnalysis ? isArea2(marketCity, marketState) : false;
+  const flexBlock    = (flexHours && remoteRate) ? calcFlexBlock(flexHours, remoteRate, settings) : null;
 
   // ── Rep effects ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -285,8 +287,31 @@ export default function FlexITQuotePage() {
           clientName={recipientBiz}
           quoteNumber={existingQuote?.quote_number}
           settings={settings}
+          quoteTypeLabel="On-Demand IT Support"
           onConnect={(pid) => setSptProposalId(pid)}
           onDisconnect={() => setSptProposalId(null)}
+          customCreate={async ({ sptApiKey, name }) => {
+            if (!rateSheet) {
+              throw new Error('Enter a ZIP code first to compute market-adjusted rates');
+            }
+            const quote = buildFlexITQuoteShape({
+              proposalName:     name, // honor whatever the rep entered/edited in the modal
+              recipientBiz,
+              recipientContact,
+              recipientEmail,
+              recipientAddress,
+              marketCity,
+              marketState,
+              prepayHours,
+              prepayAmount,
+              remoteRate,
+              flexHours,
+              flexBlock,
+              area2Applied,
+              quoteNumber: existingQuote?.quote_number,
+            });
+            return createFlexITSPTProposal({ quote, rateSheet, settings, sptApiKey });
+          }}
         />
 
         {/* Proposal Details */}

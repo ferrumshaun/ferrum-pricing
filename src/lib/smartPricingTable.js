@@ -1,5 +1,7 @@
-// smartPricingTable.js — SPT API client
+// smartPricingTable.js — SPT API client + payload builders
 // All calls go through the Netlify proxy to keep the API key server-side
+
+import { buildFlexITSPTPayload } from './sptFlexIT';
 
 async function sptCall(action, payload, sptApiKey) {
   const res = await fetch('/.netlify/functions/sptProxy', {
@@ -12,7 +14,7 @@ async function sptCall(action, payload, sptApiKey) {
   return data;
 }
 
-// ── Rate sheet export ─────────────────────────────────────────────────────────
+// ── Rate sheet export (generic — used by IT/Voice/Bundle/MultiSite) ───────────
 // Converts a Ferrum IQ rate sheet into SPT proposal pages format
 export function buildRateSheetSPTPayload({ rateSheet, quote, proposalName }) {
   const { meta, sections } = rateSheet;
@@ -62,7 +64,7 @@ export function buildRateSheetSPTPayload({ rateSheet, quote, proposalName }) {
   };
 }
 
-// ── Main exports ──────────────────────────────────────────────────────────────
+// ── Generic exports (used by IT/Voice/Bundle/MultiSite) ──────────────────────
 
 export async function createSPTProposal({ rateSheet, quote, proposalName, sptApiKey }) {
   const payload = buildRateSheetSPTPayload({ rateSheet, quote, proposalName });
@@ -79,4 +81,71 @@ export async function listSPTProposals({ search, sptApiKey }) {
 
 export async function linkExistingSPTProposal({ proposalId, sptApiKey }) {
   return sptCall('getProposal', { proposalId }, sptApiKey);
+}
+
+// ── FlexIT On-Demand exports ─────────────────────────────────────────────────
+// Mirrors the FlexIT — On-Demand IT Support template (RKshoc6dAEeA) — full
+// proposal with cover, billing, assumptions, market-adjusted rate card,
+// payment schedule, and acceptance terms.
+
+export { buildFlexITSPTPayload } from './sptFlexIT';
+
+/**
+ * Create a structured FlexIT On-Demand proposal in Smart Pricing Table.
+ *
+ * @param {Object}   args
+ * @param {Object}   args.quote     - FlexIT quote shape (see buildFlexITQuoteShape below)
+ * @param {Object}   args.rateSheet - Output of buildRateSheet({ analysis, settings, ... })
+ * @param {Object}   args.settings  - pricing_settings record
+ * @param {string}   args.sptApiKey - SPT API key
+ * @returns {Promise<{ id: string, url?: string, name: string, ... }>}
+ */
+export async function createFlexITSPTProposal({ quote, rateSheet, settings, sptApiKey }) {
+  const payload = buildFlexITSPTPayload({ quote, rateSheet, settings });
+  return sptCall('createProposal', payload, sptApiKey);
+}
+
+/**
+ * Adapter — converts FlexITQuotePage state into the `quote` shape that
+ * buildFlexITSPTPayload expects. Use this in FlexITQuotePage so the SPT
+ * payload tracks whatever the rep has currently entered.
+ *
+ * @param {Object} state - FlexIT quote page state (or saved-quote row)
+ * @returns {Object} normalized quote shape
+ */
+export function buildFlexITQuoteShape(state) {
+  const {
+    proposalName,
+    recipientBiz,
+    recipientContact,
+    recipientEmail,
+    recipientAddress,
+    marketCity,
+    marketState,
+    prepayHours = 2,
+    prepayAmount,
+    remoteRate,
+    flexHours,
+    flexBlock,        // optional pre-computed { blockPrice, ratePerHour } from calcFlexBlock
+    area2Applied,
+    quoteNumber,
+  } = state || {};
+
+  return {
+    proposalName,
+    clientName:    recipientBiz,
+    clientContact: recipientContact,
+    clientEmail:   recipientEmail,
+    clientAddress: recipientAddress,
+    marketCity,
+    marketState,
+    prepayHours,
+    prepayAmount,
+    remoteRate,
+    flexHours:            flexHours || 0,
+    flexBlockPrice:       flexBlock?.blockPrice  || 0,
+    flexBlockRatePerHour: flexBlock?.ratePerHour || 0,
+    area2Applied: !!area2Applied,
+    quoteNumber,
+  };
 }
