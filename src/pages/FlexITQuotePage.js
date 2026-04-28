@@ -13,6 +13,7 @@ import QuoteHistory from '../components/QuoteHistory';
 import HubSpotConnect from '../components/HubSpotConnect';
 import SPTConnect     from '../components/SPTConnect';
 import RateSheetModalComp from '../components/RateSheetModal';
+import MarketRateCard from '../components/MarketRateCard';
 import FlexTimeSelector from '../components/FlexTimeSelector';
 import { calcFlexBlock } from '../lib/flexTime';
 import { createFlexITSPTProposal, buildFlexITQuoteShape } from '../lib/smartPricingTable';
@@ -511,6 +512,25 @@ export default function FlexITQuotePage() {
               Term: Month to Month · Invoicing: Due Upon Receipt · No monthly recurring fee
             </div>
           </div>
+
+          {/* Market Rate Analysis — full card with accept / refresh / overrides */}
+          <MarketRateCard
+            quoteId={existingQuote?.id}
+            clientZip={clientZip}
+            onRatesAccepted={(rates, suggestedTier, analysis) => {
+              // When the rep accepts (or the saved rate sheet loads), MarketRateCard
+              // hands us the latest accepted rates and — when generated fresh — the
+              // full analysis. FlexIT computes its rate sheet directly off
+              // marketAnalysis, so we mirror the accepted rates back into it.
+              if (analysis) {
+                setMarketAnalysis({ ...analysis, rates: { ...analysis.rates, ...rates } });
+                if (analysis.city)  setMarketCity(analysis.city);
+                if (analysis.state) setMarketState(analysis.state);
+              } else if (rates) {
+                setMarketAnalysis(prev => prev ? { ...prev, rates: { ...prev.rates, ...rates } } : prev);
+              }
+            }}
+          />
 
           {/* Rate Card Preview */}
           <div style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:6, padding:12, marginBottom:12 }}>

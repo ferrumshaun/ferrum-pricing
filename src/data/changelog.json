@@ -1,5 +1,21 @@
 [
   {
+    "version": "3.5.5",
+    "date": "2026-04-27",
+    "summary": "FlexIT On-Demand — Market Rate Analysis card now shown on the quote (parity with IT/Voice/Bundle/Multi-Site)",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Market Rate Analysis card added to the FlexIT quote, sitting directly above the Rate Card Preview in the right column. Reps can now see the full market analysis — city, state, market tier, pricing multiplier, per-rate ratings vs Ferrum baseline, refresh button, and rate-override controls — instead of just the computed rate sheet downstream of it",
+        "Wired the card's onRatesAccepted callback to FlexIT's marketAnalysis state — accepting overrides on a FlexIT quote updates the rate sheet immediately, and reopening a saved FlexIT quote with an accepted rate sheet restores those overrides automatically (same behavior as the other quote pages)"
+      ],
+      "improved": [
+        "FlexIT now matches the layout pattern used by the four other quote types — every quote page in Ferrum IQ shows the Market Rate Analysis card, the rate sheet preview, and the documents panel in the same right-column flow"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "3.5.4",
     "date": "2026-04-27",
     "summary": "Removed legacy Area 2 / Metropolitan +30% surcharge — pricing now flows entirely from real-time market intelligence",
