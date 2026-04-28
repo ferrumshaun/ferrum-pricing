@@ -1,5 +1,29 @@
 [
   {
+    "version": "3.5.17",
+    "date": "2026-04-28",
+    "summary": "FlexIT direct-send for signature \u2014 packages quote + legal terms + signature block, sends through SignWell from the platform",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "\u270f New SignWell agreement card on FlexIT quotes (alongside SPT export and Stripe Prepayment cards). Sends a complete agreement \u2014 FlexIT order summary + Acceptance Terms / Exhibit A + signature block \u2014 directly from the platform without leaving Ferrum IQ. Replaces the manual SPT-then-SignWell workflow for FlexIT block deals",
+        "Server-side document assembly (buildSignatureDocument Netlify function) \u2014 the rep clicks Send, the function reads the live quote from Supabase plus the live legal HTML from pricing_settings, and that's exactly what gets uploaded to SignWell. Reps cannot tamper with document content from the browser",
+        "Send for Signature modal with two-pane layout: form on the left, live HTML preview on the right. Reps see exactly what the client will see before sending. \"Print to PDF\" button opens the rendered HTML in a new tab for download or PDF export",
+        "Per-document countersignature toggle with rule-based default \u2014 above the legal_countersign_threshold (default $5,000), countersign defaults ON; below, OFF. Rep can override either way. Reason for the default is shown next to the checkbox so the rep knows why",
+        "New Admin \u2192 Documents tab \u2014 edit the Acceptance Terms / Exhibit A HTML directly (with live preview), set the countersignature threshold, configure the default company signer name/title/email. When agreement links change, just paste new URLs into the editor \u2014 no deploy needed",
+        "Live status polling \u2014 the SignatureCard polls SignWell every 15s while a document is pending and updates the card in place when the client signs. Manual refresh and reminder buttons are also available",
+        "Quote-status gating \u2014 Send for Signature is disabled until the quote is in 'approved' status. Aligns with the existing review workflow: small deals can be self-approved by the rep, large deals go through Send for Review first",
+        "Test mode toggle in the modal \u2014 SignWell will mark the document as test (no real signature collected) for end-to-end verification before going live with a client"
+      ],
+      "improved": [
+        "Document tracking uses the existing quotes.inputs.signwellDocuments JSONB array pattern (matches LOA and IntlDialingWaiver) \u2014 no new tables, consistent shape across all signature document types"
+      ],
+      "coming_soon": [
+        "v3.5.18: SignWell webhook handler will fire automatically when the client signs \u2014 generates the Stripe payment link, emails the client, posts a HubSpot deal note, and updates the deal stage. Service desk and finance won't need to touch Stripe to close a FlexIT deal. The pricing_settings keys (flexit_auto_payment_after_sign, hubspot_stage_awaiting_payment, hubspot_stage_closed_won) are seeded now so admin can pre-configure them"
+      ]
+    }
+  },
+  {
     "version": "3.5.16",
     "date": "2026-04-28",
     "summary": "Stripe Integration card finally appears in Admin \u2192 Integrations (was wired into orphan file)",

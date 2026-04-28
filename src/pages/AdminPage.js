@@ -4,7 +4,7 @@ import { BASE_RATES, RATE_LABELS, RATE_UNITS, getRating, isStale, getOrAnalyzeMa
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 
-const TABS = ['IT & Security Products', 'Managed IT Packages', 'Market Tiers', 'Pricing Settings', 'Voice Hardware', 'Voice Fax Packages', 'Users', 'Integrations'];
+const TABS = ['IT & Security Products', 'Managed IT Packages', 'Market Tiers', 'Pricing Settings', 'Voice Hardware', 'Voice Fax Packages', 'Users', 'Documents', 'Integrations'];
 
 const QTY_DRIVERS = ['user','mailbox','workstation','location','server','flat','mixed','mobile_device','manual'];
 // Product categories are stored in pricing_settings key 'product_categories'
@@ -49,6 +49,7 @@ export default function AdminPage() {
         {tab === 'Voice Fax Packages'&& <VoiceFaxPackagesAdmin />}
         {tab === 'Pricing Settings' && <SettingsAdmin />}
         {tab === 'Users'            && <UsersAdmin />}
+        {tab === 'Documents'        && <DocumentsAdmin />}
         {tab === 'Integrations'     && <IntegrationsAdmin />}
       </div>
     </div>
@@ -817,6 +818,164 @@ function diffObjects(oldObj, newObj) {
       changes[key] = { from: oldObj[key], to: newObj[key] };
   }
   return changes;
+}
+
+// ─── DOCUMENTS ADMIN ─────────────────────────────────────────────────────────
+// Manages the editable HTML for the Acceptance Terms / legal page that gets
+// prepended to every signature document, plus the countersign threshold and
+// default company signer info.
+function DocumentsAdmin() {
+  const [legalHtml,      setLegalHtml]      = useState('');
+  const [threshold,      setThreshold]      = useState('5000');
+  const [signerName,     setSignerName]     = useState('');
+  const [signerTitle,    setSignerTitle]    = useState('');
+  const [signerEmail,    setSignerEmail]    = useState('');
+  const [showPreview,    setShowPreview]    = useState(false);
+  const [loading,        setLoading]        = useState(true);
+  const [saving,         setSaving]         = useState(false);
+  const [saved,          setSaved]          = useState(false);
+  const [saveErr,        setSaveErr]        = useState('');
+  const { profile }                         = useAuth();
+
+  useEffect(() => {
+    Promise.all([
+      supabase.from('pricing_settings').select('value').eq('key', 'legal_acceptance_terms_html').single(),
+      supabase.from('pricing_settings').select('value').eq('key', 'legal_countersign_threshold').single(),
+      supabase.from('pricing_settings').select('value').eq('key', 'legal_default_company_signer_name').single(),
+      supabase.from('pricing_settings').select('value').eq('key', 'legal_default_company_signer_title').single(),
+      supabase.from('pricing_settings').select('value').eq('key', 'legal_default_company_signer_email').single(),
+    ]).then(([html, thr, n, t, e]) => {
+      if (html.data?.value !== undefined) setLegalHtml(html.data.value || '');
+      if (thr.data?.value)  setThreshold(thr.data.value);
+      if (n.data?.value)    setSignerName(n.data.value);
+      if (t.data?.value)    setSignerTitle(t.data.value);
+      if (e.data?.value)    setSignerEmail(e.data.value);
+      setLoading(false);
+    });
+  }, []);
+
+  async function save() {
+    setSaving(true); setSaveErr(''); setSaved(false);
+    try {
+      await Promise.all([
+        supabase.from('pricing_settings').upsert({ key: 'legal_acceptance_terms_html',          value: legalHtml,    description: 'Editable HTML for the Acceptance Terms / Exhibit A page that prepends every signature document.' }, { onConflict: 'key' }),
+        supabase.from('pricing_settings').upsert({ key: 'legal_countersign_threshold',          value: threshold,    description: 'Dollar threshold at or above which the company countersignature checkbox defaults ON.' }, { onConflict: 'key' }),
+        supabase.from('pricing_settings').upsert({ key: 'legal_default_company_signer_name',    value: signerName,   description: 'Default name for the company countersignature block.' }, { onConflict: 'key' }),
+        supabase.from('pricing_settings').upsert({ key: 'legal_default_company_signer_title',   value: signerTitle,  description: 'Default title for the company countersignature block.' }, { onConflict: 'key' }),
+        supabase.from('pricing_settings').upsert({ key: 'legal_default_company_signer_email',   value: signerEmail,  description: 'Default email for the company countersignature recipient.' }, { onConflict: 'key' }),
+      ]);
+      await logActivity({ action: 'UPDATE', entityType: 'setting', entityId: null, entityName: 'documents_legal_terms', changes: { html_length: legalHtml.length, threshold } });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) { setSaveErr(e.message); }
+    setSaving(false);
+  }
+
+  if (loading) return <div style={{ padding: 20, color: '#6b7280', fontSize: 12 }}>Loading…</div>;
+
+  return (
+    <div style={{ maxWidth: 900 }}>
+      <div style={{ marginBottom: 16 }}>
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: '#0f1e3c', margin: 0 }}>Documents — Legal & Signature Defaults</h2>
+        <p style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+          Manage the Acceptance Terms / Exhibit A page that's prepended to every signature document, plus countersignature defaults.
+          Changes apply to all future documents — already-sent documents are not retroactively updated.
+        </p>
+      </div>
+
+      {/* Legal HTML */}
+      <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 18, marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0f1e3c' }}>Acceptance Terms (HTML)</div>
+            <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>
+              Edit the legal page below. HTML is supported (links, lists, headings).
+              When agreement links change, update the URLs here — no deploy needed.
+            </div>
+          </div>
+          <button onClick={() => setShowPreview(s => !s)}
+            style={{ padding: '6px 12px', background: showPreview ? '#0f1e3c' : 'white', color: showPreview ? 'white' : '#374151', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+            {showPreview ? 'Hide Preview' : 'Show Preview'}
+          </button>
+        </div>
+
+        <textarea
+          value={legalHtml}
+          onChange={e => setLegalHtml(e.target.value)}
+          rows={showPreview ? 12 : 22}
+          style={{
+            width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 5,
+            fontSize: 11, fontFamily: 'DM Mono, monospace', outline: 'none', boxSizing: 'border-box',
+            lineHeight: 1.5,
+          }}
+        />
+
+        {showPreview && (
+          <div style={{ marginTop: 10, border: '1px solid #e5e7eb', borderRadius: 5, padding: 14, background: '#f8fafc', maxHeight: 400, overflow: 'auto' }}>
+            <div style={{ fontSize: 9, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8, fontWeight: 600 }}>Live Preview</div>
+            <div style={{ background: 'white', padding: 16, borderRadius: 4, fontFamily: 'Helvetica Neue, Arial, sans-serif' }}
+              dangerouslySetInnerHTML={{ __html: legalHtml }} />
+          </div>
+        )}
+      </div>
+
+      {/* Countersign defaults */}
+      <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 18, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f1e3c', marginBottom: 4 }}>Countersignature Rule</div>
+        <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 12 }}>
+          When a quote's upfront amount is at or above this threshold, the company countersignature checkbox defaults ON in the Send for Signature modal.
+          Reps can override either way per document.
+        </div>
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+          Threshold (USD)
+        </label>
+        <input
+          type="number"
+          min="0"
+          value={threshold}
+          onChange={e => setThreshold(e.target.value)}
+          style={{ width: 200, padding: '7px 9px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, outline: 'none', fontFamily: 'DM Mono, monospace' }}
+        />
+        <div style={{ fontSize: 9, color: '#9ca3af', marginTop: 4 }}>
+          Default: $5,000. FlexIT block sizes range from a few hundred (3-hour block) to several thousand (50+ hour block).
+        </div>
+      </div>
+
+      {/* Company signer */}
+      <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 18, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f1e3c', marginBottom: 4 }}>Default Company Signer</div>
+        <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 12 }}>
+          When countersignature is required, SignWell sends the second signature request to this person.
+          The name and title appear in the signature block; the email determines where the request is sent.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Full Name</label>
+            <input value={signerName} onChange={e => setSignerName(e.target.value)} placeholder="Shaun Lang"
+              style={{ width: '100%', padding: '7px 9px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Title</label>
+            <input value={signerTitle} onChange={e => setSignerTitle(e.target.value)} placeholder="CEO"
+              style={{ width: '100%', padding: '7px 9px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
+          </div>
+        </div>
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginTop: 12, marginBottom: 4 }}>Email (where SignWell sends countersignature requests)</label>
+        <input value={signerEmail} onChange={e => setSignerEmail(e.target.value)} type="email" placeholder="signer@ferrumit.com"
+          style={{ width: '100%', padding: '7px 9px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, outline: 'none', boxSizing: 'border-box', fontFamily: 'DM Mono, monospace' }} />
+      </div>
+
+      {/* Save */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button onClick={save} disabled={saving}
+          style={{ padding: '8px 22px', background: '#0f1e3c', color: 'white', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+          {saving ? 'Saving…' : 'Save Document Settings'}
+        </button>
+        {saved && <span style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>✓ Saved</span>}
+        {saveErr && <span style={{ fontSize: 11, color: '#dc2626', fontWeight: 600 }}>✗ {saveErr}</span>}
+      </div>
+    </div>
+  );
 }
 
 // ─── INTEGRATIONS ADMIN ───────────────────────────────────────────────────────
