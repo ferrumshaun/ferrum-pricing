@@ -1,5 +1,20 @@
 [
   {
+    "version": "3.5.11",
+    "date": "2026-04-27",
+    "summary": "FlexIT Payment Schedule document now mirrors the on-screen Flex-Block-vs-Prepayment logic",
+    "audience": "all",
+    "categories": {
+      "new": [],
+      "improved": [
+        "FlexIT Payment Schedule & Terms modal — when a flex block is selected, the payment table renders a single '#1 — Flex Block — Nhrs Pre-Purchased' row with the block price and 'Upon Agreement Signing — Block valid 12 months · refillable at this rate' due-date copy. When no flex block is selected, the row remains '#1 — Initial Prepayment' with the prepay amount, identical to the previous behavior. Same logic that v3.5.7 introduced on the on-screen Billing Summary, now reflected in the document the rep sends to the client",
+        "FlexIT Payment Schedule — the 'Setup Services Fee' section now becomes 'Flex Block Pre-Purchase' when applicable, with body copy describing the block as the engagement's initial commitment, its 12-month validity, and the 30-day rate-lock refill policy. Previously the Setup Services Fee paragraph still read 'A one-time setup, configuration, and installation fee of $X is due at the start...' on flex-block quotes — describing the prepay even when no prepay applied",
+        "Internal — flexHours, flexBlockPrice, and hasFlexBlock are now plumbed end-to-end from the FlexIT page state through FlexITDocumentsPanel into FlexITPaymentModal as explicit props. Previously the modal only knew about prepayAmount and was structurally unable to render the flex-block path"
+      ],
+      "fixed": []
+    }
+  },
+  {
     "version": "3.5.10",
     "date": "2026-04-27",
     "summary": "HubSpot deal links now derive from deal id when the explicit URL is missing — fixes 'View Deal' looping back to the quote",

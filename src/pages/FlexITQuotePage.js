@@ -203,7 +203,20 @@ export default function FlexITQuotePage() {
       setPrepayOverride(data.inputs?.prepayOverride || '');
       setNotes(data.inputs?.notes || '');
       setHubDealId(data.hubspot_deal_id || '');
-      setHubDealUrl(data.hubspot_deal_url || '');
+      // Backwards-compatibility for FlexIT quotes saved before v3.5.10:
+      // the previous onConnect handler pulled the URL from full.deal.dealurl
+      // (wrong path) which was always undefined → persisted as null. If we
+      // have a deal_id but no URL, derive the URL using the same portal-ID
+      // fallback pattern that createDeal() in lib/hubspot.js uses. This
+      // self-heals old quotes without forcing reps to reconnect manually —
+      // and on next save, the persisted URL becomes the right value.
+      if (data.hubspot_deal_url) {
+        setHubDealUrl(data.hubspot_deal_url);
+      } else if (data.hubspot_deal_id) {
+        setHubDealUrl(`https://app.hubspot.com/contacts/47514592/record/0-3/${data.hubspot_deal_id}`);
+      } else {
+        setHubDealUrl('');
+      }
       setHubDealName(data.inputs?.hubspotDealName || '');
       setHubDescription(data.inputs?.hubDescription || '');
       if (data.rep_id) setRepId(data.rep_id);
@@ -304,7 +317,7 @@ export default function FlexITQuotePage() {
           existingQuoteId={existingQuote?.id} clientName={recipientBiz}
           onConnect={full => {
             setHubDealId(full.dealId);
-            setHubDealUrl(full.deal.dealurl || '');
+            setHubDealUrl(full.dealUrl || '');
             setHubDealName(full.deal.dealname || '');
             // Company → recipient business name + address + ZIP-driven market analysis
             if (full.company) {
@@ -627,6 +640,9 @@ export default function FlexITQuotePage() {
             onSPTLinked={(pid) => setSptProposalId(pid)}
             prepayAmount={prepayAmount}
             remoteRate={remoteRate}
+            flexHours={flexHours}
+            flexBlockPrice={flexBlock?.blockPrice || 0}
+            hasFlexBlock={hasFlexBlock}
           />
 
           {/* Quote Notes */}
@@ -648,7 +664,7 @@ export default function FlexITQuotePage() {
 // ── FlexIT Documents Panel — Rate Sheet only ──────────────────────────────────
 // FlexIT has fixed standard assumptions (shown inline) and no monthly payment schedule.
 // Only the Rate Sheet needs to be managed here for SPT export.
-function FlexITDocumentsPanel({ analysis, settings, clientName, recipientContact, quoteId, quoteNumber, sptProposalId, onSPTLinked, prepayAmount, remoteRate }) {
+function FlexITDocumentsPanel({ analysis, settings, clientName, recipientContact, quoteId, quoteNumber, sptProposalId, onSPTLinked, prepayAmount, remoteRate, flexHours, flexBlockPrice, hasFlexBlock }) {
   const [showRateSheet, setShowRateSheet] = React.useState(false);
   const [showPayment,   setShowPayment]   = React.useState(false);
   return (
@@ -690,7 +706,7 @@ function FlexITDocumentsPanel({ analysis, settings, clientName, recipientContact
 
       {showPayment && React.createElement(
         FlexITPaymentModal,
-        { onClose: () => setShowPayment(false), prepayAmount, remoteRate, clientName, settings }
+        { onClose: () => setShowPayment(false), prepayAmount, remoteRate, clientName, settings, flexHours, flexBlockPrice, hasFlexBlock }
       )}
 
       {showRateSheet && React.createElement(
@@ -711,10 +727,20 @@ function FlexITDocumentsPanel({ analysis, settings, clientName, recipientContact
 
 
 // ── FlexIT Payment Schedule Modal ─────────────────────────────────────────────
-function FlexITPaymentModal({ onClose, prepayAmount, remoteRate, clientName, settings }) {
+function FlexITPaymentModal({ onClose, prepayAmount, remoteRate, clientName, settings, flexHours, flexBlockPrice, hasFlexBlock }) {
   const fmt2 = n => n != null ? `$${Number(n).toFixed(2)}` : '—';
   const checkFee   = parseFloat(settings?.payment_check_fee    || 10);
   const ccSurcharge= parseFloat(settings?.payment_cc_surcharge || 0.02);
+
+  // Match the on-screen Billing Summary logic: when a flex block is selected
+  // it IS the upfront — the modal shows a single "Flex Block" row instead of
+  // a separate Initial Prepayment row. The Setup Services Fee paragraph below
+  // also reflects whichever fee actually applies.
+  const upfrontLabel  = hasFlexBlock ? `#1 — Flex Block — ${flexHours}hrs Pre-Purchased` : '#1 — Initial Prepayment';
+  const upfrontAmount = hasFlexBlock ? flexBlockPrice : prepayAmount;
+  const upfrontDue    = hasFlexBlock
+    ? 'Upon Agreement Signing — Block valid 12 months · refillable at this rate'
+    : 'Upon Agreement Signing';
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', display:'flex', alignItems:'stretch', justifyContent:'flex-end', zIndex:600 }}>
@@ -748,12 +774,12 @@ function FlexITPaymentModal({ onClose, prepayAmount, remoteRate, clientName, set
                 </tr>
               </thead>
               <tbody>
-                <tr style={{ background: prepayAmount > 0 ? '#fffbeb' : 'white', borderBottom:'1px solid #e5e7eb' }}>
-                  <td style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:'#374151' }}>#1 — Initial Prepayment</td>
+                <tr style={{ background: upfrontAmount > 0 ? '#fffbeb' : 'white', borderBottom:'1px solid #e5e7eb' }}>
+                  <td style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color: hasFlexBlock ? '#c2410c' : '#374151' }}>{upfrontLabel}</td>
                   <td style={{ padding:'10px 12px', fontSize:12, fontFamily:'DM Mono, monospace', fontWeight:700, color:'#c2410c' }}>
-                    {prepayAmount > 0 ? fmt2(prepayAmount) : '$0.00'}
+                    {upfrontAmount > 0 ? fmt2(upfrontAmount) : '$0.00'}
                   </td>
-                  <td style={{ padding:'10px 12px', fontSize:11, color:'#6b7280' }}>Upon Agreement Signing</td>
+                  <td style={{ padding:'10px 12px', fontSize:11, color:'#6b7280' }}>{upfrontDue}</td>
                 </tr>
               </tbody>
             </table>
@@ -797,9 +823,15 @@ function FlexITPaymentModal({ onClose, prepayAmount, remoteRate, clientName, set
             <a href="mailto:billing@ferrumit.com" style={{ color:'#2563eb' }}>billing@ferrumit.com</a> prior to invoicing.
           </SubSec>
 
-          <SectionHeader title="Setup Services Fee" />
+          <SectionHeader title={hasFlexBlock ? 'Flex Block Pre-Purchase' : 'Setup Services Fee'} />
           <div style={{ fontSize:11, color:'#374151', lineHeight:1.7, marginBottom:14 }}>
-            A one-time setup, configuration, and installation fee{prepayAmount > 0 ? ` of ${fmt2(prepayAmount)}` : ''} is due at the start of the agreement and will be billed as specified in this Quote.
+            {hasFlexBlock
+              ? <>
+                  This engagement is initiated with the <strong>{flexHours}-hour Flex Block pre-purchase</strong> ({fmt2(flexBlockPrice)}) listed above. The block fee is paid in full upon agreement signing and serves as the engagement's initial commitment — no separate hourly pre-payment is required. Time on engagements is drawn from the block first; once the block is exhausted, additional time is billed at the published rates per the Rate Card. The block is valid for 12 months from the purchase date and may be refilled at the original agreed-upon rate within 30 days of depletion or expiration.
+                </>
+              : <>
+                  A one-time setup, configuration, and installation fee{prepayAmount > 0 ? ` of ${fmt2(prepayAmount)}` : ''} is due at the start of the agreement and will be billed as specified in this Quote.
+                </>}
           </div>
 
           <SectionHeader title="Declined or Returned Payments" />
