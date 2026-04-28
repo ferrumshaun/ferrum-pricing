@@ -17,6 +17,7 @@ import LOAModal               from '../components/LOAModal';
 import PortReadinessCard      from '../components/PortReadinessCard';
 import OnboardingIncentive    from '../components/OnboardingIncentive';
 import RateSheetModalComp     from '../components/RateSheetModal';
+import StripePaymentCard      from '../components/StripePaymentCard';
 import HubSpotConnect from '../components/HubSpotConnect';
 import SPTConnect    from '../components/SPTConnect';
 import MarketRateCard from '../components/MarketRateCard';
@@ -1274,6 +1275,20 @@ export default function VoiceQuotePage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Stripe prepayment card — Voice prepay = total NRC (hardware, activation, porting) */}
+                  {result?.nrc > 0 && (
+                    <StripePaymentCard
+                      quoteId={existingQuote?.id}
+                      quoteType="voice"
+                      quoteNumber={existingQuote?.quote_number}
+                      clientName={recipientBiz}
+                      clientEmail={recipientEmail}
+                      recipientContact={recipientContact}
+                      prepayAmount={result.nrc}
+                      hubspotDealId={hubDealId}
+                    />
+                  )}
 
                   {showRateSheet && (
                     <RateSheetModalComp

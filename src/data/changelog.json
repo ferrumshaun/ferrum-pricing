@@ -1,5 +1,30 @@
 [
   {
+    "version": "3.5.13",
+    "date": "2026-04-27",
+    "summary": "Stripe integration \u2014 collect Payment #1 prepayments by credit card with hosted Checkout",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "\ud83d\udcb3 Stripe Prepayment card on every quote type (IT, Multi-Site, Bundle, FlexIT, Voice) \u2014 appears whenever the quote has a prepayment amount. Generate a hosted Stripe Checkout link, email it to the client, track status live",
+        "Card-only collection: Stripe handles credit cards exclusively. ACH/EFT remains free and external \u2014 clients pay via ferrumit.com/billing for no surcharge. Email template makes both options clear to the client",
+        "2% card processing fee shown as a separate line item on Stripe Checkout (labeled 'Card processing convenience fee') \u2014 transparent to the client, compliant with state-by-state surcharge rules. Rate is pulled from pricing_settings.payment_cc_surcharge so admin can adjust without a deploy",
+        "Hosted Stripe Checkout page (no card data ever touches Ferrum IQ) \u2014 PCI scope minimized to SAQ A. Statement descriptor configurable in Admin",
+        "Branded public receipt page at /pay/:sessionId \u2014 client lands here after paying, sees confirmation, payment details, and reference number. No login required",
+        "Live status sync \u2014 the StripePaymentCard polls Stripe every 8s while pending, updates instantly when payment lands. Webhook is the source of truth, polling is a UX sweetener",
+        "stripeWebhook Netlify function with HMAC-SHA256 signature verification (no SDK needed) \u2014 handles checkout.session.completed, expired, payment_intent.payment_failed, charge.refunded",
+        "stripeProxy Netlify function keeps the secret key server-side \u2014 mirrors the established signwellProxy / sptProxy / hubspot pattern",
+        "Admin \u2192 Integrations \u2192 Stripe: paste secret key, publishable key, webhook signing secret, statement descriptor; Test/Live mode auto-detected from key prefix; Test Connection button verifies API responds",
+        "Resend email, Copy link, Preview, and Cancel link buttons on every pending payment \u2014 reps have full control over the link lifecycle",
+        "Generate-new-link flow when a session expires (24h Stripe limit) \u2014 reuses the same payment row, increments resend_count for audit",
+        "stripe_payments table tracks every session: face amount, surcharge, total charged, mode (test/live), status, expiry, paid_at, payment_intent_id, charge_id, invoice_id, email send history, failure reasons, refund trail"
+      ],
+      "improved": [
+        "Payment Schedule Modal language and the Stripe Checkout description stay in lockstep \u2014 both pull from payment_cc_surcharge so the price the client sees on the quote matches exactly what Stripe charges"
+      ]
+    }
+  },
+  {
     "version": "3.5.12",
     "date": "2026-04-27",
     "summary": "SPT Create on FlexIT now actually generates the structured FlexIT proposal — fixes 'No proposal ID returned' error",

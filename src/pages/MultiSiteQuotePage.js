@@ -1020,6 +1020,10 @@ export default function MultiSiteQuotePage() {
               complianceKey={complianceKey}
               result={{ finalMRR, onboarding }}
               obIncentive={obIncentive}
+              quoteType="multi-site-managed-it"
+              clientEmail={recipientEmail}
+              prepayAmount={onboarding || 0}
+              hubspotDealId={hubDealId}
             />
 
             {/* Quote Notes */}

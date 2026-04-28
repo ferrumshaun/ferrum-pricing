@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import PortalUploadPage from './pages/PortalUploadPage';
+import PaymentReceiptPage from './pages/PaymentReceiptPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ConfigProvider } from './contexts/ConfigContext';
 import LoginPage     from './pages/LoginPage';
@@ -33,6 +34,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/portal/upload/:token" element={<PortalUploadPage />} />
+      <Route path="/pay/:sessionId" element={<PaymentReceiptPage />} />
       <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
         <Route index           element={<QuotePage />} />
         <Route path="quotes"      element={<QuotesPage />} />

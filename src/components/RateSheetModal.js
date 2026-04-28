@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { buildRateSheet, fmtRate } from '../lib/rateSheet';
 import { supabase } from '../lib/supabase';
 import { createSPTProposal } from '../lib/smartPricingTable';
+import StripePaymentCard from './StripePaymentCard';
 
 // ── Section colors ────────────────────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -171,6 +172,11 @@ export function DocumentsPanel({
   inputs, pkg, products, complianceKey,
   // Payment schedule props
   result, obIncentive,
+  // Stripe prepayment props
+  quoteType,           // 'managed-it' | 'multi-site-managed-it' | 'bundle' | 'flex' | 'voice'
+  clientEmail,
+  prepayAmount,        // dollars — pulled from result.onboarding or equivalent
+  hubspotDealId,
 }) {
   const [showRateSheet,    setShowRateSheet]    = useState(false);
   const [showAssumptions,  setShowAssumptions]  = useState(false);
@@ -244,6 +250,20 @@ export function DocumentsPanel({
           ))}
         </div>
       </div>
+
+      {/* Stripe prepayment card — only shows when the quote has a prepayment */}
+      {prepayAmount > 0 && (
+        <StripePaymentCard
+          quoteId={quoteId}
+          quoteType={quoteType || 'managed-it'}
+          quoteNumber={quoteNumber}
+          clientName={clientName}
+          clientEmail={clientEmail}
+          recipientContact={recipientContact}
+          prepayAmount={prepayAmount}
+          hubspotDealId={hubspotDealId}
+        />
+      )}
 
       {showRateSheet && (
         <RateSheetModal

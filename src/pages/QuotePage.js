@@ -1221,6 +1221,10 @@ export default function QuotePage() {
                     complianceKey={complianceKey}
                     result={result}
                     obIncentive={obIncentive}
+                    quoteType="managed-it"
+                    clientEmail={recipientEmail}
+                    prepayAmount={result?.onboarding || 0}
+                    hubspotDealId={hubDealId}
                   />
 
                   {/* Quote Notes Log */}

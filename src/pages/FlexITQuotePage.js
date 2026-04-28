@@ -13,6 +13,7 @@ import QuoteHistory from '../components/QuoteHistory';
 import HubSpotConnect from '../components/HubSpotConnect';
 import SPTConnect     from '../components/SPTConnect';
 import RateSheetModalComp from '../components/RateSheetModal';
+import StripePaymentCard from '../components/StripePaymentCard';
 import MarketRateCard from '../components/MarketRateCard';
 import FlexTimeSelector from '../components/FlexTimeSelector';
 import { calcFlexBlock } from '../lib/flexTime';
@@ -643,6 +644,8 @@ export default function FlexITQuotePage() {
             flexHours={flexHours}
             flexBlockPrice={flexBlock?.blockPrice || 0}
             hasFlexBlock={hasFlexBlock}
+            clientEmail={recipientEmail}
+            hubspotDealId={hubDealId}
           />
 
           {/* Quote Notes */}
@@ -664,9 +667,11 @@ export default function FlexITQuotePage() {
 // ── FlexIT Documents Panel — Rate Sheet only ──────────────────────────────────
 // FlexIT has fixed standard assumptions (shown inline) and no monthly payment schedule.
 // Only the Rate Sheet needs to be managed here for SPT export.
-function FlexITDocumentsPanel({ analysis, settings, clientName, recipientContact, quoteId, quoteNumber, sptProposalId, onSPTLinked, prepayAmount, remoteRate, flexHours, flexBlockPrice, hasFlexBlock }) {
+function FlexITDocumentsPanel({ analysis, settings, clientName, recipientContact, quoteId, quoteNumber, sptProposalId, onSPTLinked, prepayAmount, remoteRate, flexHours, flexBlockPrice, hasFlexBlock, clientEmail, hubspotDealId }) {
   const [showRateSheet, setShowRateSheet] = React.useState(false);
   const [showPayment,   setShowPayment]   = React.useState(false);
+  // Stripe Payment #1 amount: flex block price when flex mode, else prepayment
+  const stripeAmount = hasFlexBlock ? (flexBlockPrice || 0) : (prepayAmount || 0);
   return (
     <>
       <div style={{ background:'white', border:'1px solid #e5e7eb', borderRadius:6, padding:'10px 12px', marginBottom:10 }}>
@@ -703,6 +708,20 @@ function FlexITDocumentsPanel({ analysis, settings, clientName, recipientContact
           </button>
         </div>
       </div>
+
+      {/* Stripe prepayment card — flex block price when flex mode, else prepayment amount */}
+      {stripeAmount > 0 && (
+        <StripePaymentCard
+          quoteId={quoteId}
+          quoteType="flex"
+          quoteNumber={quoteNumber}
+          clientName={clientName}
+          clientEmail={clientEmail}
+          recipientContact={recipientContact}
+          prepayAmount={stripeAmount}
+          hubspotDealId={hubspotDealId}
+        />
+      )}
 
       {showPayment && React.createElement(
         FlexITPaymentModal,

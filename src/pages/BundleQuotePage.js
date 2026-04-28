@@ -1040,6 +1040,10 @@ export default function BundleQuotePage() {
                 complianceKey={itInputs?.compliance === 'moderate' ? ['hipaa','soc2'] : itInputs?.compliance === 'high' ? ['pci','cmmc'] : []}
                 result={itResult ? { finalMRR: bundle?.finalMRR || 0, onboarding: itResult.onboarding + (voiceResultFinal?.nrc || 0) } : null}
                 obIncentive={obIncentive}
+                quoteType="bundle"
+                clientEmail={recipientEmail}
+                prepayAmount={itResult ? itResult.onboarding + (voiceResultFinal?.nrc || 0) : 0}
+                hubspotDealId={hubDealId}
               />
 
               {/* Quote Notes */}
