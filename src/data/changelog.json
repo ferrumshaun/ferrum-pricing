@@ -1,5 +1,21 @@
 [
   {
+    "version": "3.5.19",
+    "date": "2026-04-28",
+    "summary": "Soft gate on manual Stripe payment send \u2014 prevents accidentally collecting payment before contract is signed",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Soft gate on the Stripe Prepayment card's manual 'Generate & Send Payment Link' button. When a SignWell agreement is in flight (sent or viewed but not yet signed), an inline banner appears: 'Auto-payment is armed \u2014 when the client signs, a Stripe payment link will be sent automatically'. If the rep clicks Generate anyway, a confirmation modal explains the risk (client may pay before legally accepting the contract) and offers two paths: 'Wait for Signature' or 'Send Anyway'",
+        "Gating logic is universal across quote types \u2014 IT, Voice, Bundle, MultiSite, and FlexIT. Today only FlexIT has SignWell wired, so the other quote types behave as before (no signature found = no gate). Architecture is forward-compatible: when SignWell is rolled out to other quote types, the gate activates automatically with no further code change",
+        "Quote types tracked: flexit_quote, managed-it_quote, voice_quote, bundle_quote, multi-site-managed-it_quote. Auxiliary signature documents (LOA, International Dialing Waiver) do NOT trigger the gate \u2014 those are not the primary contract"
+      ],
+      "improved": [
+        "Reps now have visibility into the contract state from the Stripe card itself, not just the Signature card. Reduces context-switching when working a quote that's mid-flight"
+      ]
+    }
+  },
+  {
     "version": "3.5.18",
     "date": "2026-04-28",
     "summary": "FlexIT auto-payment trigger \u2014 client signs the contract, Stripe payment link fires automatically, no manual touchpoint",

@@ -31,19 +31,41 @@ export default function StripePaymentCard({
   const [emailOverride, setEmail]  = useState(clientEmail || '');
   const [customMessage, setCustom] = useState('');
   const [surchargePct, setSPct]    = useState(0.02);
+  // Soft gate: track whether the quote has a SignWell document and its state.
+  // Prevents accidental "send payment before contract" when a signature flow exists.
+  const [sigGate, setSigGate]      = useState({ hasDoc: false, state: 'none' }); // state: 'none' | 'pending' | 'signed' | 'failed'
+  const [showGateConfirm, setShowGateConfirm] = useState(false);
 
-  // Load latest payment + surcharge rate
+  // Load latest payment + surcharge rate + signature gate state
   useEffect(() => {
     if (!quoteId) { setLoading(false); return; }
     let cancelled = false;
     (async () => {
-      const [p, { data: srow }] = await Promise.all([
+      const [p, { data: srow }, { data: qrow }] = await Promise.all([
         getLatestPaymentForQuote(quoteId),
         supabase.from('pricing_settings').select('value').eq('key', 'payment_cc_surcharge').single(),
+        supabase.from('quotes').select('inputs').eq('id', quoteId).maybeSingle(),
       ]);
       if (cancelled) return;
       setPayment(p);
       setSPct(parseFloat(srow?.value || '0.02'));
+
+      // Determine signature gate: find the most recent quote-type signature doc
+      // (as opposed to LOA / IntlDialingWaiver — those are auxiliary, not the main contract)
+      const docs = (qrow?.inputs?.signwellDocuments || [])
+        .filter(d => d.type === 'flexit_quote' || d.type === 'managed-it_quote' || d.type === 'voice_quote' || d.type === 'bundle_quote' || d.type === 'multi-site-managed-it_quote')
+        .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+      const latest = docs[0];
+      if (latest) {
+        const s = latest.status;
+        let gateState = 'none';
+        if (s === 'signed' || s === 'completed') gateState = 'signed';
+        else if (s === 'declined' || s === 'cancelled' || s === 'expired') gateState = 'failed';
+        else gateState = 'pending'; // sent / viewed / unknown
+        setSigGate({ hasDoc: true, state: gateState, docId: latest.id, docCreatedAt: latest.created_at });
+      } else {
+        setSigGate({ hasDoc: false, state: 'none' });
+      }
       setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -79,7 +101,22 @@ export default function StripePaymentCard({
   const pctLabel        = `${(ccSurchargePct * 100).toFixed(1).replace(/\.0$/, '')}%`;
 
   // ── Actions ──
+  // Public entry point — checks the soft gate before firing the actual generate.
+  // If a SignWell document exists and isn't yet signed, prompt the rep to confirm.
   async function generateAndSend() {
+    if (sigGate.state === 'pending') {
+      setShowGateConfirm(true);
+      return;
+    }
+    return doGenerateAndSend();
+  }
+
+  async function confirmAndProceed() {
+    setShowGateConfirm(false);
+    return doGenerateAndSend();
+  }
+
+  async function doGenerateAndSend() {
     setBusy(true); setMsg('');
     try {
       const isResend = payment && (payment.status === 'expired' || payment.status === 'failed' || payment.status === 'cancelled');
@@ -318,6 +355,18 @@ export default function StripePaymentCard({
       {/* Initial state — no payment yet */}
       {!payment && (
         <div style={{ padding: '10px 12px' }}>
+          {/* Soft-gate inline banner — shows the rep that auto-payment is coming */}
+          {sigGate.state === 'pending' && (
+            <div style={{
+              padding: '8px 10px', background: '#fffbeb', border: '1px solid #fde68a',
+              borderRadius: 4, marginBottom: 8, fontSize: 10, lineHeight: 1.6, color: '#78350f',
+            }}>
+              <div style={{ fontWeight: 700, color: '#92400e', marginBottom: 2 }}>
+                ⚡ Auto-payment is armed
+              </div>
+              Agreement is awaiting client signature. When they sign, a Stripe payment link will be sent automatically — no manual action needed.
+            </div>
+          )}
           {!showSendForm ? (
             <button onClick={() => setShow(true)} disabled={busy} style={{ ...btnPrimary, width: '100%', padding: '8px 14px' }}>
               💳 Generate &amp; Send Payment Link
@@ -357,6 +406,70 @@ export default function StripePaymentCard({
           borderTop: '1px solid #e5e7eb',
         }}>
           {msg}
+        </div>
+      )}
+
+      {/* Soft-gate confirmation modal — shown when rep tries to manually send a
+          payment link while a SignWell document is in flight (sent / viewed but
+          not yet signed). Default flow: client signs → auto-payment fires.
+          The rep can override if they have a reason (e.g., signature flow stuck,
+          client requested early payment, etc.). */}
+      {showGateConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500,
+        }}>
+          <div style={{
+            background: 'white', borderRadius: 8, padding: 24, width: '90%', maxWidth: 480,
+            boxShadow: '0 16px 48px rgba(0,0,0,0.2)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{
+                width: 32, height: 32, background: '#fef3c7', borderRadius: 6,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+              }}>⚠️</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f1e3c' }}>
+                Send Payment Before Contract Is Signed?
+              </div>
+            </div>
+
+            <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.7, marginBottom: 14 }}>
+              A SignWell agreement was already sent to the client and is <strong>awaiting their signature</strong>.
+              When the client signs, a Stripe payment link will fire <strong>automatically</strong> — you don't need to send one manually.
+            </div>
+
+            <div style={{
+              background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 5, padding: '10px 12px', marginBottom: 14,
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 4 }}>
+                Sending now means the client may pay before they've legally accepted the contract.
+              </div>
+              <div style={{ fontSize: 11, color: '#78350f', lineHeight: 1.6 }}>
+                Only proceed if you have a specific reason — e.g., the signature flow is stuck, the client asked to pay first, or you're testing.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowGateConfirm(false)}
+                style={{
+                  padding: '8px 16px', background: 'white', color: '#0f1e3c',
+                  border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                }}>
+                Wait for Signature
+              </button>
+              <button
+                onClick={confirmAndProceed}
+                disabled={busy}
+                style={{
+                  padding: '8px 16px', background: '#92400e', color: 'white',
+                  border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  opacity: busy ? 0.6 : 1,
+                }}>
+                Send Anyway
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
