@@ -1,5 +1,18 @@
 [
   {
+    "version": "3.5.15",
+    "date": "2026-04-28",
+    "summary": "FlexIT \u2014 HubSpot deal description and totals now sync on save (was silently no-op)",
+    "audience": "all",
+    "categories": {
+      "fixed": [
+        "FlexIT save now pushes the HubSpot Deal Description to the connected deal, matching IT Quote behavior. Previously the description was captured in local state and saved to Supabase, but never pushed to HubSpot \u2014 reps would update the description, save, and HubSpot would silently keep the old value",
+        "FlexIT now also calls updateDeal() on save to push contract value (= prepayment amount) and package name to HubSpot, parity with QuotePage",
+        "FlexIT URL-write-to-HubSpot now fires on EVERY save, not just on initial quote creation. Previously, edits to existing FlexIT quotes never re-wrote the URL field, so a deal would show the wrong URL if the quote was renamed or moved"
+      ]
+    }
+  },
+  {
     "version": "3.5.13",
     "date": "2026-04-27",
     "summary": "Stripe integration \u2014 collect Payment #1 prepayments by credit card with hosted Checkout",

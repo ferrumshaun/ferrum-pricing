@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { supabase, logActivity } from '../lib/supabase';
-import { writeQuoteUrlToDeal } from '../lib/hubspot';
+import { writeQuoteUrlToDeal, updateDealDescription, updateDeal } from '../lib/hubspot';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfig } from '../contexts/ConfigContext';
 import { lookupZip, lookupZipFromUSPS } from '../lib/pricing';
@@ -253,24 +253,52 @@ export default function FlexITQuotePage() {
 
     try {
       let qId = existingQuote?.id;
+      let isNewQuote = false;
       if (!qId) {
+        isNewQuote = true;
         payload.created_by = profile?.id;
         const { data, error } = await supabase.from('quotes').insert(payload).select().single();
         if (error) throw error;
         setExistingQuote(data);
         qId = data.id;
         navigate(`/flexIT/${data.id}`, { replace: true });
-        // Write quote URL back to HubSpot
-        if (hubDealId) {
-          try {
-            const { data: fd } = await supabase.from('pricing_settings').select('value').eq('key','hubspot_quote_url_field').single();
-            if (fd?.value) await writeQuoteUrlToDeal(hubDealId, `${window.location.origin}/flexIT/${data.id}`, fd.value);
-          } catch(e) { console.warn('HubSpot URL write failed:', e.message); }
-        }
       } else {
         const { error } = await supabase.from('quotes').update(payload).eq('id', qId);
         if (error) throw error;
       }
+
+      // ── HubSpot sync (parity with QuotePage) ──
+      // Description push fires on every save, not just first. Also runs on
+      // updates to existing quotes, fixing the silent-no-op bug where edits
+      // never reached HubSpot.
+      if (hubDealId) {
+        // 1. Push deal description if the field has content
+        if (hubDescription) {
+          try {
+            await updateDealDescription(hubDealId, hubDescription);
+          } catch (err) {
+            console.warn('HubSpot description sync failed:', err.message);
+          }
+        }
+        // 2. Push deal-level totals (MRR is N/A for FlexIT but contract value = prepay)
+        try {
+          await updateDeal(hubDealId, {
+            mrr: 0,
+            contractValue: prepayAmount || 0,
+            packageName: 'FlexIT On-Demand',
+            quoteNumber: existingQuote?.quote_number || (isNewQuote ? 'DRAFT' : ''),
+            contractTerm: 0,
+          });
+        } catch (err) {
+          console.warn('HubSpot deal totals sync failed:', err.message);
+        }
+        // 3. Write quote URL back to HubSpot deal if a field is configured
+        try {
+          const { data: fd } = await supabase.from('pricing_settings').select('value').eq('key','hubspot_quote_url_field').single();
+          if (fd?.value) await writeQuoteUrlToDeal(hubDealId, `${window.location.origin}/flexIT/${qId}`, fd.value);
+        } catch(e) { console.warn('HubSpot URL write failed:', e.message); }
+      }
+
       await saveQuoteVersion({
         quoteId: qId,
         quoteData: { client_name: recipientBiz, status: quoteStatus },
