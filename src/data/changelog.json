@@ -1,5 +1,16 @@
 [
   {
+    "version": "3.5.28",
+    "date": "2026-04-29",
+    "summary": "Hotfix — v3.5.27 Netlify build failure (unknown ESLint rule in disable comment)",
+    "audience": "developer",
+    "categories": {
+      "fixed": [
+        "v3.5.27 broke the Netlify production build with two errors of the form 'Definition for rule react-hooks/exhaustive-deps was not found'. The cause: ActivityPage.js used // eslint-disable-line react-hooks/exhaustive-deps to silence intentional dependency-array omissions, but the project's ESLint config does not have the react-hooks plugin registered, so the linter erred when it encountered a disable comment for a rule it did not know about. Fix: removed both disable comments. The dependency arrays are unchanged — the disable comments were defensive against a lint rule that is not actually enforced in this project"
+      ]
+    }
+  },
+  {
     "version": "3.5.27",
     "date": "2026-04-29",
     "summary": "Activity Log UX overhaul — fixed pagination, scroll, and debounced search",

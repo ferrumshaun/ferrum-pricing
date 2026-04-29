@@ -40,7 +40,7 @@ export default function ActivityPage() {
       }
     }, FILTER_DEBOUNCE_MS);
     return () => userDebounceRef.current && clearTimeout(userDebounceRef.current);
-  }, [filterDraft.user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filterDraft.user]);
 
   async function load() {
     setLoading(true);
@@ -56,7 +56,7 @@ export default function ActivityPage() {
     setTotalCount(count ?? 0);
     setLoading(false);
   }
-  useEffect(() => { load(); }, [page, filter]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [page, filter]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const isLastPage = page >= totalPages - 1;
