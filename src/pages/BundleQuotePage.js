@@ -11,6 +11,7 @@ import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
 import { ReviewBanner } from '../components/SendForReview';
 import QuoteSaveBar from '../components/QuoteSaveBar';
+import RepSelector from '../components/RepSelector';
 import FlexTimeMeter   from '../components/FlexTimeMeter';
 import FlexTimeSelector from '../components/FlexTimeSelector';
 import { calcFlexBlock } from '../lib/flexTime';
@@ -503,15 +504,7 @@ export default function BundleQuotePage() {
         {/* Client fields */}
         <Sec t="Proposal Details" c="#0f1e3c">
           <Fld lbl="Assigned Sales Rep">
-            <select value={repId || ''} onChange={e => setRepId(e.target.value)}
-              style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, background:'white', outline:'none', color:'#374151' }}>
-              <option value="">— select rep —</option>
-              {teamMembers.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.full_name || m.email?.split('@')[0]}
-                </option>
-              ))}
-            </select>
+            <RepSelector repId={repId} setRepId={setRepId} teamMembers={teamMembers} />
           </Fld>
           <Fld lbl="Proposal Name"><TI value={proposalName} onChange={setProposalName} placeholder="FerrumIT Bundle — Acme Corp"/></Fld>
           <Fld lbl="Client Business Name"><TI value={recipientBiz} onChange={setRecipientBiz} placeholder="Acme Corp"/></Fld>

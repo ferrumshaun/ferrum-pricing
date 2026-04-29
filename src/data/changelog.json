@@ -1,5 +1,21 @@
 [
   {
+    "version": "3.5.26",
+    "date": "2026-04-29",
+    "summary": "Refactor — extracted shared RepSelector component (Assigned Sales Rep dropdown) across all 5 quote types",
+    "audience": "developer",
+    "categories": {
+      "improved": [
+        "New src/components/RepSelector.js consolidates the 'Assigned Sales Rep' dropdown that was previously inline in all 5 quote pages. This is the field that has actually moved most often — v3.5.20's commission display strip required edits to the same dropdown in 5 different files. Future changes to rep selection (commission display, sorting by team, filtering inactive reps, etc.) now happen in one place",
+        "Each page passes the styling props that match its existing visual identity — QuotePage and MultiSite use slightly tighter padding (4px 7px) and smaller font (10px) without an explicit text color; Voice / Bundle / FlexIT use the larger size (4px 6px / 11px) with #374151 text color. No pixel-level UI regressions",
+        "Field label intentionally NOT extracted — 'Assigned Sales Rep' on 4 pages, 'Assigned Rep' on Multi-Site — stays per-page since each page wraps with its own <Fld lbl=…> based on local layout conventions"
+      ],
+      "coming_soon": [
+        "Larger soft-merge extractions (full QuoteHeader, document column) are deferred. The audit done for v3.5.26 revealed too much per-page divergence (MultiSite has different field grouping; QuotePage's ZIP is in a separate elaborate card; ZIP / Quote Status placement varies; address field absent on MultiSite) to be worth a 25-prop monolithic component. Smaller targeted extractions like RepSelector are the right grain"
+      ]
+    }
+  },
+  {
     "version": "3.5.25",
     "date": "2026-04-29",
     "summary": "Refactor — extracted shared QuoteSaveBar component (save button + Send for Review block) across all 5 quote types",
