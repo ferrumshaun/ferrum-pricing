@@ -4,7 +4,7 @@ import { supabase, logActivity } from '../lib/supabase';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 import { calcQuote, lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
-import { calcVoice, calcBundleDiscount, YEALINK_MODELS, FAX_PACKAGES, CX_TIERS, getRecommendedTier, getFaxPackages } from '../lib/voicePricing';
+import { calcVoice, calcBundleDiscount, YEALINK_MODELS, ATA_MODELS, FAX_PACKAGES, CX_TIERS, getRecommendedTier, getFaxPackages, loadVoiceHardwareCatalog } from '../lib/voicePricing';
 import { writeQuoteUrlToDeal, searchDeals, getDealFull, updateDealDescription } from '../lib/hubspot';
 import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
@@ -51,11 +51,17 @@ export default function BundleQuotePage() {
   const [showUnbundle, setShowUnbundle] = useState(false);
   const [unbundling,   setUnbundling]   = useState(false);
   const [faxPackagesDB, setFaxPackagesDB] = useState([]);
+  // v3.5.23: voice hardware catalog from voice_hardware table
+  const [hardwareCatalog, setHardwareCatalog] = useState({ yealink: YEALINK_MODELS, atas: ATA_MODELS });
 
   // ── Voice Fax Packages — DB-loaded once on mount, drives sell + cost ─────────
   useEffect(() => {
     supabase.from('voice_fax_packages').select('*').eq('active', true).order('sort_order')
       .then(({ data }) => setFaxPackagesDB(data || []));
+  }, []);
+  // ── Voice Hardware Catalog — DB-loaded once on mount (v3.5.23) ────────────────
+  useEffect(() => {
+    loadVoiceHardwareCatalog().then(setHardwareCatalog);
   }, []);
 
 
@@ -308,7 +314,7 @@ export default function BundleQuotePage() {
   // Bundle discount based on IT contract term
   const contractTerm = itInputs.contractTerm;
   const voiceForCalc = { ...v, isManagedIT: false }; // calc voice without its own bundle discount
-  const voiceResult = configLoading ? null : calcVoice(voiceForCalc, settings, faxPackagesDB);
+  const voiceResult = configLoading ? null : calcVoice(voiceForCalc, settings, faxPackagesDB, hardwareCatalog);
   const bundle = voiceResult ? calcBundleDiscount(contractTerm, itBaseMRR, voiceResult.finalMRR) : null;
 
   // Free phones — apply to voice hardware if qualified
@@ -745,7 +751,7 @@ export default function BundleQuotePage() {
                 <Fld lbl="Model">
                   <select value={v.hardwareModel} onChange={e=>setVoice('hardwareModel',e.target.value)}
                     style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:10, background:'white', outline:'none' }}>
-                    {YEALINK_MODELS.map(m=><option key={m.id} value={m.id}>{m.label} — ${m.monthly}/mo or ${m.nrc}</option>)}
+                    {hardwareCatalog.yealink.map(m=><option key={m.id} value={m.id}>{m.label} — ${m.monthly}/mo or ${m.nrc}</option>)}
                   </select>
                 </Fld>
                 <Fld lbl="Quantity"><NI v={v.hardwareQty} s={val=>setVoice('hardwareQty',val)}/></Fld>

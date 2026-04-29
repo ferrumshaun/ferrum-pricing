@@ -1,17 +1,38 @@
 [
   {
+    "version": "3.5.23",
+    "date": "2026-04-29",
+    "summary": "Voice hardware pricing migration — phase 2: quote pages now read from the database, admin edits take effect immediately",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Voice and Bundle quote dropdowns now read phone and ATA pricing from the voice_hardware table at runtime. Add a new Yealink model in Admin → Voice Hardware, mark it lease/purchase eligible, save — and it appears in the dropdown on the next quote page load. No deploy needed",
+        "calcVoice() pricing engine now accepts a hardware catalog as its 4th argument. Quote pages fetch the catalog on mount via loadVoiceHardwareCatalog() and pass it through to every calculation. Pricing reflects whatever is currently in the DB, instantly",
+        "Yealink dropdown on Voice quotes now filters by lease/purchase eligibility — if a phone is marked purchase-only in admin, it won't appear when the rep is in lease mode (and vice versa). The Bundle quote dropdown still shows all models since it presents both lease and purchase prices in a single option"
+      ],
+      "improved": [
+        "loadVoiceHardwareCatalog() falls back gracefully — if the Supabase fetch fails or returns empty, the dropdown uses the YEALINK_MODELS / ATA_MODELS constants from voicePricing.js as a safety net. Reps never see an empty hardware dropdown",
+        "Hardware dropdown is populated immediately on page render using the fallback constants, then updated in place when the live catalog arrives (typically within 100ms). No loading state, no flicker",
+        "Field-name normalization — the catalog loader translates DB column names (catalog_id, monthly_lease, purchase_price, short_label) into the field names existing code expects (id, monthly, nrc, label) so the migration was minimal-touch on consumer code"
+      ],
+      "coming_soon": [
+        "v3.5.24: removes the deprecated YEALINK_MODELS and ATA_MODELS constants from voicePricing.js once we have confirmed the DB-backed flow is solid in production. Will ship after this deploy has been live for a few days with no regressions"
+      ]
+    }
+  },
+  {
     "version": "3.5.22",
     "date": "2026-04-28",
-    "summary": "Voice hardware pricing migration \u2014 phase 1: schema, seed data, and admin UI",
+    "summary": "Voice hardware pricing migration — phase 1: schema, seed data, and admin UI",
     "audience": "admin",
     "categories": {
       "new": [
         "Voice hardware pricing now lives in the database. The voice_hardware table is extended with pricing columns (monthly_lease, purchase_price, lease_eligible, purchase_eligible, ports, sort_order, catalog_id, hardware_type, short_label, short_description) so admins can edit phone and ATA prices without a code deploy",
-        "Existing 11 hardware offerings (6 Yealink phones + 5 Grandstream/BYOD ATAs) are seeded into the table with the prices currently in voicePricing.js \u2014 same pricing, same models, just now editable from Admin \u2192 Voice Hardware",
-        "New '\ud83d\udcb0 Sales Catalog' filter on Admin \u2192 Voice Hardware shows only the devices that appear in Voice quote dropdowns (lease- or purchase-eligible). Distinguishes the BYOH compatibility list from the actively-sold catalog",
+        "Existing 11 hardware offerings (6 Yealink phones + 5 Grandstream/BYOD ATAs) are seeded into the table with the prices currently in voicePricing.js — same pricing, same models, just now editable from Admin → Voice Hardware",
+        "New '💰 Sales Catalog' filter on Admin → Voice Hardware shows only the devices that appear in Voice quote dropdowns (lease- or purchase-eligible). Distinguishes the BYOH compatibility list from the actively-sold catalog",
         "New 'Pricing' column on the hardware table shows lease and purchase prices at a glance, color-coded by tier (teal for lease, blue for purchase). BYOH-only entries show 'BYOH only' in muted gray",
         "Edit modal extended with a dedicated 'Sales Catalog' purple section: catalog ID, hardware type, short label/description for the dropdown, lease/purchase eligibility toggles with conditional price inputs, sort order, and FXS port count for ATAs and gateways",
-        "Catalog ID validation \u2014 if a device is marked lease- or purchase-eligible, a Catalog ID is required (since existing quotes reference hardware by stable ID). Save fails loudly if missing, rather than silently corrupting data"
+        "Catalog ID validation — if a device is marked lease- or purchase-eligible, a Catalog ID is required (since existing quotes reference hardware by stable ID). Save fails loudly if missing, rather than silently corrupting data"
       ],
       "improved": [
         "Voice Hardware admin description updated to reflect the dual purpose: 3CX BYOH compatibility database AND pricing dropdown source. Reps will see the impact of pricing edits immediately on Voice quotes (pending v3.5.23)"
@@ -24,14 +45,14 @@
   {
     "version": "3.5.21",
     "date": "2026-04-28",
-    "summary": "Hotfix \u2014 changelog page no longer crashes on unknown category keys",
+    "summary": "Hotfix — changelog page no longer crashes on unknown category keys",
     "audience": "all",
     "categories": {
       "fixed": [
-        "Changelog page (/changelog) was rendering as blank white because the v3.5.17 entry contained a 'coming_soon' category key that the renderer didn't recognize \u2014 every changelog page render hit a TypeError on cfg.bg and the entire React tree unmounted. Cleaned up the v3.5.17 entry by folding the 'coming_soon' note into 'improved' (where it belonged \u2014 the auto-payment automation it described has now actually shipped in v3.5.18, so it's historical context, not a forward-looking promise)"
+        "Changelog page (/changelog) was rendering as blank white because the v3.5.17 entry contained a 'coming_soon' category key that the renderer didn't recognize — every changelog page render hit a TypeError on cfg.bg and the entire React tree unmounted. Cleaned up the v3.5.17 entry by folding the 'coming_soon' note into 'improved' (where it belonged — the auto-payment automation it described has now actually shipped in v3.5.18, so it's historical context, not a forward-looking promise)"
       ],
       "improved": [
-        "ChangelogPage.js is now defensive against unknown category keys. If a future changelog entry uses a key the renderer doesn't have styling for, the page falls back to neutral default styling (gray pill, bullet icon) and uses the literal key name as the label \u2014 visible enough that the broken key gets noticed and fixed, but no longer crashes the page",
+        "ChangelogPage.js is now defensive against unknown category keys. If a future changelog entry uses a key the renderer doesn't have styling for, the page falls back to neutral default styling (gray pill, bullet icon) and uses the literal key name as the label — visible enough that the broken key gets noticed and fixed, but no longer crashes the page",
         "Added 'coming_soon' to the recognized category lookup with purple styling and ◆ icon, so future forward-looking changelog entries will render properly without needing a renderer change"
       ]
     }
@@ -39,11 +60,11 @@
   {
     "version": "3.5.20",
     "date": "2026-04-28",
-    "summary": "Sales Agent dropdown \u2014 commission rate no longer displayed next to rep name",
+    "summary": "Sales Agent dropdown — commission rate no longer displayed next to rep name",
     "audience": "all",
     "categories": {
       "improved": [
-        "Cleaner Sales Agent dropdown across all quote types. The rep's commission percentage is no longer shown next to their name in the dropdown options \u2014 just the name. The commission still calculates and posts to the Billing Summary the same way; only the visual prefix is removed",
+        "Cleaner Sales Agent dropdown across all quote types. The rep's commission percentage is no longer shown next to their name in the dropdown options — just the name. The commission still calculates and posts to the Billing Summary the same way; only the visual prefix is removed",
         "Applied to all 5 quote pages: Managed IT, Voice, Bundle, Multi-Site, and FlexIT"
       ]
     }
@@ -51,13 +72,13 @@
   {
     "version": "3.5.19",
     "date": "2026-04-28",
-    "summary": "Soft gate on manual Stripe payment send \u2014 prevents accidentally collecting payment before contract is signed",
+    "summary": "Soft gate on manual Stripe payment send — prevents accidentally collecting payment before contract is signed",
     "audience": "all",
     "categories": {
       "new": [
-        "Soft gate on the Stripe Prepayment card's manual 'Generate & Send Payment Link' button. When a SignWell agreement is in flight (sent or viewed but not yet signed), an inline banner appears: 'Auto-payment is armed \u2014 when the client signs, a Stripe payment link will be sent automatically'. If the rep clicks Generate anyway, a confirmation modal explains the risk (client may pay before legally accepting the contract) and offers two paths: 'Wait for Signature' or 'Send Anyway'",
-        "Gating logic is universal across quote types \u2014 IT, Voice, Bundle, MultiSite, and FlexIT. Today only FlexIT has SignWell wired, so the other quote types behave as before (no signature found = no gate). Architecture is forward-compatible: when SignWell is rolled out to other quote types, the gate activates automatically with no further code change",
-        "Quote types tracked: flexit_quote, managed-it_quote, voice_quote, bundle_quote, multi-site-managed-it_quote. Auxiliary signature documents (LOA, International Dialing Waiver) do NOT trigger the gate \u2014 those are not the primary contract"
+        "Soft gate on the Stripe Prepayment card's manual 'Generate & Send Payment Link' button. When a SignWell agreement is in flight (sent or viewed but not yet signed), an inline banner appears: 'Auto-payment is armed — when the client signs, a Stripe payment link will be sent automatically'. If the rep clicks Generate anyway, a confirmation modal explains the risk (client may pay before legally accepting the contract) and offers two paths: 'Wait for Signature' or 'Send Anyway'",
+        "Gating logic is universal across quote types — IT, Voice, Bundle, MultiSite, and FlexIT. Today only FlexIT has SignWell wired, so the other quote types behave as before (no signature found = no gate). Architecture is forward-compatible: when SignWell is rolled out to other quote types, the gate activates automatically with no further code change",
+        "Quote types tracked: flexit_quote, managed-it_quote, voice_quote, bundle_quote, multi-site-managed-it_quote. Auxiliary signature documents (LOA, International Dialing Waiver) do NOT trigger the gate — those are not the primary contract"
       ],
       "improved": [
         "Reps now have visibility into the contract state from the Stripe card itself, not just the Signature card. Reduces context-switching when working a quote that's mid-flight"
@@ -67,42 +88,42 @@
   {
     "version": "3.5.18",
     "date": "2026-04-28",
-    "summary": "FlexIT auto-payment trigger \u2014 client signs the contract, Stripe payment link fires automatically, no manual touchpoint",
+    "summary": "FlexIT auto-payment trigger — client signs the contract, Stripe payment link fires automatically, no manual touchpoint",
     "audience": "all",
     "categories": {
       "new": [
-        "\u26a1 SignWell webhook handler that automatically generates and emails a Stripe payment link the moment a client signs a FlexIT contract. Service desk and finance no longer need to touch Stripe to close a FlexIT deal \u2014 the rep clicks 'Send for Signature' once and the rest runs end-to-end",
-        "Auto-payment fires on CLIENT signature \u2014 not on full document completion. If countersignature is required, the client doesn't have to wait for the company countersign before receiving their payment link. Counter-signature happens in parallel",
+        "⚡ SignWell webhook handler that automatically generates and emails a Stripe payment link the moment a client signs a FlexIT contract. Service desk and finance no longer need to touch Stripe to close a FlexIT deal — the rep clicks 'Send for Signature' once and the rest runs end-to-end",
+        "Auto-payment fires on CLIENT signature — not on full document completion. If countersignature is required, the client doesn't have to wait for the company countersign before receiving their payment link. Counter-signature happens in parallel",
         "HubSpot deal note posted automatically when a FlexIT contract is signed: includes the SignWell document ID, the auto-generated Stripe checkout URL, and the email recipient. Visible on the deal timeline alongside Quote Notes",
-        "HubSpot pipeline stage automation \u2014 admin can configure 'Awaiting Payment' and 'Closed Won' stage IDs in Admin \u2192 Integrations \u2192 HubSpot. When configured, deals automatically move to 'Awaiting Payment' on contract signing. (When the client pays, the existing Stripe webhook will move them to 'Closed Won' \u2014 wired in this deploy)",
-        "Idempotency safeguard \u2014 SignWell may retry webhooks on transient failures, so we anchor each auto-payment to the SignWell document via a payment_id field. If a payment already exists, the webhook is a no-op",
-        "Webhook authentication via shared secret in the URL query string. SignWell does not publish HMAC signature verification, so we generate a 32-char hex secret in Admin \u2192 Integrations \u2192 SignWell and validate it on every incoming request",
-        "Auto-payment toggle in Admin \u2192 Integrations \u2192 Stripe \u2014 globally disable auto-trigger for testing or if you want a manual gate. Default is ON",
+        "HubSpot pipeline stage automation — admin can configure 'Awaiting Payment' and 'Closed Won' stage IDs in Admin → Integrations → HubSpot. When configured, deals automatically move to 'Awaiting Payment' on contract signing. (When the client pays, the existing Stripe webhook will move them to 'Closed Won' — wired in this deploy)",
+        "Idempotency safeguard — SignWell may retry webhooks on transient failures, so we anchor each auto-payment to the SignWell document via a payment_id field. If a payment already exists, the webhook is a no-op",
+        "Webhook authentication via shared secret in the URL query string. SignWell does not publish HMAC signature verification, so we generate a 32-char hex secret in Admin → Integrations → SignWell and validate it on every incoming request",
+        "Auto-payment toggle in Admin → Integrations → Stripe — globally disable auto-trigger for testing or if you want a manual gate. Default is ON",
         "FlexIT signature card now shows the live status of the auto-payment trail: 'Stripe payment link automatically generated' confirmation appears once the webhook has fired"
       ],
       "improved": [
-        "Stripe webhook now also handles the 'Closed Won' stage transition when configured \u2014 closes the loop on the deal: signed \u2192 awaiting payment \u2192 closed won, all without manual stage moves"
+        "Stripe webhook now also handles the 'Closed Won' stage transition when configured — closes the loop on the deal: signed → awaiting payment → closed won, all without manual stage moves"
       ]
     }
   },
   {
     "version": "3.5.17",
     "date": "2026-04-28",
-    "summary": "FlexIT direct-send for signature \u2014 packages quote + legal terms + signature block, sends through SignWell from the platform",
+    "summary": "FlexIT direct-send for signature — packages quote + legal terms + signature block, sends through SignWell from the platform",
     "audience": "all",
     "categories": {
       "new": [
-        "\u270f New SignWell agreement card on FlexIT quotes (alongside SPT export and Stripe Prepayment cards). Sends a complete agreement \u2014 FlexIT order summary + Acceptance Terms / Exhibit A + signature block \u2014 directly from the platform without leaving Ferrum IQ. Replaces the manual SPT-then-SignWell workflow for FlexIT block deals",
-        "Server-side document assembly (buildSignatureDocument Netlify function) \u2014 the rep clicks Send, the function reads the live quote from Supabase plus the live legal HTML from pricing_settings, and that's exactly what gets uploaded to SignWell. Reps cannot tamper with document content from the browser",
+        "✏ New SignWell agreement card on FlexIT quotes (alongside SPT export and Stripe Prepayment cards). Sends a complete agreement — FlexIT order summary + Acceptance Terms / Exhibit A + signature block — directly from the platform without leaving Ferrum IQ. Replaces the manual SPT-then-SignWell workflow for FlexIT block deals",
+        "Server-side document assembly (buildSignatureDocument Netlify function) — the rep clicks Send, the function reads the live quote from Supabase plus the live legal HTML from pricing_settings, and that's exactly what gets uploaded to SignWell. Reps cannot tamper with document content from the browser",
         "Send for Signature modal with two-pane layout: form on the left, live HTML preview on the right. Reps see exactly what the client will see before sending. \"Print to PDF\" button opens the rendered HTML in a new tab for download or PDF export",
-        "Per-document countersignature toggle with rule-based default \u2014 above the legal_countersign_threshold (default $5,000), countersign defaults ON; below, OFF. Rep can override either way. Reason for the default is shown next to the checkbox so the rep knows why",
-        "New Admin \u2192 Documents tab \u2014 edit the Acceptance Terms / Exhibit A HTML directly (with live preview), set the countersignature threshold, configure the default company signer name/title/email. When agreement links change, just paste new URLs into the editor \u2014 no deploy needed",
-        "Live status polling \u2014 the SignatureCard polls SignWell every 15s while a document is pending and updates the card in place when the client signs. Manual refresh and reminder buttons are also available",
-        "Quote-status gating \u2014 Send for Signature is disabled until the quote is in 'approved' status. Aligns with the existing review workflow: small deals can be self-approved by the rep, large deals go through Send for Review first",
-        "Test mode toggle in the modal \u2014 SignWell will mark the document as test (no real signature collected) for end-to-end verification before going live with a client"
+        "Per-document countersignature toggle with rule-based default — above the legal_countersign_threshold (default $5,000), countersign defaults ON; below, OFF. Rep can override either way. Reason for the default is shown next to the checkbox so the rep knows why",
+        "New Admin → Documents tab — edit the Acceptance Terms / Exhibit A HTML directly (with live preview), set the countersignature threshold, configure the default company signer name/title/email. When agreement links change, just paste new URLs into the editor — no deploy needed",
+        "Live status polling — the SignatureCard polls SignWell every 15s while a document is pending and updates the card in place when the client signs. Manual refresh and reminder buttons are also available",
+        "Quote-status gating — Send for Signature is disabled until the quote is in 'approved' status. Aligns with the existing review workflow: small deals can be self-approved by the rep, large deals go through Send for Review first",
+        "Test mode toggle in the modal — SignWell will mark the document as test (no real signature collected) for end-to-end verification before going live with a client"
       ],
       "improved": [
-        "Document tracking uses the existing quotes.inputs.signwellDocuments JSONB array pattern (matches LOA and IntlDialingWaiver) \u2014 no new tables, consistent shape across all signature document types",
+        "Document tracking uses the existing quotes.inputs.signwellDocuments JSONB array pattern (matches LOA and IntlDialingWaiver) — no new tables, consistent shape across all signature document types",
         "Pricing_settings keys (flexit_auto_payment_after_sign, hubspot_stage_awaiting_payment, hubspot_stage_closed_won) are seeded so admin can pre-configure them ahead of the v3.5.18 webhook handler that wires up the auto-payment automation"
       ]
     }
@@ -110,11 +131,11 @@
   {
     "version": "3.5.16",
     "date": "2026-04-28",
-    "summary": "Stripe Integration card finally appears in Admin \u2192 Integrations (was wired into orphan file)",
+    "summary": "Stripe Integration card finally appears in Admin → Integrations (was wired into orphan file)",
     "audience": "all",
     "categories": {
       "fixed": [
-        "Stripe Integration card now actually shows up at /admin \u2192 Integrations tab. The v3.5.13 deploy added the StripeIntegration component to src/components/AdminPage.js, but App.js imports AdminPage from src/pages/AdminPage.js \u2014 so the modified file was never loaded by the app. This deploy adds StripeIntegration to the correct file",
+        "Stripe Integration card now actually shows up at /admin → Integrations tab. The v3.5.13 deploy added the StripeIntegration component to src/components/AdminPage.js, but App.js imports AdminPage from src/pages/AdminPage.js — so the modified file was never loaded by the app. This deploy adds StripeIntegration to the correct file",
         "Removed the orphan src/components/AdminPage.js that was sitting unused in the repo. Nothing imported it; it was dead code from the v3.5.13 misplacement"
       ]
     }
@@ -122,11 +143,11 @@
   {
     "version": "3.5.15",
     "date": "2026-04-28",
-    "summary": "FlexIT \u2014 HubSpot deal description and totals now sync on save (was silently no-op)",
+    "summary": "FlexIT — HubSpot deal description and totals now sync on save (was silently no-op)",
     "audience": "all",
     "categories": {
       "fixed": [
-        "FlexIT save now pushes the HubSpot Deal Description to the connected deal, matching IT Quote behavior. Previously the description was captured in local state and saved to Supabase, but never pushed to HubSpot \u2014 reps would update the description, save, and HubSpot would silently keep the old value",
+        "FlexIT save now pushes the HubSpot Deal Description to the connected deal, matching IT Quote behavior. Previously the description was captured in local state and saved to Supabase, but never pushed to HubSpot — reps would update the description, save, and HubSpot would silently keep the old value",
         "FlexIT now also calls updateDeal() on save to push contract value (= prepayment amount) and package name to HubSpot, parity with QuotePage",
         "FlexIT URL-write-to-HubSpot now fires on EVERY save, not just on initial quote creation. Previously, edits to existing FlexIT quotes never re-wrote the URL field, so a deal would show the wrong URL if the quote was renamed or moved"
       ]
@@ -135,25 +156,25 @@
   {
     "version": "3.5.13",
     "date": "2026-04-27",
-    "summary": "Stripe integration \u2014 collect Payment #1 prepayments by credit card with hosted Checkout",
+    "summary": "Stripe integration — collect Payment #1 prepayments by credit card with hosted Checkout",
     "audience": "all",
     "categories": {
       "new": [
-        "\ud83d\udcb3 Stripe Prepayment card on every quote type (IT, Multi-Site, Bundle, FlexIT, Voice) \u2014 appears whenever the quote has a prepayment amount. Generate a hosted Stripe Checkout link, email it to the client, track status live",
-        "Card-only collection: Stripe handles credit cards exclusively. ACH/EFT remains free and external \u2014 clients pay via ferrumit.com/billing for no surcharge. Email template makes both options clear to the client",
-        "2% card processing fee shown as a separate line item on Stripe Checkout (labeled 'Card processing convenience fee') \u2014 transparent to the client, compliant with state-by-state surcharge rules. Rate is pulled from pricing_settings.payment_cc_surcharge so admin can adjust without a deploy",
-        "Hosted Stripe Checkout page (no card data ever touches Ferrum IQ) \u2014 PCI scope minimized to SAQ A. Statement descriptor configurable in Admin",
-        "Branded public receipt page at /pay/:sessionId \u2014 client lands here after paying, sees confirmation, payment details, and reference number. No login required",
-        "Live status sync \u2014 the StripePaymentCard polls Stripe every 8s while pending, updates instantly when payment lands. Webhook is the source of truth, polling is a UX sweetener",
-        "stripeWebhook Netlify function with HMAC-SHA256 signature verification (no SDK needed) \u2014 handles checkout.session.completed, expired, payment_intent.payment_failed, charge.refunded",
-        "stripeProxy Netlify function keeps the secret key server-side \u2014 mirrors the established signwellProxy / sptProxy / hubspot pattern",
-        "Admin \u2192 Integrations \u2192 Stripe: paste secret key, publishable key, webhook signing secret, statement descriptor; Test/Live mode auto-detected from key prefix; Test Connection button verifies API responds",
-        "Resend email, Copy link, Preview, and Cancel link buttons on every pending payment \u2014 reps have full control over the link lifecycle",
-        "Generate-new-link flow when a session expires (24h Stripe limit) \u2014 reuses the same payment row, increments resend_count for audit",
+        "💳 Stripe Prepayment card on every quote type (IT, Multi-Site, Bundle, FlexIT, Voice) — appears whenever the quote has a prepayment amount. Generate a hosted Stripe Checkout link, email it to the client, track status live",
+        "Card-only collection: Stripe handles credit cards exclusively. ACH/EFT remains free and external — clients pay via ferrumit.com/billing for no surcharge. Email template makes both options clear to the client",
+        "2% card processing fee shown as a separate line item on Stripe Checkout (labeled 'Card processing convenience fee') — transparent to the client, compliant with state-by-state surcharge rules. Rate is pulled from pricing_settings.payment_cc_surcharge so admin can adjust without a deploy",
+        "Hosted Stripe Checkout page (no card data ever touches Ferrum IQ) — PCI scope minimized to SAQ A. Statement descriptor configurable in Admin",
+        "Branded public receipt page at /pay/:sessionId — client lands here after paying, sees confirmation, payment details, and reference number. No login required",
+        "Live status sync — the StripePaymentCard polls Stripe every 8s while pending, updates instantly when payment lands. Webhook is the source of truth, polling is a UX sweetener",
+        "stripeWebhook Netlify function with HMAC-SHA256 signature verification (no SDK needed) — handles checkout.session.completed, expired, payment_intent.payment_failed, charge.refunded",
+        "stripeProxy Netlify function keeps the secret key server-side — mirrors the established signwellProxy / sptProxy / hubspot pattern",
+        "Admin → Integrations → Stripe: paste secret key, publishable key, webhook signing secret, statement descriptor; Test/Live mode auto-detected from key prefix; Test Connection button verifies API responds",
+        "Resend email, Copy link, Preview, and Cancel link buttons on every pending payment — reps have full control over the link lifecycle",
+        "Generate-new-link flow when a session expires (24h Stripe limit) — reuses the same payment row, increments resend_count for audit",
         "stripe_payments table tracks every session: face amount, surcharge, total charged, mode (test/live), status, expiry, paid_at, payment_intent_id, charge_id, invoice_id, email send history, failure reasons, refund trail"
       ],
       "improved": [
-        "Payment Schedule Modal language and the Stripe Checkout description stay in lockstep \u2014 both pull from payment_cc_surcharge so the price the client sees on the quote matches exactly what Stripe charges"
+        "Payment Schedule Modal language and the Stripe Checkout description stay in lockstep — both pull from payment_cc_surcharge so the price the client sees on the quote matches exactly what Stripe charges"
       ]
     }
   },

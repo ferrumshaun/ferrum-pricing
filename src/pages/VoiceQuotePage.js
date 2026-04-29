@@ -4,7 +4,7 @@ import { supabase, logActivity } from '../lib/supabase';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 import { lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
-import { calcVoice, calcHybridMRR, getRecommendedTier, getCXTiers, getLightsailCost, getLightsailLabel, CX_TIERS, FAX_PACKAGES, ATA_MODELS, suggestFaxPackage, YEALINK_MODELS, getFaxPackages } from '../lib/voicePricing';
+import { calcVoice, calcHybridMRR, getRecommendedTier, getCXTiers, getLightsailCost, getLightsailLabel, CX_TIERS, FAX_PACKAGES, ATA_MODELS, suggestFaxPackage, YEALINK_MODELS, getFaxPackages, loadVoiceHardwareCatalog } from '../lib/voicePricing';
 import { writeQuoteUrlToDeal, searchDeals, getDealFull, updateDealDescription } from '../lib/hubspot';
 import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
@@ -71,6 +71,10 @@ export default function VoiceQuotePage() {
   const [loaDocRecord,         setLoaDocRecord]         = useState(null);
   const [intlWaiverDocRecord,  setIntlWaiverDocRecord]  = useState(null);
   const [faxPackagesDB,        setFaxPackagesDB]        = useState([]);
+  // v3.5.23: voice hardware catalog from voice_hardware table.
+  // Initialized to the deprecated constants so the dropdown isn't empty
+  // during the brief window between mount and the async fetch resolving.
+  const [hardwareCatalog,      setHardwareCatalog]      = useState({ yealink: YEALINK_MODELS, atas: ATA_MODELS });
   const [voiceProgIncentive,   setVoiceProgIncentive]   = useState(null);
   const [pricingSnapshot, setPricingSnapshot] = useState(null);
   const [priceLockDate,   setPriceLockDate]   = useState(null);
@@ -114,6 +118,12 @@ export default function VoiceQuotePage() {
   useEffect(() => {
     supabase.from('voice_fax_packages').select('*').eq('active', true).order('sort_order')
       .then(({ data }) => setFaxPackagesDB(data || []));
+  }, []);
+  // ── Voice Hardware Catalog — DB-loaded once on mount (v3.5.23) ────────────────
+  // loadVoiceHardwareCatalog() falls back to the YEALINK_MODELS/ATA_MODELS constants
+  // if the fetch fails or returns empty, so the dropdowns are never blank.
+  useEffect(() => {
+    loadVoiceHardwareCatalog().then(setHardwareCatalog);
   }, []);
   useEffect(() => {
     if (!repId && profile?.id && !id) setRepId(profile.id);
@@ -185,7 +195,7 @@ export default function VoiceQuotePage() {
     if (!recipientBiz.trim()) { setSaveMsg('Please enter a client name.'); return; }
     setSaving(true); setSaveMsg('');
     const allInputs = { proposalName, recipientContact, recipientEmail, recipientAddress, hubspotDealName: hubDealName, voice: v };
-    const r = configLoading ? null : calcVoice(v, settings, faxPackagesDB);
+    const r = configLoading ? null : calcVoice(v, settings, faxPackagesDB, hardwareCatalog);
     const totals = r ? { finalMRR: r.finalMRR, nrc: r.nrc, onboarding: r.nrc, gm: r.gm, estTax: r.estTax } : {};
     const payload = {
       client_name: recipientBiz, client_zip: clientZip,
@@ -238,7 +248,7 @@ export default function VoiceQuotePage() {
     if (!existingQuote) navigate(`/voice/${data.id}`, { replace: true });
   }
 
-  const result = configLoading ? null : calcVoice(v, settings, faxPackagesDB);
+  const result = configLoading ? null : calcVoice(v, settings, faxPackagesDB, hardwareCatalog);
 
   // Crossover analysis for hosted seats
   const crossover = v.quoteType === 'hosted' && v.seats > 0 && result
@@ -667,12 +677,12 @@ export default function VoiceQuotePage() {
                 <div>
                   <div style={{ fontSize:8, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3 }}>Model</div>
                   <select value={ata.modelId||'ht802'} onChange={e=>{
-                    const model = ATA_MODELS.find(m=>m.id===e.target.value);
+                    const model = hardwareCatalog.atas.find(m=>m.id===e.target.value);
                     const items = [...(v.ataItems||[])];
                     items[i] = { ...items[i], modelId: e.target.value, label: model?.label||e.target.value, hardware_nrc: model?.hardware_nrc??items[i].hardware_nrc, monthly: model?.monthly??items[i].monthly, ports: model?.ports||1 };
                     set('ataItems', items);
                   }} style={{ width:'100%', padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:10, background:'white', outline:'none' }}>
-                    {ATA_MODELS.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}
+                    {hardwareCatalog.atas.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}
                   </select>
                 </div>
                 <div>
@@ -701,7 +711,8 @@ export default function VoiceQuotePage() {
           ))}
 
           <button onClick={()=>{
-            const def = ATA_MODELS[0];
+            const def = hardwareCatalog.atas[0];
+            if (!def) return;
             set('ataItems',[...(v.ataItems||[]),{modelId:def.id,label:def.label,qty:1,hardware_nrc:def.hardware_nrc,monthly:def.monthly,ports:def.ports}]);
           }} style={{ padding:'5px 10px', background:'white', border:'1px dashed #93c5fd', borderRadius:4, fontSize:10, color:'#0369a1', cursor:'pointer', width:'100%', textAlign:'left' }}>
             + Add ATA Device
@@ -818,7 +829,9 @@ export default function VoiceQuotePage() {
                     <div key={i} style={{ display:'flex', gap:5, alignItems:'center' }}>
                       <select value={item.model} onChange={e=>{const items=[...(v.hardwareItems||[])];items[i]={...items[i],model:e.target.value};set('hardwareItems',items);}}
                         style={{ flex:1, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:10, background:'white', outline:'none' }}>
-                        {YEALINK_MODELS.map(m=><option key={m.id} value={m.id}>{m.label} — {v.hardwareType==='lease'?`$${m.monthly}/mo`:`$${m.nrc}`} · {m.desc}</option>)}
+                        {hardwareCatalog.yealink
+                          .filter(m => v.hardwareType==='lease' ? m.lease_eligible !== false : m.purchase_eligible !== false)
+                          .map(m=><option key={m.id} value={m.id}>{m.label} — {v.hardwareType==='lease'?`$${m.monthly}/mo`:`$${m.nrc}`} · {m.desc}</option>)}
                       </select>
                       <input type="number" min="1" value={item.qty||1} onChange={e=>{const items=[...(v.hardwareItems||[])];items[i]={...items[i],qty:+e.target.value};set('hardwareItems',items);}}
                         style={{ width:52, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, fontFamily:'DM Mono, monospace', textAlign:'center', outline:'none' }}/>

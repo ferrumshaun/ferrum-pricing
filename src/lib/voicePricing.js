@@ -1,6 +1,87 @@
 // FerrumIT Voice Pricing Engine
 // Handles Hosted Seats, Hybrid Hosting, and SIP Trunking quote types
 
+import { supabase } from './supabase';
+
+// ─── VOICE HARDWARE CATALOG (DB-backed since v3.5.23) ────────────────────────
+// Loads phones and ATAs from the voice_hardware table at runtime.
+// Phones (Yealink etc.): rows where catalog_id IS NOT NULL AND
+//                        (lease_eligible OR purchase_eligible) AND
+//                        hardware_type IN ('phone','dect')
+// ATAs:                  rows where catalog_id IS NOT NULL AND
+//                        purchase_eligible AND hardware_type='ata'
+//
+// Returns objects shaped like the old YEALINK_MODELS / ATA_MODELS constants
+// so existing consumers keep working unchanged after this field-name normalization:
+//   catalog_id        → id
+//   short_label       → label
+//   short_description → desc
+//   monthly_lease     → monthly      (for phones)
+//   purchase_price    → nrc          (for phones)
+//   monthly_lease     → monthly      (for ATAs — null in DB, defaults to 15.00 below)
+//   purchase_price    → hardware_nrc (for ATAs)
+//   ports             → ports
+//
+// Falls back to the hardcoded constants below if the fetch fails — safety net
+// that v3.5.24 will remove once the DB-backed flow has proven stable.
+export async function loadVoiceHardwareCatalog() {
+  try {
+    const { data, error } = await supabase
+      .from('voice_hardware')
+      .select('catalog_id, short_label, short_description, hardware_type, monthly_lease, purchase_price, ports, lease_eligible, purchase_eligible, sort_order')
+      .eq('active', true)
+      .not('catalog_id', 'is', null)
+      .order('sort_order', { ascending: true });
+
+    if (error) throw error;
+    if (!Array.isArray(data) || data.length === 0) {
+      console.warn('voice_hardware catalog returned empty, falling back to hardcoded constants');
+      return { yealink: YEALINK_MODELS, atas: ATA_MODELS, _fallback: true };
+    }
+
+    const yealink = [];
+    const atas = [];
+    for (const row of data) {
+      const isAta = row.hardware_type === 'ata' || row.hardware_type === 'gateway';
+      const obj = {
+        id:    row.catalog_id,
+        label: row.short_label || row.catalog_id,
+        desc:  row.short_description || '',
+        sort:  row.sort_order ?? 100,
+      };
+
+      if (isAta) {
+        // ATA shape — older constants used hardware_nrc + flat $15/mo service fee.
+        // We keep the $15 default for the per-port voice service fee (it's a service
+        // charge, not a hardware lease — DB only tracks the hardware purchase price).
+        atas.push({
+          ...obj,
+          hardware_nrc: row.purchase_price != null ? Number(row.purchase_price) : 0,
+          monthly:      15.00,
+          ports:        row.ports || 1,
+        });
+      } else if (row.lease_eligible || row.purchase_eligible) {
+        yealink.push({
+          ...obj,
+          monthly: row.monthly_lease  != null ? Number(row.monthly_lease)  : null,
+          nrc:     row.purchase_price != null ? Number(row.purchase_price) : null,
+          // Carry eligibility through so dropdowns can hide non-eligible options
+          lease_eligible:    !!row.lease_eligible,
+          purchase_eligible: !!row.purchase_eligible,
+        });
+      }
+    }
+
+    yealink.sort((a, b) => a.sort - b.sort);
+    atas.sort((a, b) => a.sort - b.sort);
+
+    return { yealink, atas, _fallback: false };
+  } catch (err) {
+    console.error('loadVoiceHardwareCatalog failed:', err);
+    return { yealink: YEALINK_MODELS, atas: ATA_MODELS, _fallback: true };
+  }
+}
+
 // ─── 3CX LICENSE TIERS ───────────────────────────────────────────────────────
 // Base tiers — costs are overridable via pricing_settings
 const CX_TIERS_BASE = [
@@ -82,8 +163,11 @@ export function getFaxPackages(dbRows) {
   return Object.keys(out).length > 0 ? out : FAX_PACKAGES;
 }
 
-// ─── ATA MODELS ─────────────────────────────────────────────────────────────
-// Hardware + monthly fee are separate line items
+// ─── ATA MODELS (DEPRECATED — v3.5.24 will remove) ───────────────────────────
+// Hardware + monthly fee are separate line items.
+// As of v3.5.23, the canonical catalog lives in the voice_hardware table —
+// this constant is retained only as a fallback when loadVoiceHardwareCatalog()
+// fails. v3.5.24 will delete this once the DB-backed flow has proven stable.
 export const ATA_MODELS = [
   { id: 'ht802',   label: 'Grandstream HT802',  hardware_nrc: 65,   monthly: 15.00, ports: 2, desc: '2 FXS ports — standard analog fax/phone adapter' },
   { id: 'ht812',   label: 'Grandstream HT812',  hardware_nrc: 95,   monthly: 15.00, ports: 2, desc: '2 FXS ports — business grade with gigabit ethernet' },
@@ -102,7 +186,10 @@ export function suggestFaxPackage(users, dids) {
   return 'infinity';
 }
 
-// ─── YEALINK HARDWARE ────────────────────────────────────────────────────────
+// ─── YEALINK HARDWARE (DEPRECATED — v3.5.24 will remove) ─────────────────────
+// As of v3.5.23, the canonical catalog lives in the voice_hardware table.
+// This constant is retained only as a fallback when loadVoiceHardwareCatalog()
+// fails. v3.5.24 will delete this once the DB-backed flow has proven stable.
 export const YEALINK_MODELS = [
   { id: 'T33G', label: 'Yealink T33G',  monthly: 6,  nrc: 169, desc: 'Entry level color screen' },
   { id: 'T43U', label: 'Yealink T43U', monthly: 8,  nrc: 179, desc: 'Mid-range USB expansion' },
@@ -118,7 +205,11 @@ export const BYOH_NOTE = 'Client-owned devices must be supported by 3CX. Ferrum 
 // ─── VOICE PRICING ENGINE ─────────────────────────────────────────────────────
 // `faxPackages` is optional — pass DB rows from voice_fax_packages for accurate cost.
 // When omitted, falls back to the FAX_PACKAGES constant ($0 cost = unknown margin).
-export function calcVoice(v, settings, faxPackages) {
+// `catalog` is optional (added v3.5.23) — pass the result of loadVoiceHardwareCatalog()
+// from the calling page. When omitted, hardware lookups fall back to the
+// deprecated YEALINK_MODELS constant. v3.5.24 will remove the fallback.
+export function calcVoice(v, settings, faxPackages, catalog) {
+  const yealinkCatalog = catalog?.yealink || YEALINK_MODELS;
   const s = settings || {};
   const taxRate  = parseFloat(s.voice_tax_estimate || 0.25);
   const hosting  = parseFloat(s.voice_hosting_cost || 24);   // AWS Lightsail base
@@ -329,7 +420,7 @@ export function calcVoice(v, settings, faxPackages) {
   const hwItems = v.hardwareItems || (v.hardwareModel && v.hardwareQty > 0 ? [{ model: v.hardwareModel, qty: v.hardwareQty }] : []);
   if (v.hardwareType && v.hardwareType !== 'none' && hwItems.length > 0) {
     for (const item of hwItems) {
-      const model = YEALINK_MODELS.find(m => m.id === item.model);
+      const model = yealinkCatalog.find(m => m.id === item.model);
       const qty   = parseInt(item.qty || 0);
       if (!model || qty <= 0) continue;
 
