@@ -1546,7 +1546,10 @@ function VoiceHardwareAdmin() {
   const [editing,  setEditing]  = useState(null);
   const [saving,   setSaving]   = useState(false);
 
-  const BLANK = { manufacturer:'', model:'', category:'preferred', compatibility:'compatible', auto_provision:true, firmware_notes:'', notes:'', active:true };
+  const BLANK = { manufacturer:'', model:'', category:'preferred', compatibility:'compatible', auto_provision:true, firmware_notes:'', notes:'', active:true,
+                  catalog_id:'', short_label:'', short_description:'', hardware_type:'phone',
+                  monthly_lease:null, purchase_price:null, ports:null,
+                  lease_eligible:false, purchase_eligible:false, sort_order:100 };
 
   useEffect(() => { load(); }, []);
 
@@ -1558,8 +1561,19 @@ function VoiceHardwareAdmin() {
   }
 
   async function save() {
+    // Validation: if marked as eligible (lease or purchase), catalog_id is required
+    if ((editing.lease_eligible || editing.purchase_eligible) && !editing.catalog_id?.trim()) {
+      window.alert('A Catalog ID is required for devices marked as Lease- or Purchase-Eligible. Devices appearing in Voice quote dropdowns need a stable Catalog ID so existing quotes can resolve their hardware reference.');
+      return;
+    }
     setSaving(true);
-    const payload = { ...editing, updated_at: new Date().toISOString() };
+    // Normalize catalog_id to null when blank — the unique index ignores nulls
+    // so multiple BYOH-only entries can coexist without catalog ids
+    const payload = {
+      ...editing,
+      catalog_id: editing.catalog_id?.trim() ? editing.catalog_id.trim() : null,
+      updated_at: new Date().toISOString(),
+    };
     if (editing.id) {
       await supabase.from('voice_hardware').update(payload).eq('id', editing.id);
     } else {
@@ -1585,8 +1599,10 @@ function VoiceHardwareAdmin() {
   const COMPAT_LABELS = { compatible:'Preferred', limited:'Limited', manual_only:'Legacy', not_compatible:'Not Compatible' };
 
   const filtered = devices.filter(d => {
+    const inCatalog = !!(d.lease_eligible || d.purchase_eligible);
     if (filter === 'inactive' && d.active) return false;
-    if (filter !== 'all' && filter !== 'inactive' && d.category !== filter) return false;
+    if (filter === 'catalog' && !inCatalog) return false;
+    if (filter !== 'all' && filter !== 'inactive' && filter !== 'catalog' && d.category !== filter) return false;
     if (filter !== 'inactive' && !d.active) return false;
     if (search) {
       const q = search.toLowerCase();
@@ -1595,14 +1611,21 @@ function VoiceHardwareAdmin() {
     return true;
   });
 
-  const counts = { all: devices.filter(d=>d.active).length, preferred: devices.filter(d=>d.active&&d.category==='preferred').length, supported: devices.filter(d=>d.active&&d.category==='supported').length, legacy: devices.filter(d=>d.active&&d.category==='legacy').length, inactive: devices.filter(d=>!d.active).length };
+  const counts = {
+    all:       devices.filter(d=>d.active).length,
+    catalog:   devices.filter(d=>d.active && (d.lease_eligible || d.purchase_eligible)).length,
+    preferred: devices.filter(d=>d.active && d.category==='preferred').length,
+    supported: devices.filter(d=>d.active && d.category==='supported').length,
+    legacy:    devices.filter(d=>d.active && d.category==='legacy').length,
+    inactive:  devices.filter(d=>!d.active).length,
+  };
 
   return (
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
         <div>
           <h2 style={{ fontSize:14, fontWeight:700, color:'#0f1e3c', margin:0 }}>Voice Hardware Catalog</h2>
-          <div style={{ fontSize:10, color:'#6b7280', marginTop:2 }}>3CX-compatible phone and device compatibility database. Drives BYOH validation on Voice quotes.</div>
+          <div style={{ fontSize:10, color:'#6b7280', marginTop:2 }}>3CX-compatible phone and device compatibility database. Drives BYOH validation on Voice quotes <strong>and pricing dropdowns for the lease/purchase options</strong> (when lease- or purchase-eligible).</div>
         </div>
         <button onClick={() => setEditing({...BLANK})}
           style={{ padding:'7px 14px', background:'#7c3aed', color:'white', border:'none', borderRadius:5, fontSize:11, fontWeight:700, cursor:'pointer' }}>
@@ -1614,7 +1637,7 @@ function VoiceHardwareAdmin() {
       <div style={{ display:'flex', gap:6, marginBottom:10, flexWrap:'wrap', alignItems:'center' }}>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search manufacturer or model..."
           style={{ padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none', width:220 }}/>
-        {[['all','All Active'], ['preferred','Preferred'], ['supported','Supported'], ['legacy','Legacy'], ['inactive','Inactive']].map(([k,l]) => (
+        {[['all','All Active'], ['catalog','💰 Sales Catalog'], ['preferred','Preferred'], ['supported','Supported'], ['legacy','Legacy'], ['inactive','Inactive']].map(([k,l]) => (
           <button key={k} onClick={()=>setFilter(k)}
             style={{ padding:'4px 10px', borderRadius:4, border:`1px solid ${filter===k?'#7c3aed':'#e5e7eb'}`, background:filter===k?'#f5f3ff':'white', color:filter===k?'#6d28d9':'#374151', fontSize:10, fontWeight:filter===k?700:400, cursor:'pointer' }}>
             {l} {counts[k] != null ? `(${counts[k]})` : ''}
@@ -1627,7 +1650,7 @@ function VoiceHardwareAdmin() {
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
             <thead>
               <tr style={{ background:'#f8fafc' }}>
-                {['Manufacturer','Model','Category','Compatibility','Auto-Provision','Notes','Status',''].map(h => (
+                {['Manufacturer','Model','Category','Compatibility','Auto-Prov','Pricing','Notes','Status',''].map(h => (
                   <th key={h} style={{ padding:'7px 10px', textAlign:'left', fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#6b7280', letterSpacing:'.05em', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
                 ))}
               </tr>
@@ -1644,6 +1667,20 @@ function VoiceHardwareAdmin() {
                     </span>
                   </td>
                   <td style={{ padding:'6px 10px', textAlign:'center' }}>{d.auto_provision ? '✓' : '—'}</td>
+                  <td style={{ padding:'6px 10px', fontSize:10, whiteSpace:'nowrap' }}>
+                    {(d.lease_eligible || d.purchase_eligible) ? (
+                      <div style={{ display:'flex', flexDirection:'column', gap:1 }}>
+                        {d.lease_eligible && d.monthly_lease != null && (
+                          <span style={{ fontFamily:'DM Mono, monospace', color:'#0f766e' }}>Lease ${Number(d.monthly_lease).toFixed(0)}/mo</span>
+                        )}
+                        {d.purchase_eligible && d.purchase_price != null && (
+                          <span style={{ fontFamily:'DM Mono, monospace', color:'#1e40af' }}>Buy ${Number(d.purchase_price).toFixed(0)}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span style={{ color:'#cbd5e1', fontSize:9 }}>BYOH only</span>
+                    )}
+                  </td>
                   <td style={{ padding:'6px 10px', color:'#6b7280', fontSize:10, maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                     {d.firmware_notes && <span style={{ color:'#d97706', marginRight:4 }}>⚠ {d.firmware_notes}</span>}
                     {d.notes}
@@ -1663,7 +1700,7 @@ function VoiceHardwareAdmin() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={8} style={{ padding:'20px', textAlign:'center', color:'#9ca3af', fontSize:11 }}>No devices match current filter</td></tr>
+                <tr><td colSpan={9} style={{ padding:'20px', textAlign:'center', color:'#9ca3af', fontSize:11 }}>No devices match current filter</td></tr>
               )}
             </tbody>
           </table>
@@ -1673,7 +1710,7 @@ function VoiceHardwareAdmin() {
       {/* Edit modal */}
       {editing && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:500 }}>
-          <div style={{ background:'white', borderRadius:8, padding:24, width:520, boxShadow:'0 8px 32px rgba(0,0,0,0.2)' }}>
+          <div style={{ background:'white', borderRadius:8, padding:24, width:640, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 8px 32px rgba(0,0,0,0.2)' }}>
             <h3 style={{ fontSize:14, fontWeight:700, color:'#0f1e3c', margin:'0 0 16px' }}>{editing.id ? 'Edit Device' : 'Add Device'}</h3>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
               {[['Manufacturer', 'manufacturer'], ['Model', 'model']].map(([lbl, key]) => (
@@ -1713,6 +1750,88 @@ function VoiceHardwareAdmin() {
               <textarea value={editing.notes||''} onChange={e=>setEditing(p=>({...p,notes:e.target.value}))} rows={2} placeholder="Router phone, DECT, hotel series, etc."
                 style={{ width:'100%', padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, resize:'vertical', outline:'none' }}/>
             </div>
+
+            {/* ── Sales Catalog Pricing ────────────────────────────────────── */}
+            <div style={{ background:'#faf5ff', border:'1px solid #e9d5ff', borderRadius:6, padding:'10px 12px', marginBottom:14 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+                <span style={{ fontSize:11, fontWeight:700, color:'#6d28d9' }}>💰 Sales Catalog</span>
+                <span style={{ fontSize:9, color:'#9ca3af' }}>Mark as eligible to appear in Voice quote dropdowns</span>
+              </div>
+
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+                <div>
+                  <label style={{ display:'block', fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3 }}>
+                    Catalog ID <span style={{ color:'#9ca3af', fontWeight:400 }}>(stable id, e.g. T33G)</span>
+                  </label>
+                  <input value={editing.catalog_id||''} onChange={e=>setEditing(p=>({...p,catalog_id:e.target.value}))} placeholder="T33G / ht802 / etc"
+                    style={{ width:'100%', padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none', fontFamily:'DM Mono, monospace' }}/>
+                </div>
+                <div>
+                  <label style={{ display:'block', fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3 }}>Hardware Type</label>
+                  <select value={editing.hardware_type||'phone'} onChange={e=>setEditing(p=>({...p,hardware_type:e.target.value}))}
+                    style={{ width:'100%', padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, background:'white', outline:'none' }}>
+                    {['phone','dect','ata','headset','gateway','doorphone','other'].map(t=>(
+                      <option key={t} value={t} style={{textTransform:'capitalize'}}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display:'block', fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3 }}>Short Label (dropdown)</label>
+                  <input value={editing.short_label||''} onChange={e=>setEditing(p=>({...p,short_label:e.target.value}))} placeholder="Yealink T33G"
+                    style={{ width:'100%', padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none' }}/>
+                </div>
+                <div>
+                  <label style={{ display:'block', fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3 }}>Sort Order</label>
+                  <input type="number" value={editing.sort_order??100} onChange={e=>setEditing(p=>({...p,sort_order:e.target.value===''?null:parseInt(e.target.value)}))} placeholder="100"
+                    style={{ width:'100%', padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none', fontFamily:'DM Mono, monospace' }}/>
+                </div>
+              </div>
+
+              <div style={{ marginBottom:10 }}>
+                <label style={{ display:'block', fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3 }}>Short Description (dropdown subtitle)</label>
+                <input value={editing.short_description||''} onChange={e=>setEditing(p=>({...p,short_description:e.target.value}))} placeholder="Entry level color screen"
+                  style={{ width:'100%', padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none' }}/>
+              </div>
+
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
+                <div>
+                  <label style={{ display:'flex', alignItems:'center', gap:5, cursor:'pointer', marginBottom:3 }}>
+                    <input type="checkbox" checked={!!editing.lease_eligible} onChange={e=>setEditing(p=>({...p,lease_eligible:e.target.checked}))} style={{ accentColor:'#7c3aed' }}/>
+                    <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', color:'#0f766e' }}>Lease Eligible</span>
+                  </label>
+                  <input type="number" min="0" step="0.01" disabled={!editing.lease_eligible}
+                    value={editing.monthly_lease ?? ''} onChange={e=>setEditing(p=>({...p,monthly_lease:e.target.value===''?null:parseFloat(e.target.value)}))}
+                    placeholder="Monthly $"
+                    style={{ width:'100%', padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none', fontFamily:'DM Mono, monospace', background: editing.lease_eligible ? 'white' : '#f8fafc', opacity: editing.lease_eligible ? 1 : 0.6 }}/>
+                </div>
+                <div>
+                  <label style={{ display:'flex', alignItems:'center', gap:5, cursor:'pointer', marginBottom:3 }}>
+                    <input type="checkbox" checked={!!editing.purchase_eligible} onChange={e=>setEditing(p=>({...p,purchase_eligible:e.target.checked}))} style={{ accentColor:'#7c3aed' }}/>
+                    <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', color:'#1e40af' }}>Purchase Eligible</span>
+                  </label>
+                  <input type="number" min="0" step="0.01" disabled={!editing.purchase_eligible}
+                    value={editing.purchase_price ?? ''} onChange={e=>setEditing(p=>({...p,purchase_price:e.target.value===''?null:parseFloat(e.target.value)}))}
+                    placeholder="Purchase $"
+                    style={{ width:'100%', padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none', fontFamily:'DM Mono, monospace', background: editing.purchase_eligible ? 'white' : '#f8fafc', opacity: editing.purchase_eligible ? 1 : 0.6 }}/>
+                </div>
+              </div>
+
+              {(editing.hardware_type === 'ata' || editing.hardware_type === 'gateway') && (
+                <div>
+                  <label style={{ display:'block', fontSize:9, fontWeight:700, textTransform:'uppercase', color:'#374151', marginBottom:3 }}>FXS Ports</label>
+                  <input type="number" min="0" value={editing.ports??''} onChange={e=>setEditing(p=>({...p,ports:e.target.value===''?null:parseInt(e.target.value)}))}
+                    style={{ width:120, padding:'5px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none', fontFamily:'DM Mono, monospace' }}/>
+                </div>
+              )}
+
+              {(editing.lease_eligible || editing.purchase_eligible) && !editing.catalog_id && (
+                <div style={{ fontSize:9, color:'#dc2626', fontWeight:600, marginTop:6 }}>
+                  ⚠ A Catalog ID is required for devices in the sales catalog
+                </div>
+              )}
+            </div>
+            {/* ── End Sales Catalog Pricing ────────────────────────────────── */}
+
             <div style={{ display:'flex', gap:8, marginBottom:14 }}>
               <label style={{ display:'flex', alignItems:'center', gap:5, cursor:'pointer' }}>
                 <input type="checkbox" checked={editing.auto_provision} onChange={e=>setEditing(p=>({...p,auto_provision:e.target.checked}))} style={{ accentColor:'#7c3aed' }}/>

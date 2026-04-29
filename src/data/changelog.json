@@ -1,5 +1,27 @@
 [
   {
+    "version": "3.5.22",
+    "date": "2026-04-28",
+    "summary": "Voice hardware pricing migration \u2014 phase 1: schema, seed data, and admin UI",
+    "audience": "admin",
+    "categories": {
+      "new": [
+        "Voice hardware pricing now lives in the database. The voice_hardware table is extended with pricing columns (monthly_lease, purchase_price, lease_eligible, purchase_eligible, ports, sort_order, catalog_id, hardware_type, short_label, short_description) so admins can edit phone and ATA prices without a code deploy",
+        "Existing 11 hardware offerings (6 Yealink phones + 5 Grandstream/BYOD ATAs) are seeded into the table with the prices currently in voicePricing.js \u2014 same pricing, same models, just now editable from Admin \u2192 Voice Hardware",
+        "New '\ud83d\udcb0 Sales Catalog' filter on Admin \u2192 Voice Hardware shows only the devices that appear in Voice quote dropdowns (lease- or purchase-eligible). Distinguishes the BYOH compatibility list from the actively-sold catalog",
+        "New 'Pricing' column on the hardware table shows lease and purchase prices at a glance, color-coded by tier (teal for lease, blue for purchase). BYOH-only entries show 'BYOH only' in muted gray",
+        "Edit modal extended with a dedicated 'Sales Catalog' purple section: catalog ID, hardware type, short label/description for the dropdown, lease/purchase eligibility toggles with conditional price inputs, sort order, and FXS port count for ATAs and gateways",
+        "Catalog ID validation \u2014 if a device is marked lease- or purchase-eligible, a Catalog ID is required (since existing quotes reference hardware by stable ID). Save fails loudly if missing, rather than silently corrupting data"
+      ],
+      "improved": [
+        "Voice Hardware admin description updated to reflect the dual purpose: 3CX BYOH compatibility database AND pricing dropdown source. Reps will see the impact of pricing edits immediately on Voice quotes (pending v3.5.23)"
+      ],
+      "coming_soon": [
+        "v3.5.23 will rewire VoiceQuotePage, BundleQuotePage, and the calcVoice pricing engine to read from the voice_hardware table at runtime instead of from the hardcoded YEALINK_MODELS and ATA_MODELS constants in voicePricing.js. After v3.5.23, you'll be able to add a new phone model to the catalog from Admin and have it instantly appear on Voice quote dropdowns with no deploy"
+      ]
+    }
+  },
+  {
     "version": "3.5.21",
     "date": "2026-04-28",
     "summary": "Hotfix \u2014 changelog page no longer crashes on unknown category keys",
