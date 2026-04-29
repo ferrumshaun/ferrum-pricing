@@ -4,7 +4,7 @@ import { supabase, logActivity } from '../lib/supabase';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 import { lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
-import { calcVoice, calcHybridMRR, getRecommendedTier, getCXTiers, getLightsailCost, getLightsailLabel, CX_TIERS, FAX_PACKAGES, ATA_MODELS, suggestFaxPackage, YEALINK_MODELS, getFaxPackages, loadVoiceHardwareCatalog } from '../lib/voicePricing';
+import { calcVoice, calcHybridMRR, getRecommendedTier, getCXTiers, getLightsailCost, getLightsailLabel, CX_TIERS, FAX_PACKAGES, suggestFaxPackage, getFaxPackages, loadVoiceHardwareCatalog } from '../lib/voicePricing';
 import { writeQuoteUrlToDeal, searchDeals, getDealFull, updateDealDescription } from '../lib/hubspot';
 import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
@@ -76,7 +76,7 @@ export default function VoiceQuotePage() {
   // v3.5.23: voice hardware catalog from voice_hardware table.
   // Initialized to the deprecated constants so the dropdown isn't empty
   // during the brief window between mount and the async fetch resolving.
-  const [hardwareCatalog,      setHardwareCatalog]      = useState({ yealink: YEALINK_MODELS, atas: ATA_MODELS });
+  const [hardwareCatalog,      setHardwareCatalog]      = useState({ yealink: [], atas: [] });
   const [voiceProgIncentive,   setVoiceProgIncentive]   = useState(null);
   const [pricingSnapshot, setPricingSnapshot] = useState(null);
   const [priceLockDate,   setPriceLockDate]   = useState(null);
@@ -121,9 +121,10 @@ export default function VoiceQuotePage() {
     supabase.from('voice_fax_packages').select('*').eq('active', true).order('sort_order')
       .then(({ data }) => setFaxPackagesDB(data || []));
   }, []);
-  // ── Voice Hardware Catalog — DB-loaded once on mount (v3.5.23) ────────────────
-  // loadVoiceHardwareCatalog() falls back to the YEALINK_MODELS/ATA_MODELS constants
-  // if the fetch fails or returns empty, so the dropdowns are never blank.
+  // ── Voice Hardware Catalog — DB-loaded once on mount ────────────────────────
+  // If the fetch fails or returns empty, the dropdowns will be empty until
+  // the DB issue is resolved (loadVoiceHardwareCatalog returns _fallback:true
+  // with empty arrays in that case).
   useEffect(() => {
     loadVoiceHardwareCatalog().then(setHardwareCatalog);
   }, []);

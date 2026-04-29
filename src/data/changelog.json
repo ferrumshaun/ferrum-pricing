@@ -1,5 +1,19 @@
 [
   {
+    "version": "3.5.29",
+    "date": "2026-04-29",
+    "summary": "Cleanup — removed deprecated YEALINK_MODELS / ATA_MODELS hardcoded constants from voicePricing.js",
+    "audience": "developer",
+    "categories": {
+      "improved": [
+        "Removed YEALINK_MODELS and ATA_MODELS exports from src/lib/voicePricing.js. These were retained as a fallback safety net during the v3.5.22/v3.5.23 voice hardware migration; with the DB-backed flow proven stable in production for several days, the safety net is no longer needed and the constants risked silently drifting from the voice_hardware table over time",
+        "loadVoiceHardwareCatalog() now returns empty arrays ({ yealink: [], atas: [], _fallback: true }) on fetch failure or empty result, instead of falling back to the hardcoded constants. Reps will see empty hardware dropdowns until the DB issue is resolved — strictly more honest than serving stale prices from a hardcoded snapshot",
+        "calcVoice()'s catalog parameter is no longer optional in practice — if a caller omits it, hardware lines silently price at $0 since the engine has no catalog to look up against. All current call sites in VoiceQuotePage and BundleQuotePage already pass the catalog, so this is a no-op for production",
+        "VoiceQuotePage and BundleQuotePage no longer import the deprecated constants. Their initial hardwareCatalog useState falls back to empty arrays; the real catalog arrives ~100ms after mount via loadVoiceHardwareCatalog()"
+      ]
+    }
+  },
+  {
     "version": "3.5.28",
     "date": "2026-04-29",
     "summary": "Hotfix — v3.5.27 Netlify build failure (unknown ESLint rule in disable comment)",

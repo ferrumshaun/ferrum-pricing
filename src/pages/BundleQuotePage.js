@@ -4,7 +4,7 @@ import { supabase, logActivity } from '../lib/supabase';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 import { calcQuote, lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
-import { calcVoice, calcBundleDiscount, YEALINK_MODELS, ATA_MODELS, FAX_PACKAGES, CX_TIERS, getRecommendedTier, getFaxPackages, loadVoiceHardwareCatalog } from '../lib/voicePricing';
+import { calcVoice, calcBundleDiscount, FAX_PACKAGES, CX_TIERS, getRecommendedTier, getFaxPackages, loadVoiceHardwareCatalog } from '../lib/voicePricing';
 import { writeQuoteUrlToDeal, searchDeals, getDealFull, updateDealDescription } from '../lib/hubspot';
 import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
@@ -54,7 +54,7 @@ export default function BundleQuotePage() {
   const [unbundling,   setUnbundling]   = useState(false);
   const [faxPackagesDB, setFaxPackagesDB] = useState([]);
   // v3.5.23: voice hardware catalog from voice_hardware table
-  const [hardwareCatalog, setHardwareCatalog] = useState({ yealink: YEALINK_MODELS, atas: ATA_MODELS });
+  const [hardwareCatalog, setHardwareCatalog] = useState({ yealink: [], atas: [] });
 
   // ── Voice Fax Packages — DB-loaded once on mount, drives sell + cost ─────────
   useEffect(() => {

@@ -3,7 +3,7 @@
 
 import { supabase } from './supabase';
 
-// ─── VOICE HARDWARE CATALOG (DB-backed since v3.5.23) ────────────────────────
+// ─── VOICE HARDWARE CATALOG (DB-backed) ──────────────────────────────────────
 // Loads phones and ATAs from the voice_hardware table at runtime.
 // Phones (Yealink etc.): rows where catalog_id IS NOT NULL AND
 //                        (lease_eligible OR purchase_eligible) AND
@@ -11,8 +11,7 @@ import { supabase } from './supabase';
 // ATAs:                  rows where catalog_id IS NOT NULL AND
 //                        purchase_eligible AND hardware_type='ata'
 //
-// Returns objects shaped like the old YEALINK_MODELS / ATA_MODELS constants
-// so existing consumers keep working unchanged after this field-name normalization:
+// Field-name normalization (DB → consumer-shape):
 //   catalog_id        → id
 //   short_label       → label
 //   short_description → desc
@@ -22,8 +21,10 @@ import { supabase } from './supabase';
 //   purchase_price    → hardware_nrc (for ATAs)
 //   ports             → ports
 //
-// Falls back to the hardcoded constants below if the fetch fails — safety net
-// that v3.5.24 will remove once the DB-backed flow has proven stable.
+// On fetch failure or empty result: returns empty arrays + _fallback:true.
+// Reps will see empty hardware dropdowns until the DB issue is resolved —
+// strictly more honest than serving stale prices from old hardcoded constants
+// (which is what the pre-v3.5.29 fallback did).
 export async function loadVoiceHardwareCatalog() {
   try {
     const { data, error } = await supabase
@@ -35,8 +36,8 @@ export async function loadVoiceHardwareCatalog() {
 
     if (error) throw error;
     if (!Array.isArray(data) || data.length === 0) {
-      console.warn('voice_hardware catalog returned empty, falling back to hardcoded constants');
-      return { yealink: YEALINK_MODELS, atas: ATA_MODELS, _fallback: true };
+      console.warn('voice_hardware catalog returned empty');
+      return { yealink: [], atas: [], _fallback: true };
     }
 
     const yealink = [];
@@ -78,7 +79,7 @@ export async function loadVoiceHardwareCatalog() {
     return { yealink, atas, _fallback: false };
   } catch (err) {
     console.error('loadVoiceHardwareCatalog failed:', err);
-    return { yealink: YEALINK_MODELS, atas: ATA_MODELS, _fallback: true };
+    return { yealink: [], atas: [], _fallback: true };
   }
 }
 
@@ -163,19 +164,6 @@ export function getFaxPackages(dbRows) {
   return Object.keys(out).length > 0 ? out : FAX_PACKAGES;
 }
 
-// ─── ATA MODELS (DEPRECATED — v3.5.24 will remove) ───────────────────────────
-// Hardware + monthly fee are separate line items.
-// As of v3.5.23, the canonical catalog lives in the voice_hardware table —
-// this constant is retained only as a fallback when loadVoiceHardwareCatalog()
-// fails. v3.5.24 will delete this once the DB-backed flow has proven stable.
-export const ATA_MODELS = [
-  { id: 'ht802',   label: 'Grandstream HT802',  hardware_nrc: 65,   monthly: 15.00, ports: 2, desc: '2 FXS ports — standard analog fax/phone adapter' },
-  { id: 'ht812',   label: 'Grandstream HT812',  hardware_nrc: 95,   monthly: 15.00, ports: 2, desc: '2 FXS ports — business grade with gigabit ethernet' },
-  { id: 'ht814',   label: 'Grandstream HT814',  hardware_nrc: 135,  monthly: 15.00, ports: 4, desc: '4 FXS ports — multi-line analog adapter' },
-  { id: 'ht818',   label: 'Grandstream HT818',  hardware_nrc: 195,  monthly: 15.00, ports: 8, desc: '8 FXS ports — high-density analog gateway' },
-  { id: 'custom',  label: 'Other / BYOD ATA',   hardware_nrc: 0,    monthly: 15.00, ports: 1, desc: 'Client-supplied ATA — monthly service fee only' },
-];
-
 export function suggestFaxPackage(users, dids) {
   if (!users && !dids) return null;
   const u = parseInt(users) || 0;
@@ -186,30 +174,17 @@ export function suggestFaxPackage(users, dids) {
   return 'infinity';
 }
 
-// ─── YEALINK HARDWARE (DEPRECATED — v3.5.24 will remove) ─────────────────────
-// As of v3.5.23, the canonical catalog lives in the voice_hardware table.
-// This constant is retained only as a fallback when loadVoiceHardwareCatalog()
-// fails. v3.5.24 will delete this once the DB-backed flow has proven stable.
-export const YEALINK_MODELS = [
-  { id: 'T33G', label: 'Yealink T33G',  monthly: 6,  nrc: 169, desc: 'Entry level color screen' },
-  { id: 'T43U', label: 'Yealink T43U', monthly: 8,  nrc: 179, desc: 'Mid-range USB expansion' },
-  { id: 'T46U', label: 'Yealink T46U', monthly: 10, nrc: 269, desc: 'Executive color touchscreen' },
-  { id: 'T48U', label: 'Yealink T48U', monthly: 13, nrc: 269, desc: 'Executive large touchscreen' },
-  { id: 'T57W', label: 'Yealink T57W', monthly: 15, nrc: 329, desc: 'Flagship large color touchscreen' },
-  { id: 'W60B', label: 'Yealink W60B', monthly: 8,  nrc: 189, desc: 'DECT cordless base + 1 handset' },
-];
-
 // BYOH — bring your own handset — supported 3CX-compatible devices
 export const BYOH_NOTE = 'Client-owned devices must be supported by 3CX. Ferrum will wipe and register each device at the applicable per-handset fee.';
 
 // ─── VOICE PRICING ENGINE ─────────────────────────────────────────────────────
 // `faxPackages` is optional — pass DB rows from voice_fax_packages for accurate cost.
 // When omitted, falls back to the FAX_PACKAGES constant ($0 cost = unknown margin).
-// `catalog` is optional (added v3.5.23) — pass the result of loadVoiceHardwareCatalog()
-// from the calling page. When omitted, hardware lookups fall back to the
-// deprecated YEALINK_MODELS constant. v3.5.24 will remove the fallback.
+// `catalog` is required for hardware pricing (DB-backed since v3.5.23) — pass the
+// result of loadVoiceHardwareCatalog() from the calling page. When omitted,
+// hardware lookups silently price at $0 since no catalog is available.
 export function calcVoice(v, settings, faxPackages, catalog) {
-  const yealinkCatalog = catalog?.yealink || YEALINK_MODELS;
+  const yealinkCatalog = catalog?.yealink || [];
   const s = settings || {};
   const taxRate  = parseFloat(s.voice_tax_estimate || 0.25);
   const hosting  = parseFloat(s.voice_hosting_cost || 24);   // AWS Lightsail base
