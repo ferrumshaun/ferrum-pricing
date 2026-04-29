@@ -1,5 +1,20 @@
 [
   {
+    "version": "3.5.24",
+    "date": "2026-04-29",
+    "summary": "Bug fix — products with qty_driver='manual' (M365, Adobe, etc.) now save correctly",
+    "audience": "admin",
+    "categories": {
+      "fixed": [
+        "Saving an IT product with qty_driver set to 'manual' now works. The bug was a half-finished migration: the AdminPage dropdown offered 'manual' as an option and the pricing engine in src/lib/pricing.js already had a switch case for it (using inputs.manualQuantities[productId] from the quote pages), but the products table CHECK constraint on qty_driver was never extended to include the new value, so saves were rejected with 'new row for relation \"products\" violates check constraint products_qty_driver_check'",
+        "Applied the same fix to the cost_qty_driver constraint (the optional override for cost basis) in case the sibling constraint had the same gap"
+      ],
+      "improved": [
+        "Constraint allow-list is now explicitly aligned with QTY_DRIVERS in src/pages/AdminPage.js and the switch cases in getQtyForDriver(). Adding a new driver in the future requires updating all three locations — the SQL migration in this deploy documents the canonical list"
+      ]
+    }
+  },
+  {
     "version": "3.5.23",
     "date": "2026-04-29",
     "summary": "Voice hardware pricing migration — phase 2: quote pages now read from the database, admin edits take effect immediately",
