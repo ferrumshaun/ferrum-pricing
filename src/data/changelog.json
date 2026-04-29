@@ -1,5 +1,23 @@
 [
   {
+    "version": "3.5.27",
+    "date": "2026-04-29",
+    "summary": "Activity Log UX overhaul — fixed pagination, scroll, and debounced search",
+    "audience": "admin",
+    "categories": {
+      "fixed": [
+        "Activity Log page now scrolls. The previous version inherited overflow:hidden from the parent layout frame and rendered the full table in flow, which clipped the bottom of the table (and the pagination controls) below the fold. New layout uses a fixed header for filters, a scrollable middle for the table, and a pinned footer for pagination — standard admin-app shape",
+        "Pagination Next button now correctly enables and disables based on the true total count. The previous version's 'disable when current page has fewer than 50 rows' heuristic broke on edge cases (e.g. couldn't tell whether you were on the last page or about to discover an empty next page)",
+        "Pagination footer now shows 'Page X of N · Y entries' so admins know how many total entries exist and where they are in the dataset"
+      ],
+      "improved": [
+        "User-email filter is now debounced — one Supabase query fires 300ms after typing stops, instead of one query per keystroke. Subtle 'typing…' indicator appears next to the filter row while the debounce is in flight. Dropdown filters (entity, action) still apply immediately since they're discrete choices",
+        "Table header is now sticky inside the scroll area — column headers (When, User, Action, Entity, Name, Changes) stay visible as you scroll through entries on a single page",
+        "Empty state — when filters match no entries, shows 'No activity matches the current filters' instead of an empty table"
+      ]
+    }
+  },
+  {
     "version": "3.5.26",
     "date": "2026-04-29",
     "summary": "Refactor — extracted shared RepSelector component (Assigned Sales Rep dropdown) across all 5 quote types",
