@@ -1,5 +1,21 @@
 [
   {
+    "version": "3.5.25",
+    "date": "2026-04-29",
+    "summary": "Refactor — extracted shared QuoteSaveBar component (save button + Send for Review block) across all 5 quote types",
+    "audience": "developer",
+    "categories": {
+      "improved": [
+        "New src/components/QuoteSaveBar.js consolidates the save button, save status messaging, and Send for Review block that was previously duplicated across all 5 quote pages (Managed IT, Multi-Site, Voice, Bundle, FlexIT). When the save workflow needs a change in the future, it happens in one place instead of 5",
+        "Each page keeps its existing visual identity — styling props on QuoteSaveBar accommodate per-page variations (FlexIT's distinctive orange button, MultiSite's larger button for the bottom of the scroll column, etc.). No pixel-level UI regressions; reps will not notice this change",
+        "Pages with extra workflow buttons (QuotePage's \"Export JSON\" + \"Bundle with Voice\", MultiSite's \"Export SPT\", Voice's \"Bundle with IT\") pass them through QuoteSaveBar's leadingButtons / extraButtons slots, so the buttons render where they always have"
+      ],
+      "coming_soon": [
+        "v3.5.26 (next): extract a shared QuoteHeader component for the Proposal Details section (rep dropdown, proposal name, client info, ZIP, quote status). This is where most of the actual maintenance pain has been (e.g. v3.5.20's commission display strip required surgery in 5 places)"
+      ]
+    }
+  },
+  {
     "version": "3.5.24",
     "date": "2026-04-29",
     "summary": "Bug fix — products with qty_driver='manual' (M365, Adobe, etc.) now save correctly",

@@ -19,7 +19,8 @@ import MarketRateCard from '../components/MarketRateCard';
 import FlexTimeSelector from '../components/FlexTimeSelector';
 import { calcFlexBlock } from '../lib/flexTime';
 import { createFlexITSPTProposal, buildFlexITQuoteShape } from '../lib/smartPricingTable';
-import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import { ReviewBanner } from '../components/SendForReview';
+import QuoteSaveBar from '../components/QuoteSaveBar';
 
 // ── FlexIT fixed assumptions (from PDF) ──────────────────────────────────────
 const FLEXIT_ASSUMPTIONS = [
@@ -486,23 +487,26 @@ export default function FlexITQuotePage() {
         </Sec>
 
         {/* Save */}
-        <div style={{ display:'flex', gap:6, alignItems:'center', marginTop:8 }}>
-          <button onClick={save} disabled={saving}
-            style={{ flex:1, padding:'8px', background:'#f97316', color:'white', border:'none', borderRadius:5, fontSize:12, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1 }}>
-            {saving ? 'Saving...' : existingQuote ? 'Save Changes' : 'Save Quote'}
-          </button>
-          {saveMsg && <span style={{ fontSize:11, fontWeight:600, color: saveMsg.startsWith('✓') ? '#166534' : '#dc2626' }}>{saveMsg}</span>}
+        <div style={{ marginTop: 8 }}>
+          <QuoteSaveBar
+            onSave={save}
+            existingQuote={existingQuote}
+            quoteStatus={quoteStatus}
+            setQuoteStatus={setQuoteStatus}
+            quoteType="flexIT"
+            saving={saving}
+            saveMsg={saveMsg}
+            saveLabelExisting="Save Changes"
+            saveButtonColor="#f97316"
+            saveButtonPadding="8px"
+            saveButtonRadius={5}
+            saveButtonFontSize={12}
+            saveButtonFontWeight={700}
+            saveMsgPlacement="inline"
+            reviewRowMarginTop={8}
+            showWrapper={false}
+          />
         </div>
-
-        {existingQuote && (
-          <div style={{ marginTop:8 }}>
-            <SendForReviewButton
-              quote={{ ...existingQuote, status: quoteStatus }}
-              quoteType="flexIT"
-              onStatusChange={s => setQuoteStatus(s)}
-            />
-          </div>
-        )}
       </div>
 
       {/* ── RIGHT COLUMN ── */}

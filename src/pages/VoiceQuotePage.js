@@ -9,7 +9,8 @@ import { writeQuoteUrlToDeal, searchDeals, getDealFull, updateDealDescription } 
 import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
-import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import { ReviewBanner } from '../components/SendForReview';
+import QuoteSaveBar from '../components/QuoteSaveBar';
 import IntlDialingWaiver       from '../components/IntlDialingWaiver';
 import VoiceAssumptionsModal  from '../components/VoiceAssumptionsModal';
 import ByohPicker             from '../components/ByohPicker';
@@ -885,34 +886,31 @@ export default function VoiceQuotePage() {
 
 
         {/* Save */}
-        <div style={{ padding:8, background:'#f8fafc', borderRadius:5, border:'1px solid #e5e7eb', marginTop:4 }}>
-          <button onClick={saveQuote} disabled={saving}
-            style={{ width:'100%', padding:'7px', background:'#0f1e3c', color:'white', border:'none', borderRadius:4, fontSize:11, fontWeight:600, cursor:'pointer', opacity:saving?0.7:1 }}>
-            {saving ? 'Saving...' : existingQuote ? 'Update Quote' : 'Save Quote'}
-          </button>
-          {existingQuote && (
-            <div style={{ marginTop:5, display:'flex', gap:6, flexWrap:'wrap' }}>
-              <SendForReviewButton
-                quote={{ ...existingQuote, status: quoteStatus }}
-                quoteType="voice"
-                onStatusChange={s => setQuoteStatus(s)}
-              />
-              <button
-                onClick={() => navigate('/bundle/new', { state: { fromQuote: {
-                  type: 'voice',
-                  clientName: recipientBiz, clientZip,
-                  proposalName, recipientContact, recipientEmail, recipientAddress,
-                  notes: dealDescription,
-                  hubDealId, hubDealUrl, hubDealName,
-                  voiceInputs: { ...v },
-                }}})}
-                style={{ padding:'6px 10px', background:'#faf5ff', border:'1px solid #ddd6fe', borderRadius:4, fontSize:11, color:'#6d28d9', fontWeight:600, cursor:'pointer' }}>
-                📦 Bundle with IT
-              </button>
-            </div>
-          )}
-          {saveMsg && <div style={{ fontSize:11, color:'#166534', fontWeight:600, marginTop:4 }}>{saveMsg}</div>}
-        </div>
+        <QuoteSaveBar
+          onSave={saveQuote}
+          existingQuote={existingQuote}
+          quoteStatus={quoteStatus}
+          setQuoteStatus={setQuoteStatus}
+          quoteType="voice"
+          saving={saving}
+          saveMsg={saveMsg}
+          saveButtonPadding="7px"
+          reviewRowMarginTop={5}
+          extraButtons={
+            <button
+              onClick={() => navigate('/bundle/new', { state: { fromQuote: {
+                type: 'voice',
+                clientName: recipientBiz, clientZip,
+                proposalName, recipientContact, recipientEmail, recipientAddress,
+                notes: dealDescription,
+                hubDealId, hubDealUrl, hubDealName,
+                voiceInputs: { ...v },
+              }}})}
+              style={{ padding:'6px 10px', background:'#faf5ff', border:'1px solid #ddd6fe', borderRadius:4, fontSize:11, color:'#6d28d9', fontWeight:600, cursor:'pointer' }}>
+              📦 Bundle with IT
+            </button>
+          }
+        />
       </div>
 
       {/* ── RIGHT PANEL ── */}

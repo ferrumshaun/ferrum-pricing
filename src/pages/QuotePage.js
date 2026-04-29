@@ -9,7 +9,8 @@ import { writeQuoteUrlToDeal, searchDeals, getDealFull, createDeal, updateDeal, 
 import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
-import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import { ReviewBanner } from '../components/SendForReview';
+import QuoteSaveBar from '../components/QuoteSaveBar';
 import HubSpotConnect from '../components/HubSpotConnect';
 import SPTConnect    from '../components/SPTConnect';
 import MarketRateCard from '../components/MarketRateCard';
@@ -770,44 +771,40 @@ export default function QuotePage() {
 
 
         {/* Save / Export */}
-        <div style={{ padding:10, background:'#f8fafc', borderRadius:5, border:'1px solid #e5e7eb', marginTop:4 }}>
-          <div style={{ display:'flex', gap:5 }}>
-            <button onClick={saveQuote} disabled={saving}
-              style={{ flex:1, padding:'6px', background:'#0f1e3c', color:'white', border:'none', borderRadius:4, fontSize:11, fontWeight:600, cursor:'pointer', opacity:saving?0.7:1 }}>
-              {saving ? 'Saving...' : existingQuote ? 'Update Quote' : 'Save Quote'}
+        <QuoteSaveBar
+          onSave={saveQuote}
+          existingQuote={existingQuote}
+          quoteStatus={quoteStatus}
+          setQuoteStatus={setQuoteStatus}
+          quoteType="quotes"
+          saving={saving}
+          saveMsg={saveMsg}
+          saveButtonPadding="6px"
+          wrapperStyle={{ padding: 10 }}
+          reviewQuote={existingQuote ? { ...existingQuote, status: quoteStatus, inputs: { ...inputs, proposalName, recipientContact, recipientEmail } } : null}
+          leadingButtons={result && (
+            <button onClick={exportSPT}
+              style={{ padding:'6px 8px', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:4, fontSize:10, color:'#166534', fontWeight:600, cursor:'pointer' }}>
+              Export JSON
             </button>
-            {result && (
-              <button onClick={exportSPT}
-                style={{ padding:'6px 8px', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:4, fontSize:10, color:'#166534', fontWeight:600, cursor:'pointer' }}>
-                Export JSON
-              </button>
-            )}
-          </div>
-          {existingQuote && (
-            <div style={{ marginTop:6, display:'flex', gap:6, flexWrap:'wrap' }}>
-              <SendForReviewButton
-                quote={{ ...existingQuote, status: quoteStatus, inputs: { ...inputs, proposalName, recipientContact, recipientEmail } }}
-                quoteType="quotes"
-                onStatusChange={s => setQuoteStatus(s)}
-              />
-              <button
-                onClick={() => navigate('/bundle/new', { state: { fromQuote: {
-                  type: 'it',
-                  clientName: recipientBiz, clientZip,
-                  marketTier: selectedMkt?.tier_key,
-                  packageName: selectedPkg?.name,
-                  proposalName, recipientContact, recipientEmail, recipientAddress, flexHours: flexHours || null,
-                  notes: dealDescription,
-                  hubDealId, hubDealUrl, hubDealName,
-                  inputs: { ...inputs },
-                }}})}
-                style={{ padding:'6px 10px', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:4, fontSize:11, color:'#166534', fontWeight:600, cursor:'pointer' }}>
-                📦 Bundle with Voice
-              </button>
-            </div>
           )}
-          {saveMsg && <div style={{ fontSize:11, color:'#166534', fontWeight:600, marginTop:5 }}>{saveMsg}</div>}
-        </div>
+          extraButtons={
+            <button
+              onClick={() => navigate('/bundle/new', { state: { fromQuote: {
+                type: 'it',
+                clientName: recipientBiz, clientZip,
+                marketTier: selectedMkt?.tier_key,
+                packageName: selectedPkg?.name,
+                proposalName, recipientContact, recipientEmail, recipientAddress, flexHours: flexHours || null,
+                notes: dealDescription,
+                hubDealId, hubDealUrl, hubDealName,
+                inputs: { ...inputs },
+              }}})}
+              style={{ padding:'6px 10px', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:4, fontSize:11, color:'#166534', fontWeight:600, cursor:'pointer' }}>
+              📦 Bundle with Voice
+            </button>
+          }
+        />
       </div>
 
       {/* ── RIGHT PANEL ── */}

@@ -12,7 +12,8 @@ import { searchDeals, getDealFull, updateDealDescription } from '../lib/hubspot'
 import { getOrAnalyzeMarket } from '../lib/marketRates';
 import QuoteNotes from '../components/QuoteNotes';
 import QuoteHistory from '../components/QuoteHistory';
-import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import { ReviewBanner } from '../components/SendForReview';
+import QuoteSaveBar from '../components/QuoteSaveBar';
 import FlexTimeMeter   from '../components/FlexTimeMeter';
 import FlexTimeSelector from '../components/FlexTimeSelector';
 import { calcFlexBlock } from '../lib/flexTime';
@@ -735,19 +736,27 @@ export default function MultiSiteQuotePage() {
 
           {/* Save */}
           <div style={{ borderTop:'1px solid #e5e7eb', padding:'10px 14px', background:'white', flexShrink:0 }}>
-            <button onClick={saveQuote} disabled={saving || !recipientBiz.trim()}
-              style={{ width:'100%', padding:'9px', background:'#0f1e3c', color:'white', border:'none', borderRadius:6, fontSize:13, fontWeight:700, cursor:'pointer', opacity: (saving || !recipientBiz.trim()) ? 0.6 : 1 }}>
-              {saving ? 'Saving...' : existingQuote ? 'Update Quote' : 'Save Multi-Site Quote'}
-            </button>
-            {existingQuote && (
-              <div style={{ marginTop:6, display:'flex', gap:6, flexWrap:'wrap' }}>
-                <SendForReviewButton quote={{ ...existingQuote, status: quoteStatus }} quoteType="multisite" onStatusChange={s => setQuoteStatus(s)} />
+            <QuoteSaveBar
+              onSave={saveQuote}
+              existingQuote={existingQuote}
+              quoteStatus={quoteStatus}
+              setQuoteStatus={setQuoteStatus}
+              quoteType="multisite"
+              saving={saving}
+              saveMsg={saveMsg}
+              saveDisabled={!recipientBiz.trim()}
+              saveLabelNew="Save Multi-Site Quote"
+              saveButtonPadding="9px"
+              saveButtonRadius={6}
+              saveButtonFontSize={13}
+              saveButtonFontWeight={700}
+              showWrapper={false}
+              extraButtons={
                 <button onClick={exportSPT} style={{ padding:'4px 8px', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:4, fontSize:10, color:'#166534', fontWeight:600, cursor:'pointer' }}>
                   ↓ Export SPT
                 </button>
-              </div>
-            )}
-            {saveMsg && <div style={{ fontSize:11, color: saveMsg.startsWith('Error') ? '#dc2626' : '#166534', fontWeight:600, marginTop:4 }}>{saveMsg}</div>}
+              }
+            />
           </div>
         </div>
 

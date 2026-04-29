@@ -9,7 +9,8 @@ import { writeQuoteUrlToDeal, searchDeals, getDealFull, updateDealDescription } 
 import QuoteNotes    from '../components/QuoteNotes';
 import QuoteHistory  from '../components/QuoteHistory';
 import { saveQuoteVersion } from '../lib/quoteVersions';
-import { SendForReviewButton, ReviewBanner } from '../components/SendForReview';
+import { ReviewBanner } from '../components/SendForReview';
+import QuoteSaveBar from '../components/QuoteSaveBar';
 import FlexTimeMeter   from '../components/FlexTimeMeter';
 import FlexTimeSelector from '../components/FlexTimeSelector';
 import { calcFlexBlock } from '../lib/flexTime';
@@ -767,22 +768,19 @@ export default function BundleQuotePage() {
         </CollapsibleSec>
 
         {/* Save */}
-        <div style={{ padding:8, background:'#f8fafc', borderRadius:5, border:'1px solid #e5e7eb', marginTop:4 }}>
-          <button onClick={saveQuote} disabled={saving}
-            style={{ width:'100%', padding:'7px', background:'#0f1e3c', color:'white', border:'none', borderRadius:4, fontSize:11, fontWeight:600, cursor:'pointer', opacity:saving?0.7:1 }}>
-            {saving ? 'Saving...' : existingQuote ? 'Update Bundle Quote' : 'Save Bundle Quote'}
-          </button>
-          {existingQuote && (
-            <div style={{ marginTop:5 }}>
-              <SendForReviewButton
-                quote={{ ...existingQuote, status: quoteStatus }}
-                quoteType="bundle"
-                onStatusChange={s => setQuoteStatus(s)}
-              />
-            </div>
-          )}
-          {saveMsg && <div style={{ fontSize:11, color:'#166534', fontWeight:600, marginTop:4 }}>{saveMsg}</div>}
-        </div>
+        <QuoteSaveBar
+          onSave={saveQuote}
+          existingQuote={existingQuote}
+          quoteStatus={quoteStatus}
+          setQuoteStatus={setQuoteStatus}
+          quoteType="bundle"
+          saving={saving}
+          saveMsg={saveMsg}
+          saveLabelNew="Save Bundle Quote"
+          saveLabelExisting="Update Bundle Quote"
+          saveButtonPadding="7px"
+          reviewRowMarginTop={5}
+        />
       </div>
 
       {/* ── RIGHT: Combined summary ── */}
