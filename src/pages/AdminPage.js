@@ -442,19 +442,45 @@ function ProductsAdmin() {
 // ─── PACKAGES ADMIN ───────────────────────────────────────────────────────────
 function PackagesAdmin() {
   const [packages,  setPackages]  = useState([]);
+  const [products,  setProducts]  = useState([]);   // for the "include products" picker
   const [loading,   setLoading]   = useState(true);
   const [editing,   setEditing]   = useState(null);
   const [saving,    setSaving]    = useState(false);
   const [saveError, setSaveError] = useState('');
+  // Included-products state (v3.5.30): mirrors rows from package_includes.
+  // Loaded when the modal opens, edited locally, persisted on save().
+  // Each item shape: { id?, package_id, product_id, is_mandatory, notes, sort_order, _delete? }
+  // Items with _delete:true are removed from DB on save.
+  const [includes,         setIncludes]         = useState([]);
+  const [includesLoading,  setIncludesLoading]  = useState(false);
+  const [showProductPicker, setShowProductPicker] = useState(false);
   const { profile } = useAuth();
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from('packages').select('*').order('sort_order');
-    setPackages(data || []);
+    const [{ data: pkgs }, { data: prods }] = await Promise.all([
+      supabase.from('packages').select('*').order('sort_order'),
+      supabase.from('products').select('*').eq('active', true).order('category').order('name'),
+    ]);
+    setPackages(pkgs || []);
+    setProducts(prods || []);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
+
+  // When the editing modal opens for an existing package, load its includes
+  useEffect(() => {
+    if (!editing?.id) { setIncludes([]); return; }
+    setIncludesLoading(true);
+    supabase.from('package_includes')
+      .select('*')
+      .eq('package_id', editing.id)
+      .order('sort_order')
+      .then(({ data }) => {
+        setIncludes((data || []).map(row => ({ ...row })));
+        setIncludesLoading(false);
+      });
+  }, [editing?.id]);
 
   async function save() {
     setSaving(true); setSaveError('');
@@ -482,12 +508,19 @@ function PackagesAdmin() {
       if (!editing.id) delete payload.id;
       const old = packages.find(p => p.id === editing.id);
       const isNew = !editing.id;
-      const { error } = isNew
-        ? await supabase.from('packages').insert(payload)
-        : await supabase.from('packages').update(payload).eq('id', editing.id);
-      if (error) throw new Error(error.message);
+      let savedId = editing.id;
+      if (isNew) {
+        const { data, error } = await supabase.from('packages').insert(payload).select('id').single();
+        if (error) throw new Error(error.message);
+        savedId = data?.id;
+      } else {
+        const { error } = await supabase.from('packages').update(payload).eq('id', editing.id);
+        if (error) throw new Error(error.message);
+      }
+      // Persist package_includes — sync local state to DB
+      if (savedId) await syncIncludes(savedId);
       await logActivity({ action: isNew ? 'CREATE' : 'UPDATE', entityType: 'package',
-        entityId: editing.id, entityName: editing.name,
+        entityId: savedId, entityName: editing.name,
         changes: isNew ? payload : diffObjects(old, payload) });
       setEditing(null); load();
     } catch (e) {
@@ -495,6 +528,40 @@ function PackagesAdmin() {
       setSaveError(e.message || 'Save failed — check console for details.');
     }
     setSaving(false);
+  }
+
+  // Persist included-products edits made in the modal.
+  // - Items marked _delete:true → DELETE from DB (if they have an id)
+  // - New items (no id) → INSERT
+  // - Existing items → UPDATE (always, even if unchanged — cheap and avoids needing dirty tracking)
+  async function syncIncludes(packageId) {
+    const toDelete = includes.filter(it => it._delete && it.id).map(it => it.id);
+    const toInsert = includes.filter(it => !it._delete && !it.id).map(it => ({
+      package_id:   packageId,
+      product_id:   it.product_id,
+      is_mandatory: !!it.is_mandatory,
+      notes:        it.notes || null,
+      sort_order:   parseInt(it.sort_order) || 100,
+    }));
+    const toUpdate = includes.filter(it => !it._delete && it.id);
+
+    if (toDelete.length) {
+      const { error } = await supabase.from('package_includes').delete().in('id', toDelete);
+      if (error) throw new Error(`Delete includes: ${error.message}`);
+    }
+    if (toInsert.length) {
+      const { error } = await supabase.from('package_includes').insert(toInsert);
+      if (error) throw new Error(`Insert includes: ${error.message}`);
+    }
+    for (const it of toUpdate) {
+      const { error } = await supabase.from('package_includes').update({
+        is_mandatory: !!it.is_mandatory,
+        notes:        it.notes || null,
+        sort_order:   parseInt(it.sort_order) || 100,
+        updated_at:   new Date().toISOString(),
+      }).eq('id', it.id);
+      if (error) throw new Error(`Update include: ${error.message}`);
+    }
   }
 
   async function toggle(row) {
@@ -571,9 +638,258 @@ function PackagesAdmin() {
               </Field>
             </div>
             <div style={{ gridColumn: '1/-1' }}><Field label="Ideal For (description)"><Input value={editing.ideal_desc || ''} onChange={v => setEditing(e => ({...e, ideal_desc: v}))} /></Field></div>
+
+            {/* ── Included Products (v3.5.30) ─────────────────────────────────── */}
+            <div style={{ gridColumn: '1/-1', marginTop: 14, paddingTop: 12, borderTop: '1px solid #e5e7eb' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  📦 Included Products
+                </div>
+                <button type="button" onClick={() => setShowProductPicker(true)} disabled={!editing.id}
+                  style={{ padding:'4px 10px', background: editing.id ? '#7c3aed' : '#d4d4d8', color:'white', border:'none', borderRadius:4, fontSize:11, fontWeight:600, cursor: editing.id ? 'pointer' : 'not-allowed' }}>
+                  + Add product
+                </button>
+              </div>
+              {!editing.id && (
+                <div style={{ fontSize: 10, color: '#9ca3af', fontStyle: 'italic', padding: '6px 0' }}>
+                  Save the package first, then add included products.
+                </div>
+              )}
+              {editing.id && includesLoading && (
+                <div style={{ fontSize: 11, color: '#9ca3af', padding: '8px 0' }}>Loading includes…</div>
+              )}
+              {editing.id && !includesLoading && includes.filter(it => !it._delete).length === 0 && (
+                <div style={{ fontSize: 11, color: '#9ca3af', fontStyle: 'italic', padding: '6px 0' }}>
+                  No products bundled with this package yet. Add products above.
+                </div>
+              )}
+              {editing.id && !includesLoading && includes.filter(it => !it._delete).length > 0 && (
+                <>
+                  <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 8, fontStyle: 'italic', lineHeight: 1.5 }}>
+                    Adding products here doesn't change package rates. Adjust user_rate / ws_rate / etc. above to absorb the additional cost. Quote pages will display these in v3.5.31.
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                    <thead>
+                      <tr style={{ background: '#f9fafb' }}>
+                        {['Product', 'Sell × Driver', 'Cost × Driver', 'Locked?', 'Sort', ''].map(h => (
+                          <th key={h} style={{ padding: '5px 8px', textAlign: 'left', color: '#6b7280', fontWeight: 600, borderBottom: '1px solid #e5e7eb', fontSize: 10, textTransform: 'uppercase' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {includes.filter(it => !it._delete).sort((a,b) => (a.sort_order || 100) - (b.sort_order || 100)).map((it) => {
+                        const prod = products.find(p => p.id === it.product_id);
+                        if (!prod) return (
+                          <tr key={it.id || `new-${it.product_id}`} style={{ background: '#fef2f2' }}>
+                            <td colSpan={6} style={{ padding: '6px 8px', fontSize: 10, color: '#dc2626' }}>
+                              ⚠ Product {it.product_id} no longer exists or is inactive. <button onClick={() => removeInclude(it)} style={{ color:'#dc2626', textDecoration:'underline', background:'none', border:'none', cursor:'pointer', fontSize:10 }}>Remove</button>
+                            </td>
+                          </tr>
+                        );
+                        return (
+                          <tr key={it.id || `new-${it.product_id}`} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <td style={{ padding: '5px 8px' }}>
+                              <div style={{ fontWeight: 600, color: '#374151' }}>{prod.name}</div>
+                              <div style={{ fontSize: 10, color: '#9ca3af' }}>{prod.category}{prod.sub_category ? ` › ${prod.sub_category}` : ''}</div>
+                            </td>
+                            <td style={{ padding: '5px 8px', fontFamily: 'DM Mono, monospace', fontSize: 10, color: '#0f766e' }}>
+                              ${Number(prod.sell_price).toFixed(2)} / {prod.qty_driver}
+                            </td>
+                            <td style={{ padding: '5px 8px', fontFamily: 'DM Mono, monospace', fontSize: 10, color: '#1e40af' }}>
+                              ${Number(prod.cost_price).toFixed(2)} / {prod.cost_qty_driver || prod.qty_driver}
+                            </td>
+                            <td style={{ padding: '5px 8px', textAlign: 'center' }}>
+                              <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <input type="checkbox" checked={!!it.is_mandatory}
+                                  onChange={e => updateInclude(it, { is_mandatory: e.target.checked })}
+                                  style={{ accentColor: '#7c3aed' }} />
+                                <span style={{ fontSize: 10, color: it.is_mandatory ? '#7c3aed' : '#9ca3af' }}>
+                                  {it.is_mandatory ? 'Mandatory' : 'Swappable'}
+                                </span>
+                              </label>
+                            </td>
+                            <td style={{ padding: '5px 8px' }}>
+                              <input type="number" value={it.sort_order ?? 100}
+                                onChange={e => updateInclude(it, { sort_order: e.target.value === '' ? null : parseInt(e.target.value) })}
+                                style={{ width: 50, padding: '3px 5px', border: '1px solid #d1d5db', borderRadius: 3, fontSize: 11, fontFamily: 'DM Mono, monospace' }} />
+                            </td>
+                            <td style={{ padding: '5px 8px', textAlign: 'right' }}>
+                              <button type="button" onClick={() => removeInclude(it)}
+                                style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 11 }}>
+                                ✕
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {/* Cost-impact summary by qty_driver */}
+                  <IncludeCostSummary includes={includes.filter(it => !it._delete)} products={products} />
+                </>
+              )}
+            </div>
+            {/* ── End Included Products ───────────────────────────────────────── */}
           </div>
+          {/* Product picker sub-modal */}
+          {showProductPicker && (
+            <ProductPickerModal
+              products={products}
+              alreadyIncluded={includes.filter(it => !it._delete).map(it => it.product_id)}
+              onClose={() => setShowProductPicker(false)}
+              onPick={(productIds) => {
+                setIncludes(prev => [
+                  ...prev,
+                  ...productIds.map((pid, i) => ({
+                    package_id:   editing.id,
+                    product_id:   pid,
+                    is_mandatory: true,
+                    notes:        null,
+                    sort_order:   100 + (prev.filter(it => !it._delete).length + i) * 10,
+                  })),
+                ]);
+                setShowProductPicker(false);
+              }}
+            />
+          )}
         </Modal>
       )}
+    </div>
+  );
+
+  function updateInclude(item, patch) {
+    setIncludes(prev => prev.map(it => it === item ? { ...it, ...patch } : it));
+  }
+  function removeInclude(item) {
+    if (item.id) {
+      // Mark for DB deletion on save
+      setIncludes(prev => prev.map(it => it === item ? { ...it, _delete: true } : it));
+    } else {
+      // Never persisted — just drop it from local state
+      setIncludes(prev => prev.filter(it => it !== item));
+    }
+  }
+}
+
+// ─── Product picker for the package-includes section (v3.5.30) ────────────────
+// Lets admin select one or more products to include in a package. Already-included
+// products are filtered out so admin can't double-add. Search filters by name/category.
+function ProductPickerModal({ products, alreadyIncluded, onClose, onPick }) {
+  const [search, setSearch] = useState('');
+  const [picked, setPicked] = useState(new Set());
+  const [categoryFilter, setCategoryFilter] = useState('');
+
+  const available = products.filter(p => !alreadyIncluded.includes(p.id));
+  const categories = [...new Set(available.map(p => p.category))].sort();
+
+  const filtered = available.filter(p => {
+    if (categoryFilter && p.category !== categoryFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  function togglePick(id) {
+    setPicked(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:600 }}>
+      <div style={{ background:'white', borderRadius:8, padding:20, width:680, maxHeight:'85vh', display:'flex', flexDirection:'column', boxShadow:'0 8px 32px rgba(0,0,0,0.25)' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+          <h3 style={{ fontSize:14, fontWeight:700, color:'#0f1e3c', margin:0 }}>Add Products to Package</h3>
+          <div style={{ fontSize:11, color:'#6b7280' }}>{picked.size} selected · {available.length} available</div>
+        </div>
+        <div style={{ display:'flex', gap:8, marginBottom:10 }}>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or description..."
+            style={{ flex:1, padding:'6px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, outline:'none' }} />
+          <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
+            style={{ padding:'6px 8px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, background:'white', minWidth:140 }}>
+            <option value="">All categories</option>
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div style={{ flex:1, overflowY:'auto', border:'1px solid #e5e7eb', borderRadius:4 }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding:20, textAlign:'center', color:'#9ca3af', fontSize:11 }}>No products match.</div>
+          ) : (
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
+              <tbody>
+                {filtered.map(p => (
+                  <tr key={p.id} onClick={() => togglePick(p.id)}
+                    style={{ borderBottom:'1px solid #f3f4f6', cursor:'pointer', background: picked.has(p.id) ? '#faf5ff' : 'white' }}>
+                    <td style={{ padding:'7px 10px', width:30 }}>
+                      <input type="checkbox" checked={picked.has(p.id)} onChange={() => togglePick(p.id)}
+                        style={{ accentColor:'#7c3aed', cursor:'pointer' }} />
+                    </td>
+                    <td style={{ padding:'7px 10px' }}>
+                      <div style={{ fontWeight:600, color:'#374151' }}>{p.name}</div>
+                      <div style={{ fontSize:10, color:'#9ca3af' }}>
+                        {p.category}{p.sub_category ? ` › ${p.sub_category}` : ''}{p.description ? ` — ${p.description.substring(0, 80)}${p.description.length > 80 ? '…' : ''}` : ''}
+                      </div>
+                    </td>
+                    <td style={{ padding:'7px 10px', fontFamily:'DM Mono, monospace', fontSize:10, whiteSpace:'nowrap', textAlign:'right' }}>
+                      <div style={{ color:'#0f766e' }}>${Number(p.sell_price).toFixed(2)}/{p.qty_driver}</div>
+                      <div style={{ color:'#1e40af' }}>${Number(p.cost_price).toFixed(2)}/{p.cost_qty_driver || p.qty_driver}</div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:12 }}>
+          <button onClick={onClose}
+            style={{ padding:'6px 14px', background:'#f3f4f6', border:'1px solid #e5e7eb', borderRadius:4, fontSize:11, cursor:'pointer' }}>
+            Cancel
+          </button>
+          <button onClick={() => onPick([...picked])} disabled={picked.size === 0}
+            style={{ padding:'6px 14px', background: picked.size === 0 ? '#d4d4d8' : '#7c3aed', color:'white', border:'none', borderRadius:4, fontSize:11, fontWeight:600, cursor: picked.size === 0 ? 'not-allowed' : 'pointer' }}>
+            Add {picked.size > 0 ? `${picked.size} product${picked.size === 1 ? '' : 's'}` : ''}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Cost summary aggregator (v3.5.30) ────────────────────────────────────────
+// Shows admin the total monthly COGS from included products, broken down by
+// qty_driver. Helps admin decide how much to bump user_rate / ws_rate / etc.
+function IncludeCostSummary({ includes, products }) {
+  // Build totals per driver
+  const totals = {};
+  for (const it of includes) {
+    const prod = products.find(p => p.id === it.product_id);
+    if (!prod) continue;
+    const driver = prod.cost_qty_driver || prod.qty_driver;
+    const cost = Number(prod.cost_price) || 0;
+    totals[driver] = (totals[driver] || 0) + cost;
+  }
+  const entries = Object.entries(totals).filter(([, v]) => v > 0);
+  if (entries.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: 10, padding: '8px 10px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 4, fontSize: 10 }}>
+      <div style={{ fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+        💰 Monthly cost contribution
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, color: '#166534', fontFamily: 'DM Mono, monospace' }}>
+        {entries.map(([driver, total]) => (
+          <span key={driver}>
+            <strong>${total.toFixed(2)}</strong> per {driver}
+          </span>
+        ))}
+      </div>
+      <div style={{ fontSize: 9, color: '#15803d', marginTop: 4, fontStyle: 'italic' }}>
+        Adjust the package rates above (user_rate, ws_rate, etc.) to cover these costs plus margin.
+      </div>
     </div>
   );
 }

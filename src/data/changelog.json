@@ -1,5 +1,25 @@
 [
   {
+    "version": "3.5.30",
+    "date": "2026-04-30",
+    "summary": "Package Includes — Deploy 1: schema and admin UI for bundling products into Managed IT packages",
+    "audience": "admin",
+    "categories": {
+      "new": [
+        "New Admin → Managed IT Packages → (edit modal): an 'Included Products' section where admins can bundle products into each package. Pick from the products catalog, mark each as Mandatory (rep cannot uncheck on a quote) or Swappable (rep can opt out), and order them with sort_order",
+        "Cost-impact summary at the bottom of the includes section: shows the total monthly COGS contribution by qty_driver (e.g., '$4.00 per user, $1.50 per workstation'). Helps admins decide how much to bump user_rate / ws_rate / etc. to absorb the new costs",
+        "New product picker sub-modal with category filter + search. Already-included products are filtered out so admin can't double-add. Multi-select interface — pick several products at once",
+        "New Supabase table public.package_includes — join table between packages and products with is_mandatory, notes, sort_order. Indexed on package_id and product_id"
+      ],
+      "improved": [
+        "PackagesAdmin now also fetches the products catalog on mount (previously only loaded packages). Required for the picker UI"
+      ],
+      "coming_soon": [
+        "v3.5.31 (Deploy 2): wire the package_includes data into the pricing engine and quote pages. Picked products will appear in an 'Included with [package]' section above the add-ons, with $0 sell line and full COGS rolled into the package margin. Until then, this deploy lets admins populate the data but quote pages do not yet read it"
+      ]
+    }
+  },
+  {
     "version": "3.5.29",
     "date": "2026-04-29",
     "summary": "Cleanup — removed deprecated YEALINK_MODELS / ATA_MODELS hardcoded constants from voicePricing.js",
