@@ -194,13 +194,14 @@ const CPLX_M = { low: 1.0, medium: 1.08, high: 1.18 };
 //   When omitted or empty, no include processing happens (legacy behavior).
 // `excludedIncludes` (added v3.5.31): array of include IDs the rep unchecked
 //   (only swappable includes can be excluded; rep-side UI enforces that).
-export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMultiplierOverride, repCommissionRate, snapshot, packageIncludes, excludedIncludes }) {
+export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMultiplierOverride, repCommissionRate, snapshot, packageIncludes, excludedIncludes, includeSwaps }) {
   // If a pricing snapshot exists, use frozen rates instead of live data
   if (snapshot) {
     pkg              = snapshot.package          || pkg;
     products         = snapshot.products         || products;
     settings         = snapshot.settings         || settings;
     packageIncludes  = snapshot.packageIncludes  || packageIncludes;
+    if (snapshot.includeSwaps !== undefined) includeSwaps = snapshot.includeSwaps;
   }
   if (!pkg || !marketTier || !settings) return null;
 
@@ -230,14 +231,40 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMulti
 
   const itSubtotal = wB + uB + sB + lB + tB + vB + eB + covU;
 
-  // ── Selected add-on products ──────────────────────────────────────────────
+  // ── Selected add-on products + swap substitutes (v3.5.33) ─────────────────
+  // Swap substitutes are products the rep selected to replace a swappable
+  // include. They behave exactly like normal paid add-ons (full sell, full cost,
+  // participate in commission/discount math) — the only difference is they're
+  // tagged with swap_from_include_id and the original include's cost is
+  // separately removed from totalCost (handled in the includes loop below).
   const lineItems = [];
   let discountableAddonRevenue   = 0;  // products eligible for contract discount
   let protectedAddonRevenue      = 0;  // MSRP products — never discounted
   let nonCommissionAddonRevenue  = 0;  // products excluded from commission base
   let addonCost = 0;
 
-  for (const product of products.filter(p => inputs.selectedProducts?.includes(p.id))) {
+  // Build the unified processing list: selected add-ons + swap substitutes.
+  // Each entry: { product, swapFromIncludeId? }
+  const processList = [];
+  for (const p of products.filter(pr => inputs.selectedProducts?.includes(pr.id))) {
+    processList.push({ product: p, swapFromIncludeId: null });
+  }
+  // Swap substitutes — only process if the include they're replacing is also
+  // in excludedSet (the invariant a rep-side UI must maintain). If a swap
+  // exists for a non-excluded include, ignore it (the include is still active).
+  if (includeSwaps && typeof includeSwaps === 'object') {
+    const excludedSetTmp = new Set(excludedIncludes || []);
+    for (const [includeId, subProductId] of Object.entries(includeSwaps)) {
+      if (!excludedSetTmp.has(includeId)) continue;
+      const sub = products.find(pr => pr.id === subProductId);
+      if (!sub) continue;
+      // Skip if the substitute is also already in selectedProducts to avoid double-counting
+      if (inputs.selectedProducts?.includes(sub.id)) continue;
+      processList.push({ product: sub, swapFromIncludeId: includeId });
+    }
+  }
+
+  for (const { product, swapFromIncludeId } of processList) {
     const sellQty = getSellQty(product, inputs);
     const costQty = getCostQty(product, inputs);
     const revenue = sellQty * product.sell_price;
@@ -266,7 +293,9 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMulti
       no_discount:      product.no_discount  || false,
       no_commission:    product.no_commission || false,
       revenue,
-      cost
+      cost,
+      // v3.5.33: present only on substitute line items so UI can label them
+      swap_from_include_id: swapFromIncludeId || undefined,
     });
   }
 
@@ -385,7 +414,9 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMulti
     // Add-ons
     lineItems, addonRevenue,
     // Package includes (v3.5.31)
+    // Package includes (v3.5.31, v3.5.33)
     includedLineItems, includedItemsCost, excludedIncludeIds,
+    includeSwaps: includeSwaps || {},
     // Summary
     opSubtotal, compMult, riskAdjMRR, floor,
     discount, discRate, finalMRR,
@@ -447,7 +478,11 @@ export const gmBg    = g => g >= 0.45 ? '#dcfce7' : g >= 0.30 ? '#fef3c7' : '#fe
 // `excludedIncludes` (added v3.5.31): array of include IDs the rep removed
 //   for THIS location. Multi-Site stores a separate excludedIncludes per
 //   location so reps can adjust which bundled products apply per site.
-export function calcLocationMRR({ location, pkg, marketMultiplier, settings, packageIncludes, excludedIncludes }) {
+// `includeSwaps` (added v3.5.33): map of include_id -> substitute product_id.
+//   Substitutes price as paid add-ons at full sell + full cost, both
+//   contributing to the location's MRR and per-location cost contribution.
+// `products` (added v3.5.33): products catalog (needed to look up substitutes).
+export function calcLocationMRR({ location, pkg, marketMultiplier, settings, packageIncludes, excludedIncludes, includeSwaps, products }) {
   if (!pkg || !location) return null;
   const s = settings;
   const mktMult = parseFloat(marketMultiplier) || 1;
@@ -472,8 +507,6 @@ export function calcLocationMRR({ location, pkg, marketMultiplier, settings, pac
              + servers * pkg.server_rate
              + locationFee
              + eB;
-
-  const mrr = base * mktMult;
 
   // ── Package Includes — per-location cost contribution (v3.5.31) ──────────
   // Build a synthetic inputs object so we can reuse the same qty-driver
@@ -514,6 +547,46 @@ export function calcLocationMRR({ location, pkg, marketMultiplier, settings, pac
   }
   includedLineItems.sort((a, b) => a.sort_order - b.sort_order);
 
+  // ── Swap substitutes — per-location revenue + cost contribution (v3.5.33) ─
+  // For each swap mapping, look up the substitute product in the catalog and
+  // compute its qty/sell/cost using the same per-location synthetic inputs.
+  // Substitutes participate in the location's MRR (sell side) and cost (COGS).
+  // Only processed if the include is also in excludedSet — otherwise the
+  // include is still active and the swap is meaningless.
+  const swapLineItems = [];
+  let swapRevenue = 0;
+  let swapCost    = 0;
+  if (includeSwaps && typeof includeSwaps === 'object' && Array.isArray(products)) {
+    for (const [includeId, subProductId] of Object.entries(includeSwaps)) {
+      if (!excludedSet.has(includeId)) continue;
+      const sub = products.find(pr => pr.id === subProductId);
+      if (!sub) continue;
+      const sellQty  = getSellQty(sub, includeInputs);
+      const costQty  = getCostQty(sub, includeInputs);
+      const revenue  = sellQty * (Number(sub.sell_price) || 0);
+      const cost     = costQty * (Number(sub.cost_price) || 0);
+      swapRevenue += revenue;
+      swapCost    += cost;
+      swapLineItems.push({
+        product_id:           sub.id,
+        product_name:         sub.name,
+        category:             sub.category,
+        qty_driver:           sub.qty_driver,
+        cost_qty_driver:      sub.cost_qty_driver || null,
+        qty:                  sellQty,
+        cost_qty:             costQty,
+        sell_price:           sub.sell_price,
+        cost_price:           sub.cost_price,
+        revenue,
+        cost,
+        swap_from_include_id: includeId,
+      });
+    }
+  }
+
+  // Final MRR = base package math + swap substitutes' sell side, all market-adjusted
+  const mrr = (base + swapRevenue) * mktMult;
+
   return {
     mrr,
     base,
@@ -525,10 +598,15 @@ export function calcLocationMRR({ location, pkg, marketMultiplier, settings, pac
       servers:       servers * pkg.server_rate * mktMult,
       locationFee:   locationFee * mktMult,
       endpointUplift: eB * mktMult,
+      swapRevenue:   swapRevenue * mktMult,
     },
     // Package includes
     includedLineItems,
     includedItemsCost,
+    // Swap substitutes (v3.5.33)
+    swapLineItems,
+    swapRevenue,
+    swapCost,
   };
 }
 

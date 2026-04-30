@@ -1,5 +1,28 @@
 [
   {
+    "version": "3.5.33",
+    "date": "2026-04-30",
+    "summary": "Package Includes \u2014 Deploy 3.5: full swap-out feature with substitute pricing",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Swap button on swappable include rows (the rep-side counterpart of the helper hint shipped in v3.5.32). Clicking opens a picker filtered by default to the same product category as the include \u2014 e.g., swapping Datto SaaS Backup shows other Backup products. A 'Show all categories' toggle handles the rare cross-category swap. Each candidate displays its sell price, cost price, and the cost delta vs the original include so admins can see margin impact at a glance",
+        "When a rep selects a substitute, the include row updates to a third visual state (purple, with a swap arrow): 'Datto SaaS Backup \u2192 Acronis Cyber Backup'. The substitute is treated as a paid add-on at full sell price \u2014 billed to the client as a normal line item \u2014 and its full cost rolls into COGS. The original include's cost is removed from COGS since it's no longer being delivered. Net cost-side delta: substitute_cost minus original_include_cost",
+        "On the swap row: 'Change' button reopens the picker to pick a different substitute, '\u2715' button removes the substitute (reverts to excluded-with-helper-hint). Both quote types (single-site and multi-site) get the swap UI in this deploy",
+        "Stale-mapping cleanup: when admin removes an include from a package that's been used in a saved draft quote, the rep's saved excludedIncludeIds and includeSwaps for that include are pruned automatically on next reload. Prevents orphan entries from accumulating in saved quote inputs over time"
+      ],
+      "improved": [
+        "Pricing engine: calcQuote and calcLocationMRR now accept includeSwaps. Substitutes process through the existing add-on revenue/cost aggregates (with no_discount and no_commission flags honored from the substitute product) so commission and discount math works without any special cases \u2014 substitutes behave just like normal paid add-ons in every downstream computation, only tagged with swap_from_include_id for display",
+        "Snapshot extended: when a quote is locked, pricing_snapshot.includeSwaps is captured alongside pricing_snapshot.packageIncludes, and snapshot.products now includes any swap substitute products (not just rep-selected add-ons) so the locked quote can recompute fully without needing to re-fetch from the catalog",
+        "Add-on picker filter: products that are currently selected as swap substitutes are hidden from the add-on category list so reps cannot double-add them as both swap substitutes and regular add-ons. Same approach as v3.5.31's filter for active includes"
+      ],
+      "fixed": [
+        "Re-checking an excluded include that had a swap mapping now correctly clears the swap (rep is restoring the original, not keeping the substitute alongside)",
+        "Helper hint from v3.5.32 now reads 'Need a substitute? Browse [Category] in the add-ons section below, or click Swap to pick one inline.' \u2014 gives reps the inline-swap option as well as the manual route"
+      ]
+    }
+  },
+  {
     "version": "3.5.32",
     "date": "2026-04-30",
     "summary": "Package Includes \u2014 Deploy 3: substitute helper hint for excluded swappable includes",

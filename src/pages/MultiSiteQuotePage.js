@@ -66,9 +66,12 @@ export default function MultiSiteQuotePage() {
   // applied per-location (each location's COGS picks up the includes' cost
   // contribution scaled by that location's user/workstation/server counts).
   // excludedIncludeIds applies once for the whole quote (not per-location).
+  // includeSwaps (v3.5.33): same whole-quote scope. Substitutes price as
+  // paid add-ons at full sell — applied per-location like add-ons do today.
   const [packageIncludes,    setPackageIncludes]    = useState([]);
   const [includesLoading,    setIncludesLoading]    = useState(false);
   const [excludedIncludeIds, setExcludedIncludeIds] = useState([]);
+  const [includeSwaps,       setIncludeSwaps]       = useState({});
 
   // ── Locations ─────────────────────────────────────────────────────────────
   const [locations,         setLocations]         = useState([createLocation({ name: 'Location 1' })]);
@@ -137,6 +140,10 @@ export default function MultiSiteQuotePage() {
       if (Array.isArray(data.inputs?.excludedIncludeIds)) {
         setExcludedIncludeIds(data.inputs.excludedIncludeIds);
       }
+      // v3.5.33: restore swap mappings
+      if (data.inputs?.includeSwaps && typeof data.inputs.includeSwaps === 'object') {
+        setIncludeSwaps(data.inputs.includeSwaps);
+      }
       if (data.rep_id) setRepId(data.rep_id);
       if (data.pricing_snapshot) { setPricingSnapshot(data.pricing_snapshot); setPriceLockDate(data.price_locked_at); }
       if (data.spt_proposal_id) setSptProposalId(data.spt_proposal_id);
@@ -158,6 +165,16 @@ export default function MultiSiteQuotePage() {
     loadPackageIncludes(selectedPkg.id).then(rows => {
       setPackageIncludes(rows);
       setIncludesLoading(false);
+      // v3.5.33: prune stale exclusions/swaps that don't match any current include
+      const validIds = new Set(rows.map(r => r.id));
+      setExcludedIncludeIds(prev => prev.filter(id => validIds.has(id)));
+      setIncludeSwaps(prev => {
+        const next = {};
+        for (const [includeId, subId] of Object.entries(prev || {})) {
+          if (validIds.has(includeId)) next[includeId] = subId;
+        }
+        return next;
+      });
     });
   }, [selectedPkg?.id]);
 
@@ -189,10 +206,10 @@ export default function MultiSiteQuotePage() {
     return locations.map(loc => {
       const analysis = locationAnalyses[loc.id];
       const mktMult  = analysis?.pricing_multiplier ?? 1;
-      const result   = calcLocationMRR({ location: loc, pkg: selectedPkg, marketMultiplier: mktMult, settings, packageIncludes, excludedIncludes: excludedIncludeIds });
+      const result   = calcLocationMRR({ location: loc, pkg: selectedPkg, marketMultiplier: mktMult, settings, packageIncludes, excludedIncludes: excludedIncludeIds, includeSwaps, products });
       return { loc, result, analysis };
     });
-  }, [locations, locationAnalyses, selectedPkg, settings, configLoading, packageIncludes, excludedIncludeIds]);
+  }, [locations, locationAnalyses, selectedPkg, settings, configLoading, packageIncludes, excludedIncludeIds, includeSwaps, products]);
 
   const totalLocationMRR = locationResults.reduce((s, r) => s + (r.result?.mrr || 0), 0);
 
@@ -257,9 +274,13 @@ export default function MultiSiteQuotePage() {
 
   // v3.5.31: sum per-location includes cost for margin display
   const totalIncludesCost = locationResults.reduce((s, r) => s + (r.result?.includedItemsCost || 0), 0);
+  // v3.5.33: sum per-location swap-substitute cost for margin display.
+  // Note: swap REVENUE is already included in totalLocationMRR via location.mrr,
+  // so we don't double-count revenue. Only cost needs to be aggregated separately.
+  const totalSwapCost = locationResults.reduce((s, r) => s + (r.result?.swapCost || 0), 0);
 
   const effectiveMRR  = finalMRR + flexBlockMRR;
-  const effectiveCost = addonCost + flexLaborCost + totalIncludesCost;
+  const effectiveCost = addonCost + flexLaborCost + totalIncludesCost + totalSwapCost;
   const gc = gmColor(effectiveMRR > 0 ? 1 - effectiveCost / effectiveMRR : 0);
   const gb = gmBg(effectiveMRR > 0 ? 1 - effectiveCost / effectiveMRR : 0);
 
@@ -322,6 +343,8 @@ export default function MultiSiteQuotePage() {
       repId: repId || null, repName: repProfile?.full_name || repProfile?.email || null,
       // v3.5.31: persist rep's swappable-include exclusions
       excludedIncludeIds: excludedIncludeIds || [],
+      // v3.5.33: persist swap mappings
+      includeSwaps: includeSwaps || {},
     };
     const totals = { finalMRR, onboarding, contractValue, locationCount: locations.length, multiDiscRate };
     const payload = {
@@ -545,7 +568,7 @@ export default function MultiSiteQuotePage() {
             {selectedPkg && (editingLoc.users > 0 || editingLoc.workstations > 0) && (() => {
               const analysis = locationAnalyses[editingLoc.id];
               const mktMult = analysis?.pricing_multiplier ?? 1;
-              const res = calcLocationMRR({ location: editingLoc, pkg: selectedPkg, marketMultiplier: mktMult, settings, packageIncludes, excludedIncludes: excludedIncludeIds });
+              const res = calcLocationMRR({ location: editingLoc, pkg: selectedPkg, marketMultiplier: mktMult, settings, packageIncludes, excludedIncludes: excludedIncludeIds, includeSwaps, products });
               return res ? (
                 <div style={{ background:'#f0f4ff', borderRadius:6, padding:'8px 12px', marginBottom:14, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <span style={{ fontSize:11, color:'#374151' }}>Estimated MRR for this location</span>
@@ -665,10 +688,34 @@ export default function MultiSiteQuotePage() {
                 excludedIds={excludedIncludeIds}
                 loading={includesLoading}
                 includedItemsCost={totalIncludesCost}
+                includeSwaps={includeSwaps}
+                availableProducts={products}
                 onToggleExclude={(includeId) => {
-                  setExcludedIncludeIds(prev => prev.includes(includeId)
-                    ? prev.filter(id => id !== includeId)
-                    : [...prev, includeId]);
+                  setExcludedIncludeIds(prev => {
+                    const wasExcluded = prev.includes(includeId);
+                    if (wasExcluded) {
+                      setIncludeSwaps(swaps => {
+                        if (!(includeId in swaps)) return swaps;
+                        const next = { ...swaps };
+                        delete next[includeId];
+                        return next;
+                      });
+                      return prev.filter(id => id !== includeId);
+                    }
+                    return [...prev, includeId];
+                  });
+                }}
+                onSwap={(includeId, substituteProductId) => {
+                  setExcludedIncludeIds(prev => prev.includes(includeId) ? prev : [...prev, includeId]);
+                  setIncludeSwaps(prev => ({ ...prev, [includeId]: substituteProductId }));
+                }}
+                onUnswap={(includeId) => {
+                  setIncludeSwaps(prev => {
+                    if (!(includeId in prev)) return prev;
+                    const next = { ...prev };
+                    delete next[includeId];
+                    return next;
+                  });
                 }}
               />
             )}
@@ -684,7 +731,8 @@ export default function MultiSiteQuotePage() {
                     .filter(i => !excludedSet.has(i.id))
                     .map(i => i.product_id)
                 );
-                const visibleProds = catProds.filter(p => !activeIncludeProductIds.has(p.id));
+                const swapSubIds = new Set(Object.values(includeSwaps || {}).filter(Boolean));
+                const visibleProds = catProds.filter(p => !activeIncludeProductIds.has(p.id) && !swapSubIds.has(p.id));
                 if (visibleProds.length === 0) return null;
                 return (
                 <div key={cat} style={{ marginBottom:8 }}>

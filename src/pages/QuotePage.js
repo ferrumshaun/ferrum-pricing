@@ -97,9 +97,12 @@ export default function QuotePage() {
   // ── Package Includes (v3.5.31) ────────────────────────────────────────────
   // Live-loaded from package_includes table when selectedPkg changes.
   // excludedIncludeIds tracks which swappable includes the rep has unchecked.
+  // includeSwaps (v3.5.33) maps include_id -> substitute product_id; entries
+  // here always coexist with the same include_id in excludedIncludeIds.
   const [packageIncludes,    setPackageIncludes]    = useState([]);
   const [includesLoading,    setIncludesLoading]    = useState(false);
   const [excludedIncludeIds, setExcludedIncludeIds] = useState([]);
+  const [includeSwaps,       setIncludeSwaps]       = useState({});
 
   // ── HubSpot ───────────────────────────────────────────────────────────────
   const [hubModal,    setHubModal]    = useState(false);
@@ -164,6 +167,10 @@ export default function QuotePage() {
       if (Array.isArray(data.inputs?.excludedIncludeIds)) {
         setExcludedIncludeIds(data.inputs.excludedIncludeIds);
       }
+      // v3.5.33: restore swap mappings if any
+      if (data.inputs?.includeSwaps && typeof data.inputs.includeSwaps === 'object') {
+        setIncludeSwaps(data.inputs.includeSwaps);
+      }
       if (data.package_name && packages.length) setSelectedPkg(packages.find(p => p.name === data.package_name));
       if (data.market_tier  && marketTiers.length) setSelectedMkt(marketTiers.find(t => t.tier_key === data.market_tier));
     });
@@ -179,13 +186,23 @@ export default function QuotePage() {
   // For an existing quote, this runs once after selectedPkg is restored from the
   // saved quote_data. The rep's saved excludedIncludeIds (loaded separately from
   // inputs) may target includes that no longer exist if admin changed the config —
-  // those are gracefully ignored since the matching include just won't be there.
+  // those are pruned below so they don't accumulate forever in saved quotes.
   useEffect(() => {
     if (!selectedPkg?.id) { setPackageIncludes([]); return; }
     setIncludesLoading(true);
     loadPackageIncludes(selectedPkg.id).then(rows => {
       setPackageIncludes(rows);
       setIncludesLoading(false);
+      // Prune stale exclusions/swaps that don't match any current include
+      const validIds = new Set(rows.map(r => r.id));
+      setExcludedIncludeIds(prev => prev.filter(id => validIds.has(id)));
+      setIncludeSwaps(prev => {
+        const next = {};
+        for (const [includeId, subId] of Object.entries(prev || {})) {
+          if (validIds.has(includeId)) next[includeId] = subId;
+        }
+        return next;
+      });
     });
   }, [selectedPkg?.id]);
 
@@ -326,6 +343,8 @@ export default function QuotePage() {
     const allInputs = { ...inputs, proposalName, recipientContact, recipientEmail, recipientAddress, hubspotDealName: hubDealName, marketCity, marketState, aiMultiplier: aiMultiplier ?? null, aiMultiplierTier: aiMultiplierTier ?? null, repId: repId || null, repName: repProfile?.full_name || repProfile?.email || null, flexHours: flexHours || null,
       // v3.5.31: persist rep's swappable-include exclusions
       excludedIncludeIds: excludedIncludeIds || [],
+      // v3.5.33: persist swap mappings
+      includeSwaps: includeSwaps || {},
     };
     const totals = result ? {
       finalMRR: result.finalMRR, onboarding: result.onboarding,
@@ -444,20 +463,29 @@ export default function QuotePage() {
   }
 
   // Build snapshot of current pricing rates (for locking)
-  const buildSnapshot = () => ({
-    lockedAt:  new Date().toISOString(),
-    package:   selectedPkg  ? { ...selectedPkg }  : null,
-    products:  products.filter(p => (inputs.selectedProducts||[]).includes(p.id)).map(p => ({ ...p })),
-    settings:  { ...settings },
-    // The market rates the rep negotiated/accepted at lock time. Without this
-    // the flex block falls back to the package's default $165 after reopen,
-    // and the rate card has no rates to display when the underlying market
-    // analysis row gets evicted.
-    acceptedRates: acceptedRates || null,
-    // v3.5.31: capture the package's bundled product config at lock time so
-    // the quote keeps pricing correctly even if admin changes package_includes later
-    packageIncludes: packageIncludes ? [...packageIncludes] : [],
-  });
+  const buildSnapshot = () => {
+    // v3.5.33: include both rep-selected add-ons AND any swap substitute products
+    // so the locked snapshot has all products the engine needs to recompute lineItems.
+    const selectedIds = new Set(inputs.selectedProducts || []);
+    const swapSubIds  = new Set(Object.values(includeSwaps || {}).filter(Boolean));
+    const allProductIds = new Set([...selectedIds, ...swapSubIds]);
+    return {
+      lockedAt:  new Date().toISOString(),
+      package:   selectedPkg  ? { ...selectedPkg }  : null,
+      products:  products.filter(p => allProductIds.has(p.id)).map(p => ({ ...p })),
+      settings:  { ...settings },
+      // The market rates the rep negotiated/accepted at lock time. Without this
+      // the flex block falls back to the package's default $165 after reopen,
+      // and the rate card has no rates to display when the underlying market
+      // analysis row gets evicted.
+      acceptedRates: acceptedRates || null,
+      // v3.5.31: capture the package's bundled product config at lock time so
+      // the quote keeps pricing correctly even if admin changes package_includes later
+      packageIncludes: packageIncludes ? [...packageIncludes] : [],
+      // v3.5.33: capture swap mappings at lock time. Substitutes are in snapshot.products above.
+      includeSwaps: includeSwaps ? { ...includeSwaps } : {},
+    };
+  };
 
   // Use snapshot rates if locked, live rates otherwise
   const calcPkg      = pricingSnapshot?.package   || selectedPkg;
@@ -473,6 +501,7 @@ export default function QuotePage() {
         repCommissionRate: repProfile?.commission_rate ?? null,
         packageIncludes,
         excludedIncludes: excludedIncludeIds,
+        includeSwaps,
       });
 
   // Flex block add-on cost (added to MRR and TCV)
@@ -496,7 +525,7 @@ export default function QuotePage() {
     term,
     result: calcQuote({ inputs: { ...inputs, contractTerm: term }, pkg: selectedPkg, marketTier: selectedMkt,
       products, settings, aiMultiplierOverride: aiMultiplier, repCommissionRate: repProfile?.commission_rate ?? null,
-      packageIncludes, excludedIncludes: excludedIncludeIds })
+      packageIncludes, excludedIncludes: excludedIncludeIds, includeSwaps })
   })) : null;
 
   // Compliance recommendations
@@ -735,17 +764,47 @@ export default function QuotePage() {
             excludedIds={excludedIncludeIds}
             loading={includesLoading}
             includedItemsCost={result?.includedItemsCost}
+            includeSwaps={includeSwaps}
+            availableProducts={products}
             onToggleExclude={(includeId) => {
-              setExcludedIncludeIds(prev => prev.includes(includeId)
-                ? prev.filter(id => id !== includeId)
-                : [...prev, includeId]);
+              // When re-checking an excluded include, also clear any swap mapping
+              // — the rep is restoring the original, not keeping the substitute alongside.
+              setExcludedIncludeIds(prev => {
+                const wasExcluded = prev.includes(includeId);
+                if (wasExcluded) {
+                  // Re-checking: clear swap if any
+                  setIncludeSwaps(swaps => {
+                    if (!(includeId in swaps)) return swaps;
+                    const next = { ...swaps };
+                    delete next[includeId];
+                    return next;
+                  });
+                  return prev.filter(id => id !== includeId);
+                }
+                return [...prev, includeId];
+              });
+            }}
+            onSwap={(includeId, substituteProductId) => {
+              // Swap = exclude original + map to substitute. Maintain invariant.
+              setExcludedIncludeIds(prev => prev.includes(includeId) ? prev : [...prev, includeId]);
+              setIncludeSwaps(prev => ({ ...prev, [includeId]: substituteProductId }));
+            }}
+            onUnswap={(includeId) => {
+              // Removing substitute leaves the include excluded (rep must explicitly re-check
+              // to restore it). This matches the "exclude → swap → unswap → still excluded"
+              // mental model the rep started with.
+              setIncludeSwaps(prev => {
+                if (!(includeId in prev)) return prev;
+                const next = { ...prev };
+                delete next[includeId];
+                return next;
+              });
             }}
           />
         )}
 
-        {/* Add-on Products from DB — included products are filtered out (v3.5.31)
-            unless the rep has excluded them, in which case they reappear here so
-            the rep can substitute (v3.5.32). */}
+        {/* Add-on Products from DB — included + swap-substitute products are filtered
+            out so reps can't double-add. (v3.5.31 / v3.5.32 / v3.5.33) */}
         {Object.entries(productsByCategory).map(([cat, catProducts]) => {
           // Hide products that are bundled into the selected package AND not excluded by rep
           const excludedSet = new Set(excludedIncludeIds || []);
@@ -754,7 +813,10 @@ export default function QuotePage() {
               .filter(i => !excludedSet.has(i.id))
               .map(i => i.product_id)
           );
-          const visibleProducts = catProducts.filter(p => !activeIncludeProductIds.has(p.id));
+          // Also hide products that are currently chosen as swap substitutes
+          // (they appear in the swapped row inside the includes section)
+          const swapSubIds = new Set(Object.values(includeSwaps || {}).filter(Boolean));
+          const visibleProducts = catProducts.filter(p => !activeIncludeProductIds.has(p.id) && !swapSubIds.has(p.id));
           if (visibleProducts.length === 0) return null;
           return (
           <Sec key={cat} t={cat} c={catColor(cat)}>
