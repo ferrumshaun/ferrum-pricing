@@ -743,11 +743,18 @@ export default function QuotePage() {
           />
         )}
 
-        {/* Add-on Products from DB — included products are filtered out (v3.5.31) */}
+        {/* Add-on Products from DB — included products are filtered out (v3.5.31)
+            unless the rep has excluded them, in which case they reappear here so
+            the rep can substitute (v3.5.32). */}
         {Object.entries(productsByCategory).map(([cat, catProducts]) => {
-          // Hide products that are bundled into the selected package
-          const includedProductIds = new Set(packageIncludes.map(i => i.product_id));
-          const visibleProducts = catProducts.filter(p => !includedProductIds.has(p.id));
+          // Hide products that are bundled into the selected package AND not excluded by rep
+          const excludedSet = new Set(excludedIncludeIds || []);
+          const activeIncludeProductIds = new Set(
+            packageIncludes
+              .filter(i => !excludedSet.has(i.id))
+              .map(i => i.product_id)
+          );
+          const visibleProducts = catProducts.filter(p => !activeIncludeProductIds.has(p.id));
           if (visibleProducts.length === 0) return null;
           return (
           <Sec key={cat} t={cat} c={catColor(cat)}>

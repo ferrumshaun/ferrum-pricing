@@ -673,12 +673,18 @@ export default function MultiSiteQuotePage() {
               />
             )}
 
-            {/* Add-on Products — included products are filtered out (v3.5.31) */}
+            {/* Add-on Products — included products are filtered out (v3.5.31)
+                unless the rep has excluded them (v3.5.32). */}
             <Sec t="Add-on Products" c="#7c3aed">
               <div style={{ fontSize:9, color:'#6b7280', marginBottom:6 }}>Applied once across all locations — qty scales to total users/workstations</div>
               {Object.entries(productsByCategory).map(([cat, catProds]) => {
-                const includedProductIds = new Set(packageIncludes.map(i => i.product_id));
-                const visibleProds = catProds.filter(p => !includedProductIds.has(p.id));
+                const excludedSet = new Set(excludedIncludeIds || []);
+                const activeIncludeProductIds = new Set(
+                  packageIncludes
+                    .filter(i => !excludedSet.has(i.id))
+                    .map(i => i.product_id)
+                );
+                const visibleProds = catProds.filter(p => !activeIncludeProductIds.has(p.id));
                 if (visibleProds.length === 0) return null;
                 return (
                 <div key={cat} style={{ marginBottom:8 }}>

@@ -50,46 +50,62 @@ export default function PackageIncludes({
           const labelDecoration = excluded ? 'line-through' : 'none';
 
           return (
-            <div key={inc.id}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '4px 6px',
-                background: excluded ? '#fafafa' : 'white',
-                borderRadius: 3,
-                border: excluded ? '1px dashed #e5e7eb' : '1px solid transparent',
-              }}>
-              {/* Mandatory: render a locked icon. Swappable: render a checkbox */}
-              {inc.is_mandatory ? (
-                <span title="Mandatory — cannot be removed"
-                  style={{ fontSize: 11, color: '#7c3aed', width: 14, textAlign: 'center' }}>🔒</span>
-              ) : (
-                <input type="checkbox" checked={!excluded}
-                  onChange={() => onToggleExclude && onToggleExclude(inc.id)}
-                  title="Swappable — uncheck to remove from this quote"
-                  style={{ accentColor: '#7c3aed', cursor: 'pointer' }} />
+            <React.Fragment key={inc.id}>
+              <div
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '4px 6px',
+                  background: excluded ? '#fafafa' : 'white',
+                  borderRadius: 3,
+                  border: excluded ? '1px dashed #e5e7eb' : '1px solid transparent',
+                }}>
+                {/* Mandatory: render a locked icon. Swappable: render a checkbox */}
+                {inc.is_mandatory ? (
+                  <span title="Mandatory — cannot be removed"
+                    style={{ fontSize: 11, color: '#7c3aed', width: 14, textAlign: 'center' }}>🔒</span>
+                ) : (
+                  <input type="checkbox" checked={!excluded}
+                    onChange={() => onToggleExclude && onToggleExclude(inc.id)}
+                    title="Swappable — uncheck to remove from this quote"
+                    style={{ accentColor: '#7c3aed', cursor: 'pointer' }} />
+                )}
+                <div style={{ flex: 1, fontSize: 11, color: lineColor, textDecoration: labelDecoration }}>
+                  <span style={{ fontWeight: 600 }}>{inc.product_name}</span>
+                  {inc.category && (
+                    <span style={{ fontSize: 10, color: '#9ca3af', marginLeft: 6 }}>
+                      · {inc.category}
+                    </span>
+                  )}
+                  {!inc.is_mandatory && !excluded && (
+                    <span style={{ fontSize: 9, color: '#9ca3af', marginLeft: 6, fontStyle: 'italic' }}>
+                      swappable
+                    </span>
+                  )}
+                  {excluded && (
+                    <span style={{ fontSize: 9, color: '#dc2626', marginLeft: 6, fontStyle: 'italic' }}>
+                      excluded
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: lineColor, textDecoration: labelDecoration }}>
+                  $0.00/mo
+                </div>
+              </div>
+              {/* Substitute helper hint (v3.5.32) — shown after rep excludes a swappable include */}
+              {excluded && inc.category && (
+                <div style={{
+                  marginLeft: 24, marginTop: 2, marginBottom: 4,
+                  padding: '4px 8px',
+                  background: '#fefce8', border: '1px solid #fef08a', borderRadius: 3,
+                  fontSize: 10, color: '#92400e', display: 'flex', alignItems: 'center', gap: 6,
+                }}>
+                  <span style={{ fontSize: 11 }}>💡</span>
+                  <span>
+                    Need a substitute? Browse <strong style={{ color: '#78350f' }}>{inc.category}</strong> in the add-ons section below.
+                  </span>
+                </div>
               )}
-              <div style={{ flex: 1, fontSize: 11, color: lineColor, textDecoration: labelDecoration }}>
-                <span style={{ fontWeight: 600 }}>{inc.product_name}</span>
-                {inc.category && (
-                  <span style={{ fontSize: 10, color: '#9ca3af', marginLeft: 6 }}>
-                    · {inc.category}
-                  </span>
-                )}
-                {!inc.is_mandatory && !excluded && (
-                  <span style={{ fontSize: 9, color: '#9ca3af', marginLeft: 6, fontStyle: 'italic' }}>
-                    swappable
-                  </span>
-                )}
-                {excluded && (
-                  <span style={{ fontSize: 9, color: '#dc2626', marginLeft: 6, fontStyle: 'italic' }}>
-                    excluded
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: lineColor, textDecoration: labelDecoration }}>
-                $0.00/mo
-              </div>
-            </div>
+            </React.Fragment>
           );
         })}
       </div>
