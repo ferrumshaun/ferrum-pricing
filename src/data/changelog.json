@@ -1,5 +1,27 @@
 [
   {
+    "version": "3.5.31",
+    "date": "2026-04-30",
+    "summary": "Package Includes — Deploy 2: pricing engine and quote pages now consume package_includes",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Bundled products configured in Admin (v3.5.30) now appear on Managed IT and Multi-Site quotes. When a rep picks Essentials (or any package with includes), an 'Included with [Package]' section renders above the add-ons showing each bundled product at $0/mo. Mandatory includes show a 🔒 lock; swappable includes have a checkbox the rep can untick to remove that product from the quote",
+        "Cost of included products rolls into the quote's COGS for accurate margin reporting. The bundled products' sell side is $0 (the package's per-unit rates already cover delivery), but their cost contribution is real and tracked",
+        "Included products are automatically hidden from the add-on picker so reps cannot double-add them. If admin includes INKY in Essentials, INKY no longer appears in the Email Security category for quotes on that package",
+        "On Multi-Site quotes, includes apply per-location — each location's user/workstation/server counts drive the qty for cost computation. Rep-side exclusions are quote-wide (uncheck Datto once, applies to all locations)"
+      ],
+      "improved": [
+        "calcQuote() and calcLocationMRR() in src/lib/pricing.js now accept packageIncludes and excludedIncludes parameters. Both return new fields includedLineItems and includedItemsCost so pages can render the section consistently. New shared component src/components/PackageIncludes.js used by both QuotePage and MultiSiteQuotePage — same UI, same logic, one file to update",
+        "New helper src/lib/packageIncludes.js provides loadPackageIncludes(packageId) which fetches the join rows and embeds product details (name, sell/cost prices, qty drivers) so a snapshot can be persisted with the saved quote",
+        "Pricing snapshot extended — when a quote is locked (status moves to 'approved'), the package's includes config at lock time is captured in pricing_snapshot.packageIncludes alongside the existing package and products. Future reads of the locked quote use the snapshot, so admin changes to package_includes after lock don't retroactively change the quote"
+      ],
+      "fixed": [
+        "Existing saved quotes (created before v3.5.31) do not retroactively gain includes. They open and price exactly as they were saved. When an old quote is edited and saved again, the current package's includes will start applying — by design, since the rep is making a new revision intentionally"
+      ]
+    }
+  },
+  {
     "version": "3.5.30",
     "date": "2026-04-30",
     "summary": "Package Includes — Deploy 1: schema and admin UI for bundling products into Managed IT packages",

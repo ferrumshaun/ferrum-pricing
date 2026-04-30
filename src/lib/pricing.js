@@ -187,12 +187,20 @@ const COMP_M = { none: 1.0, moderate: 1.12, high: 1.22 };
 const CPLX_M = { low: 1.0, medium: 1.08, high: 1.18 };
 
 // ─── MAIN CALC ───────────────────────────────────────────────────────────────
-export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMultiplierOverride, repCommissionRate, snapshot }) {
+// `packageIncludes` (added v3.5.31): array of resolved package_includes rows,
+//   each shaped like { id, product_id, is_mandatory, sort_order, notes,
+//                      product_name, sell_price, cost_price, qty_driver,
+//                      cost_qty_driver, no_discount, no_commission }
+//   When omitted or empty, no include processing happens (legacy behavior).
+// `excludedIncludes` (added v3.5.31): array of include IDs the rep unchecked
+//   (only swappable includes can be excluded; rep-side UI enforces that).
+export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMultiplierOverride, repCommissionRate, snapshot, packageIncludes, excludedIncludes }) {
   // If a pricing snapshot exists, use frozen rates instead of live data
   if (snapshot) {
-    pkg      = snapshot.package  || pkg;
-    products = snapshot.products || products;
-    settings = snapshot.settings || settings;
+    pkg              = snapshot.package          || pkg;
+    products         = snapshot.products         || products;
+    settings         = snapshot.settings         || settings;
+    packageIncludes  = snapshot.packageIncludes  || packageIncludes;
   }
   if (!pkg || !marketTier || !settings) return null;
 
@@ -264,6 +272,49 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMulti
 
   const addonRevenue = discountableAddonRevenue + protectedAddonRevenue;
 
+  // ── Package Includes (v3.5.31) ────────────────────────────────────────────
+  // Products bundled into the package itself. Sell side = $0 (the package's
+  // per-unit rates already cover delivery). Cost side = full COGS rolled into
+  // the totalCost so margin reporting stays accurate.
+  // Rep-excluded swappable includes are skipped entirely (no sell, no cost).
+  const includedLineItems = [];
+  let includedItemsCost = 0;
+  const excludedSet = new Set(excludedIncludes || []);
+  for (const inc of (packageIncludes || [])) {
+    if (excludedSet.has(inc.id)) continue;
+    // Use the include's snapshot of qty_driver / cost_qty_driver / cost_price
+    // so quotes saved before product changes still price correctly.
+    const cqDriver = inc.cost_qty_driver || inc.qty_driver;
+    const sqDriver = inc.qty_driver;
+    const product  = { id: inc.product_id, qty_driver: sqDriver, cost_qty_driver: cqDriver };
+    const sellQty  = getSellQty(product, inputs);
+    const costQty  = getCostQty(product, inputs);
+    const cost     = costQty * (Number(inc.cost_price) || 0);
+    includedItemsCost += cost;
+    includedLineItems.push({
+      include_id:      inc.id,
+      product_id:      inc.product_id,
+      product_name:    inc.product_name,
+      category:        inc.category || null,
+      is_mandatory:    !!inc.is_mandatory,
+      qty_driver:      sqDriver,
+      cost_qty_driver: cqDriver,
+      qty:             sellQty,
+      cost_qty:        costQty,
+      sell_price:      0,                       // bundled — no sell line
+      cost_price:      Number(inc.cost_price) || 0,
+      revenue:         0,
+      cost,
+      sort_order:      inc.sort_order ?? 100,
+    });
+  }
+  includedLineItems.sort((a, b) => a.sort_order - b.sort_order);
+
+  // Excluded includes (for snapshot purposes — record what rep removed)
+  const excludedIncludeIds = (packageIncludes || [])
+    .filter(inc => excludedSet.has(inc.id))
+    .map(inc => inc.id);
+
   // ── Composite multiplier (applies to labor + discountable addons only) ────
   const compMult = (RISK_M[inputs.industryRisk] || 1)
                  * (COMP_M[inputs.compliance]    || 1)
@@ -304,7 +355,7 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMulti
                + inputs.locations    * pkg.hrs_location;
   const svcCost = svcHrs * parseFloat(s.burdened_hourly_rate);
 
-  const totalCost = toolingCost + svcCost + addonCost;
+  const totalCost = toolingCost + svcCost + addonCost + includedItemsCost;
   const impliedGM = finalMRR > 0 ? 1 - totalCost / finalMRR : 0;
 
   // ── Onboarding ────────────────────────────────────────────────────────────
@@ -333,6 +384,8 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMulti
     wB, uB, sB, lB, tB, vB, eB, covU, itSubtotal,
     // Add-ons
     lineItems, addonRevenue,
+    // Package includes (v3.5.31)
+    includedLineItems, includedItemsCost, excludedIncludeIds,
     // Summary
     opSubtotal, compMult, riskAdjMRR, floor,
     discount, discRate, finalMRR,
@@ -387,7 +440,14 @@ export const gmBg    = g => g >= 0.45 ? '#dcfce7' : g >= 0.30 ? '#fef3c7' : '#fe
 // ─── Multi-Site Quote Functions ───────────────────────────────────────────────
 
 // Calculate MRR for a single location
-export function calcLocationMRR({ location, pkg, marketMultiplier, settings }) {
+// `packageIncludes` (added v3.5.31): bundled product rows (same shape as for
+//   calcQuote). When provided, cost contribution is computed per-location
+//   using location.users / location.workstations / etc. as the qty driver.
+//   Sell side stays at $0 (the package fee covers delivery).
+// `excludedIncludes` (added v3.5.31): array of include IDs the rep removed
+//   for THIS location. Multi-Site stores a separate excludedIncludes per
+//   location so reps can adjust which bundled products apply per site.
+export function calcLocationMRR({ location, pkg, marketMultiplier, settings, packageIncludes, excludedIncludes }) {
   if (!pkg || !location) return null;
   const s = settings;
   const mktMult = parseFloat(marketMultiplier) || 1;
@@ -415,6 +475,45 @@ export function calcLocationMRR({ location, pkg, marketMultiplier, settings }) {
 
   const mrr = base * mktMult;
 
+  // ── Package Includes — per-location cost contribution (v3.5.31) ──────────
+  // Build a synthetic inputs object so we can reuse the same qty-driver
+  // logic as calcQuote. Only fields used by getQtyForDriver are needed.
+  const includeInputs = {
+    users, workstations, servers,
+    locations:       1,
+    sharedMailboxes: 0,
+    mobileDevices:   parseInt(location.mobileDevices) || 0,
+    endpoints,
+  };
+  const includedLineItems = [];
+  let includedItemsCost = 0;
+  const excludedSet = new Set(excludedIncludes || []);
+  for (const inc of (packageIncludes || [])) {
+    if (excludedSet.has(inc.id)) continue;
+    const cqDriver = inc.cost_qty_driver || inc.qty_driver;
+    const product  = { id: inc.product_id, qty_driver: inc.qty_driver, cost_qty_driver: cqDriver };
+    const sellQty  = getSellQty(product, includeInputs);
+    const costQty  = getCostQty(product, includeInputs);
+    const cost     = costQty * (Number(inc.cost_price) || 0);
+    includedItemsCost += cost;
+    includedLineItems.push({
+      include_id:      inc.id,
+      product_id:      inc.product_id,
+      product_name:    inc.product_name,
+      is_mandatory:    !!inc.is_mandatory,
+      qty_driver:      inc.qty_driver,
+      cost_qty_driver: cqDriver,
+      qty:             sellQty,
+      cost_qty:        costQty,
+      sell_price:      0,
+      cost_price:      Number(inc.cost_price) || 0,
+      revenue:         0,
+      cost,
+      sort_order:      inc.sort_order ?? 100,
+    });
+  }
+  includedLineItems.sort((a, b) => a.sort_order - b.sort_order);
+
   return {
     mrr,
     base,
@@ -427,6 +526,9 @@ export function calcLocationMRR({ location, pkg, marketMultiplier, settings }) {
       locationFee:   locationFee * mktMult,
       endpointUplift: eB * mktMult,
     },
+    // Package includes
+    includedLineItems,
+    includedItemsCost,
   };
 }
 

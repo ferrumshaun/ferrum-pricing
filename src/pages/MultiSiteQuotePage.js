@@ -22,6 +22,8 @@ import { DocumentsPanel } from '../components/RateSheetModal';
 import OnboardingIncentive from '../components/OnboardingIncentive';
 import HubSpotConnect from '../components/HubSpotConnect';
 import SPTConnect    from '../components/SPTConnect';
+import { loadPackageIncludes } from '../lib/packageIncludes';
+import PackageIncludes from '../components/PackageIncludes';
 
 const LOCATION_TYPES = { standard: 'Standard', restricted: 'Restricted' };
 const TYPE_COLOR     = { standard: '#2563eb', restricted: '#d97706' };
@@ -58,6 +60,15 @@ export default function MultiSiteQuotePage() {
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [manualQuantities, setManualQuantities] = useState({});
   const [flexHours,    setFlexHours]    = useState(null);
+
+  // ── Package Includes (v3.5.31) ────────────────────────────────────────────
+  // Loaded when selectedPkg changes. Same semantics as on QuotePage — but
+  // applied per-location (each location's COGS picks up the includes' cost
+  // contribution scaled by that location's user/workstation/server counts).
+  // excludedIncludeIds applies once for the whole quote (not per-location).
+  const [packageIncludes,    setPackageIncludes]    = useState([]);
+  const [includesLoading,    setIncludesLoading]    = useState(false);
+  const [excludedIncludeIds, setExcludedIncludeIds] = useState([]);
 
   // ── Locations ─────────────────────────────────────────────────────────────
   const [locations,         setLocations]         = useState([createLocation({ name: 'Location 1' })]);
@@ -122,6 +133,10 @@ export default function MultiSiteQuotePage() {
       setIndustryRisk(data.inputs?.industryRisk || 'low');
       setSelectedProducts(data.inputs?.selectedProducts || []);
       setManualQuantities(data.inputs?.manualQuantities || {});
+      // v3.5.31: restore rep's swappable-include exclusions
+      if (Array.isArray(data.inputs?.excludedIncludeIds)) {
+        setExcludedIncludeIds(data.inputs.excludedIncludeIds);
+      }
       if (data.rep_id) setRepId(data.rep_id);
       if (data.pricing_snapshot) { setPricingSnapshot(data.pricing_snapshot); setPriceLockDate(data.price_locked_at); }
       if (data.spt_proposal_id) setSptProposalId(data.spt_proposal_id);
@@ -135,6 +150,16 @@ export default function MultiSiteQuotePage() {
   useEffect(() => {
     if (!selectedPkg && packages.length) setSelectedPkg(packages[1] || packages[0]);
   }, [packages]);
+
+  // ── Package includes (v3.5.31) — loaded when selectedPkg changes ──────────
+  useEffect(() => {
+    if (!selectedPkg?.id) { setPackageIncludes([]); return; }
+    setIncludesLoading(true);
+    loadPackageIncludes(selectedPkg.id).then(rows => {
+      setPackageIncludes(rows);
+      setIncludesLoading(false);
+    });
+  }, [selectedPkg?.id]);
 
   // ── Fetch market analysis per location when zip changes ───────────────────
   const fetchAnalysis = useCallback(async (locId, zip, readOnly = false) => {
@@ -164,10 +189,10 @@ export default function MultiSiteQuotePage() {
     return locations.map(loc => {
       const analysis = locationAnalyses[loc.id];
       const mktMult  = analysis?.pricing_multiplier ?? 1;
-      const result   = calcLocationMRR({ location: loc, pkg: selectedPkg, marketMultiplier: mktMult, settings });
+      const result   = calcLocationMRR({ location: loc, pkg: selectedPkg, marketMultiplier: mktMult, settings, packageIncludes, excludedIncludes: excludedIncludeIds });
       return { loc, result, analysis };
     });
-  }, [locations, locationAnalyses, selectedPkg, settings, configLoading]);
+  }, [locations, locationAnalyses, selectedPkg, settings, configLoading, packageIncludes, excludedIncludeIds]);
 
   const totalLocationMRR = locationResults.reduce((s, r) => s + (r.result?.mrr || 0), 0);
 
@@ -230,8 +255,11 @@ export default function MultiSiteQuotePage() {
   const onboarding = Math.max(obCalc, obMin);
   const contractValue = finalMRR * contractTerm + onboarding;
 
+  // v3.5.31: sum per-location includes cost for margin display
+  const totalIncludesCost = locationResults.reduce((s, r) => s + (r.result?.includedItemsCost || 0), 0);
+
   const effectiveMRR  = finalMRR + flexBlockMRR;
-  const effectiveCost = addonCost + flexLaborCost;
+  const effectiveCost = addonCost + flexLaborCost + totalIncludesCost;
   const gc = gmColor(effectiveMRR > 0 ? 1 - effectiveCost / effectiveMRR : 0);
   const gb = gmBg(effectiveMRR > 0 ? 1 - effectiveCost / effectiveMRR : 0);
 
@@ -292,6 +320,8 @@ export default function MultiSiteQuotePage() {
       selectedProducts, locations, flexHours: flexHours || null,
       manualQuantities,
       repId: repId || null, repName: repProfile?.full_name || repProfile?.email || null,
+      // v3.5.31: persist rep's swappable-include exclusions
+      excludedIncludeIds: excludedIncludeIds || [],
     };
     const totals = { finalMRR, onboarding, contractValue, locationCount: locations.length, multiDiscRate };
     const payload = {
@@ -515,7 +545,7 @@ export default function MultiSiteQuotePage() {
             {selectedPkg && (editingLoc.users > 0 || editingLoc.workstations > 0) && (() => {
               const analysis = locationAnalyses[editingLoc.id];
               const mktMult = analysis?.pricing_multiplier ?? 1;
-              const res = calcLocationMRR({ location: editingLoc, pkg: selectedPkg, marketMultiplier: mktMult, settings });
+              const res = calcLocationMRR({ location: editingLoc, pkg: selectedPkg, marketMultiplier: mktMult, settings, packageIncludes, excludedIncludes: excludedIncludeIds });
               return res ? (
                 <div style={{ background:'#f0f4ff', borderRadius:6, padding:'8px 12px', marginBottom:14, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <span style={{ fontSize:11, color:'#374151' }}>Estimated MRR for this location</span>
@@ -627,13 +657,33 @@ export default function MultiSiteQuotePage() {
               </Grid2>
             </Sec>
 
-            {/* Add-on Products */}
+            {/* Package Includes (v3.5.31) — bundled products shown above add-ons */}
+            {selectedPkg && (packageIncludes.length > 0 || includesLoading) && (
+              <PackageIncludes
+                packageName={selectedPkg.name}
+                includes={packageIncludes}
+                excludedIds={excludedIncludeIds}
+                loading={includesLoading}
+                includedItemsCost={totalIncludesCost}
+                onToggleExclude={(includeId) => {
+                  setExcludedIncludeIds(prev => prev.includes(includeId)
+                    ? prev.filter(id => id !== includeId)
+                    : [...prev, includeId]);
+                }}
+              />
+            )}
+
+            {/* Add-on Products — included products are filtered out (v3.5.31) */}
             <Sec t="Add-on Products" c="#7c3aed">
               <div style={{ fontSize:9, color:'#6b7280', marginBottom:6 }}>Applied once across all locations — qty scales to total users/workstations</div>
-              {Object.entries(productsByCategory).map(([cat, catProds]) => (
+              {Object.entries(productsByCategory).map(([cat, catProds]) => {
+                const includedProductIds = new Set(packageIncludes.map(i => i.product_id));
+                const visibleProds = catProds.filter(p => !includedProductIds.has(p.id));
+                if (visibleProds.length === 0) return null;
+                return (
                 <div key={cat} style={{ marginBottom:8 }}>
                   <div style={{ fontSize:8, fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'#9ca3af', marginBottom:4 }}>{cat}</div>
-                  {catProds.map(p => {
+                  {visibleProds.map(p => {
                     const sel = selectedProducts.includes(p.id);
                     const qty = parseInt(manualQuantities?.[p.id] || 0);
                     return (
@@ -662,7 +712,8 @@ export default function MultiSiteQuotePage() {
                     );
                   })}
                 </div>
-              ))}
+                );
+              })}
             </Sec>
 
             {/* Locations */}

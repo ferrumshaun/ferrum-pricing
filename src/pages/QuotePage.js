@@ -4,6 +4,8 @@ import { supabase, logActivity } from '../lib/supabase';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
 import { calcQuote, lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
+import { loadPackageIncludes } from '../lib/packageIncludes';
+import PackageIncludes from '../components/PackageIncludes';
 import { calcFlexBlock } from '../lib/flexTime';
 import { writeQuoteUrlToDeal, searchDeals, getDealFull, createDeal, updateDeal, updateDealDescription } from '../lib/hubspot';
 import QuoteNotes    from '../components/QuoteNotes';
@@ -92,6 +94,13 @@ export default function QuotePage() {
   const [saveMsg,     setSaveMsg]     = useState('');
   const [existingQuote, setExistingQuote] = useState(null);
 
+  // ── Package Includes (v3.5.31) ────────────────────────────────────────────
+  // Live-loaded from package_includes table when selectedPkg changes.
+  // excludedIncludeIds tracks which swappable includes the rep has unchecked.
+  const [packageIncludes,    setPackageIncludes]    = useState([]);
+  const [includesLoading,    setIncludesLoading]    = useState(false);
+  const [excludedIncludeIds, setExcludedIncludeIds] = useState([]);
+
   // ── HubSpot ───────────────────────────────────────────────────────────────
   const [hubModal,    setHubModal]    = useState(false);
   const [hubSearch,   setHubSearch]   = useState('');
@@ -151,6 +160,10 @@ export default function QuotePage() {
       setHubDealUrl(data.hubspot_deal_url || '');
       setHubDealName(data.inputs?.hubspotDealName || '');
       if (data.inputs) setInputs({ ...DEF_INPUTS, ...data.inputs });
+      // v3.5.31: restore rep's swappable-include exclusions if any
+      if (Array.isArray(data.inputs?.excludedIncludeIds)) {
+        setExcludedIncludeIds(data.inputs.excludedIncludeIds);
+      }
       if (data.package_name && packages.length) setSelectedPkg(packages.find(p => p.name === data.package_name));
       if (data.market_tier  && marketTiers.length) setSelectedMkt(marketTiers.find(t => t.tier_key === data.market_tier));
     });
@@ -161,6 +174,20 @@ export default function QuotePage() {
     if (!selectedPkg && packages.length) setSelectedPkg(packages[1] || packages[0]);
     if (!selectedMkt && marketTiers.length) setSelectedMkt(marketTiers.find(t => t.tier_key === 'mid_market') || marketTiers[0]);
   }, [packages, marketTiers]);
+
+  // Load package includes whenever the selected package changes (v3.5.31).
+  // For an existing quote, this runs once after selectedPkg is restored from the
+  // saved quote_data. The rep's saved excludedIncludeIds (loaded separately from
+  // inputs) may target includes that no longer exist if admin changed the config —
+  // those are gracefully ignored since the matching include just won't be there.
+  useEffect(() => {
+    if (!selectedPkg?.id) { setPackageIncludes([]); return; }
+    setIncludesLoading(true);
+    loadPackageIncludes(selectedPkg.id).then(rows => {
+      setPackageIncludes(rows);
+      setIncludesLoading(false);
+    });
+  }, [selectedPkg?.id]);
 
   const set = useCallback((k, v) => setInputs(prev => ({ ...prev, [k]: v })), []);
 
@@ -296,7 +323,10 @@ export default function QuotePage() {
   async function saveQuote() {
     if (!recipientBiz.trim()) { setSaveMsg('Please enter a recipient business name.'); return; }
     setSaving(true); setSaveMsg('');
-    const allInputs = { ...inputs, proposalName, recipientContact, recipientEmail, recipientAddress, hubspotDealName: hubDealName, marketCity, marketState, aiMultiplier: aiMultiplier ?? null, aiMultiplierTier: aiMultiplierTier ?? null, repId: repId || null, repName: repProfile?.full_name || repProfile?.email || null, flexHours: flexHours || null };
+    const allInputs = { ...inputs, proposalName, recipientContact, recipientEmail, recipientAddress, hubspotDealName: hubDealName, marketCity, marketState, aiMultiplier: aiMultiplier ?? null, aiMultiplierTier: aiMultiplierTier ?? null, repId: repId || null, repName: repProfile?.full_name || repProfile?.email || null, flexHours: flexHours || null,
+      // v3.5.31: persist rep's swappable-include exclusions
+      excludedIncludeIds: excludedIncludeIds || [],
+    };
     const totals = result ? {
       finalMRR: result.finalMRR, onboarding: result.onboarding,
       impliedGM: result.impliedGM, totalCost: result.totalCost,
@@ -424,6 +454,9 @@ export default function QuotePage() {
     // and the rate card has no rates to display when the underlying market
     // analysis row gets evicted.
     acceptedRates: acceptedRates || null,
+    // v3.5.31: capture the package's bundled product config at lock time so
+    // the quote keeps pricing correctly even if admin changes package_includes later
+    packageIncludes: packageIncludes ? [...packageIncludes] : [],
   });
 
   // Use snapshot rates if locked, live rates otherwise
@@ -438,6 +471,8 @@ export default function QuotePage() {
     : calcQuote({ inputs, pkg: calcPkg, marketTier: selectedMkt, products: calcProducts, settings: calcSettings,
         aiMultiplierOverride: aiMultiplier,
         repCommissionRate: repProfile?.commission_rate ?? null,
+        packageIncludes,
+        excludedIncludes: excludedIncludeIds,
       });
 
   // Flex block add-on cost (added to MRR and TCV)
@@ -460,7 +495,8 @@ export default function QuotePage() {
   const multiTermResults = (result && selectedPkg && selectedMkt) ? [12, 24, 36].map(term => ({
     term,
     result: calcQuote({ inputs: { ...inputs, contractTerm: term }, pkg: selectedPkg, marketTier: selectedMkt,
-      products, settings, aiMultiplierOverride: aiMultiplier, repCommissionRate: repProfile?.commission_rate ?? null })
+      products, settings, aiMultiplierOverride: aiMultiplier, repCommissionRate: repProfile?.commission_rate ?? null,
+      packageIncludes, excludedIncludes: excludedIncludeIds })
   })) : null;
 
   // Compliance recommendations
@@ -691,13 +727,34 @@ export default function QuotePage() {
           </Grid2>
         </Sec>
 
-        {/* Add-on Products from DB */}
-        {Object.entries(productsByCategory).map(([cat, catProducts]) => (
+        {/* Package Includes (v3.5.31) — bundled products shown above add-ons */}
+        {selectedPkg && (packageIncludes.length > 0 || includesLoading) && (
+          <PackageIncludes
+            packageName={selectedPkg.name}
+            includes={packageIncludes}
+            excludedIds={excludedIncludeIds}
+            loading={includesLoading}
+            includedItemsCost={result?.includedItemsCost}
+            onToggleExclude={(includeId) => {
+              setExcludedIncludeIds(prev => prev.includes(includeId)
+                ? prev.filter(id => id !== includeId)
+                : [...prev, includeId]);
+            }}
+          />
+        )}
+
+        {/* Add-on Products from DB — included products are filtered out (v3.5.31) */}
+        {Object.entries(productsByCategory).map(([cat, catProducts]) => {
+          // Hide products that are bundled into the selected package
+          const includedProductIds = new Set(packageIncludes.map(i => i.product_id));
+          const visibleProducts = catProducts.filter(p => !includedProductIds.has(p.id));
+          if (visibleProducts.length === 0) return null;
+          return (
           <Sec key={cat} t={cat} c={catColor(cat)}>
             {cat === 'Strategic Advisory' && (
               <Tog on={inputs.execReporting} set={v=>set('execReporting',v)} lbl="Executive Reporting Required" sub="Triggers Enterprise recommendation"/>
             )}
-            {catProducts.map(p => {
+            {visibleProducts.map(p => {
               const gm = p.sell_price > 0 ? (1-p.cost_price/p.sell_price) : 0;
               const isExclusive = !!p.exclusive_group;
               const sel = isSelected(p.id);
@@ -759,7 +816,8 @@ export default function QuotePage() {
               );
             })}
           </Sec>
-        ))}
+          );
+        })}
 
 
 
