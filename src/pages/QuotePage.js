@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { calcQuote, lookupZip, fmt$, fmt$0, fmtPct, gmColor, gmBg } from '../lib/pricing';
 import { loadPackageIncludes } from '../lib/packageIncludes';
 import PackageIncludes from '../components/PackageIncludes';
+import GMBadge from '../components/GMBadge';
 import { calcFlexBlock } from '../lib/flexTime';
 import { writeQuoteUrlToDeal, searchDeals, getDealFull, createDeal, updateDeal, updateDealDescription } from '../lib/hubspot';
 import QuoteNotes    from '../components/QuoteNotes';
@@ -1085,6 +1086,21 @@ export default function QuotePage() {
                   </div>
                 ))}
               </div>
+
+              {/* GM Target warning badge (v3.5.34) — shown when implied GM diverges
+                  from the target_gross_margin setting. Renders muted on locked quotes
+                  since the deal is done and advice is no longer actionable. */}
+              {(() => {
+                const targetGM = parseFloat(settings?.target_gross_margin);
+                const effectiveGM = flexBlock
+                  ? 1 - (result.totalCost + (flexBlock.hours * parseFloat(settings?.burdened_hourly_rate || 125))) / effectiveFinalMRR
+                  : result.impliedGM;
+                return (
+                  <div style={{ marginBottom: 10 }}>
+                    <GMBadge currentGM={effectiveGM} targetGM={targetGM} locked={!!pricingSnapshot} />
+                  </div>
+                );
+              })()}
 
               {result.finalMRR<=result.floor+.01&&result.riskAdjMRR<result.floor&&(
                 <div style={{ background:'#fef3c7', border:'1px solid #fde68a', borderRadius:4, padding:'6px 9px', marginBottom:8, fontSize:9, color:'#92400e' }}>

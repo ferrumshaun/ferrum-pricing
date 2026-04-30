@@ -1,5 +1,28 @@
 [
   {
+    "version": "3.5.34",
+    "date": "2026-04-30",
+    "summary": "Gross Margin warning badge \u2014 alerts reps when a quote falls below the target margin",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "New target_gross_margin setting in pricing_settings (default 0.40 = 40%). Edit it via Admin \u2192 Pricing Settings to match your business's target. Recommend setting to (1 minus your monthly recurring overhead-to-revenue ratio) plus a healthy buffer \u2014 see chat for the framework",
+        "GM warning badge on Managed IT and Multi-Site quote pages, just below the KPI cards. Three states: green when GM is at or above target, amber when within 5 percentage points below, red when more than 5 points below. Badge displays current GM, target, and the exact gap in points",
+        "Locked quotes (status = approved with a pricing_snapshot) show the badge in muted gray instead of red/amber. Informational only \u2014 the deal is done, the rep cannot adjust pricing further. Useful for admins reviewing past deals to see if any went out below target",
+        "Setting the target_gross_margin to empty in Admin disables the warning entirely \u2014 no badge appears on any quote. Lets admins opt out without code changes if the warning is too noisy"
+      ],
+      "improved": [
+        "Shared GMBadge component used by both QuotePage and MultiSiteQuotePage \u2014 same UI, same logic, one file. Future tweaks (different thresholds, more states, click-through behavior) happen in one place",
+        "QuotePage uses effective GM that accounts for the flex block labor cost (matches the existing Implied GM stat card). MultiSiteQuotePage uses effectiveCost / effectiveMRR which already accounts for flex labor, swap substitutes, and per-location includes cost",
+        "On QuotePage, locked quotes are detected via pricingSnapshot. On Multi-Site, same \u2014 both pages use a consistent locked-quote definition for the muted display"
+      ],
+      "coming_soon": [
+        "v3.5.35 (planned): Pricing Calculator admin tool. Pick a package, enter a reference scenario (e.g., 25 users / 30 workstations / 1 server / 1 location), enter target GM, see suggested user_rate / ws_rate / server_rate / location_rate that would hit the target at that scenario. Supports the rate-derivation workflow that pairs with the v3.5.34 warning badge \u2014 calculator helps admins set rates that won't trigger warnings on typical quotes",
+        "Possible future: per-package target_gross_margin override (Essentials at 35%, Premier at 50%) instead of one global target. Adds a column to packages table with fallback logic. Hold for now \u2014 most MSPs use a single global target and adjust per-deal as needed"
+      ]
+    }
+  },
+  {
     "version": "3.5.33",
     "date": "2026-04-30",
     "summary": "Package Includes \u2014 Deploy 3.5: full swap-out feature with substitute pricing",

@@ -24,6 +24,7 @@ import HubSpotConnect from '../components/HubSpotConnect';
 import SPTConnect    from '../components/SPTConnect';
 import { loadPackageIncludes } from '../lib/packageIncludes';
 import PackageIncludes from '../components/PackageIncludes';
+import GMBadge from '../components/GMBadge';
 
 const LOCATION_TYPES = { standard: 'Standard', restricted: 'Restricted' };
 const TYPE_COLOR     = { standard: '#2563eb', restricted: '#d97706' };
@@ -933,6 +934,17 @@ export default function MultiSiteQuotePage() {
                 </div>
               ))}
             </div>
+
+            {/* GM Target warning badge (v3.5.34) */}
+            {(() => {
+              const targetGM = parseFloat(settings?.target_gross_margin);
+              const currentGM = effectiveMRR > 0 ? 1 - effectiveCost / effectiveMRR : 0;
+              return (
+                <div style={{ marginBottom: 10 }}>
+                  <GMBadge currentGM={currentGM} targetGM={targetGM} locked={!!pricingSnapshot} />
+                </div>
+              );
+            })()}
 
             {/* Per-location breakdown */}
             <div style={{ marginBottom:10 }}>
