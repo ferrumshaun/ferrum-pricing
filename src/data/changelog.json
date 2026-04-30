@@ -1,5 +1,32 @@
 [
   {
+    "version": "3.5.35",
+    "date": "2026-04-30",
+    "summary": "Pricing Calculator \u2014 derive package per-unit rates from a target gross margin",
+    "audience": "admin",
+    "categories": {
+      "new": [
+        "New Calculate button on each row in Admin \u2192 Managed IT Packages. Opens a calculator modal scoped to that package",
+        "Calculator inputs: a reference scenario (default 25 users / 30 workstations / 1 server / 1 location / 1 cloud tenant / 4 vendors) and a target gross margin (defaults to settings.target_gross_margin if set, else 40%)",
+        "Live computation: shows current revenue, COGS broken down by tooling/labor/includes, current implied GM, and the gap to target in percentage points",
+        "Suggested rates table: applies a proportional uplift to the package's labor rates (user_rate, ws_rate, server_rate, location_rate, tenant_rate, vendor_rate) so that revenue at the reference scenario hits the target GM. Shows current vs suggested vs % change for each rate",
+        "Apply Suggested Rates button: writes the new rates to the packages table and logs the change to activity log with a _via:'pricing_calculator' tag and the scenario+target for audit traceability",
+        "Already-above-target case: when current GM exceeds target at the scenario, the calculator shows a green 'no changes needed' message and disables the Apply button. No way to accidentally lower healthy rates",
+        "Floor-bound case: when current revenue equals the minimum commitment floor (typical for very small scenarios), a warning surfaces noting the math may not behave as expected and suggesting a larger scenario"
+      ],
+      "improved": [
+        "AdminTable shared component now accepts an optional extraActions render prop. PackagesAdmin uses this to add the Calculate button without polluting other admin tabs (Products, Settings, Market Tiers) which still get their stock Edit/Activate buttons. Pattern available for future per-tab actions"
+      ],
+      "fixed": [
+        "Calculator math allocates the revenue gap entirely to labor (per-unit rates) rather than uplifting whole revenue. Add-on revenue and included items cost are not driven by package rates so they cannot be moved by changing rates \u2014 the uplift correctly reflects this"
+      ],
+      "coming_soon": [
+        "Voice and Bundle calculators are deferred. Their pricing models (per-seat + SIP + hardware for Voice; layered IT+Voice with discount tiers for Bundle) don't have a single dominant rate to uplift, so 'proportional uplift' isn't a clean strategy. Will design these separately when there's concrete user feedback driving them",
+        "Per-package target GM override is not yet implemented. All packages compare against the global setting today. Add a packages.target_gross_margin nullable column later if needed (Essentials at 35%, Premier at 50% etc.)"
+      ]
+    }
+  },
+  {
     "version": "3.5.34",
     "date": "2026-04-30",
     "summary": "Gross Margin warning badge \u2014 alerts reps when a quote falls below the target margin",

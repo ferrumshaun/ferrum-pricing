@@ -3,6 +3,8 @@ import { supabase, logActivity } from '../lib/supabase';
 import { BASE_RATES, RATE_LABELS, RATE_UNITS, getRating, isStale, getOrAnalyzeMarket, tierLabel, tierColor } from '../lib/marketRates';
 import { useConfig } from '../contexts/ConfigContext';
 import { useAuth } from '../contexts/AuthContext';
+import { calcQuote } from '../lib/pricing';
+import { loadPackageIncludes } from '../lib/packageIncludes';
 
 const TABS = ['IT & Security Products', 'Managed IT Packages', 'Market Tiers', 'Pricing Settings', 'Voice Hardware', 'Voice Fax Packages', 'Users', 'Documents', 'Integrations'];
 
@@ -57,7 +59,7 @@ export default function AdminPage() {
 }
 
 // ─── Shared Components ────────────────────────────────────────────────────────
-function AdminTable({ cols, rows, onEdit, onToggle, loading }) {
+function AdminTable({ cols, rows, onEdit, onToggle, loading, extraActions }) {
   if (loading) return <div style={{ padding: 20, color: '#6b7280', fontSize: 12 }}>Loading...</div>;
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -78,6 +80,9 @@ function AdminTable({ cols, rows, onEdit, onToggle, loading }) {
                   {row.active ? 'Deactivate' : 'Activate'}
                 </button>
               )}
+              {/* extraActions: optional render prop for tab-specific row actions
+                  (e.g., "Calculate Rates" on packages — added v3.5.35) */}
+              {extraActions && extraActions(row)}
             </td>
           </tr>
         ))}
@@ -454,7 +459,12 @@ function PackagesAdmin() {
   const [includes,         setIncludes]         = useState([]);
   const [includesLoading,  setIncludesLoading]  = useState(false);
   const [showProductPicker, setShowProductPicker] = useState(false);
+  // Pricing Calculator state (v3.5.35) — which package's calculator is open
+  const [calculatorPkg, setCalculatorPkg] = useState(null);
   const { profile } = useAuth();
+  // Pull marketTiers + settings from useConfig for the pricing calculator engine call.
+  // PackagesAdmin doesn't otherwise need these — they're calculator-only deps.
+  const { marketTiers, settings } = useConfig();
 
   async function load() {
     setLoading(true);
@@ -594,7 +604,25 @@ function PackagesAdmin() {
         </div>
         <button onClick={startNew} style={{ padding: '6px 14px', background: '#0f1e3c', color: 'white', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>+ Add Package</button>
       </div>
-      <AdminTable cols={['name','$ws','$user','$server','$location','coverage']} rows={rows} onEdit={setEditing} onToggle={toggle} loading={loading} />
+      <AdminTable cols={['name','$ws','$user','$server','$location','coverage']} rows={rows} onEdit={setEditing} onToggle={toggle} loading={loading}
+        extraActions={(row) => (
+          <button onClick={(e) => { e.stopPropagation(); setCalculatorPkg(row); }}
+            style={btnStyle('#faf5ff','#6d28d9')}>
+            Calculate
+          </button>
+        )} />
+      {calculatorPkg && (
+        <PricingCalculatorModal
+          pkg={calculatorPkg}
+          packages={packages}
+          marketTiers={marketTiers || []}
+          products={products}
+          settings={settings || {}}
+          profile={profile}
+          onClose={() => setCalculatorPkg(null)}
+          onApplied={() => { setCalculatorPkg(null); load(); }}
+        />
+      )}
       {editing && (
         <Modal title={editing.id ? `Edit Package: ${editing.name}` : 'New Package'} onClose={() => { setEditing(null); setSaveError(''); }} onSave={save} saving={saving}>
           {saveError && <div style={{ padding:'7px 10px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:4, fontSize:11, color:'#dc2626', fontWeight:600, marginBottom:10 }}>✗ {saveError}</div>}
@@ -889,6 +917,376 @@ function IncludeCostSummary({ includes, products }) {
       </div>
       <div style={{ fontSize: 9, color: '#15803d', marginTop: 4, fontStyle: 'italic' }}>
         Adjust the package rates above (user_rate, ws_rate, etc.) to cover these costs plus margin.
+      </div>
+    </div>
+  );
+}
+
+// ─── PRICING CALCULATOR MODAL (v3.5.35) ──────────────────────────────────────
+// Helps admin derive package per-unit rates that hit a target gross margin.
+// Workflow:
+//   1. Admin clicks "Calculate" on a package row in PackagesAdmin
+//   2. Modal opens with default reference scenario (25 users / 30 ws / 1 server / 1 loc)
+//   3. Admin can edit scenario + target GM; current state recomputes live via calcQuote
+//   4. Modal shows current GM vs target, with a suggested-rates table (proportional uplift on labor)
+//   5. Admin clicks "Apply Suggested Rates" → updates the package row in DB, closes modal,
+//      parent reloads packages list
+//
+// Math:
+//   - target_revenue = current_cogs / (1 - target_gm)
+//   - gap = target_revenue - current_revenue
+//   - labor_uplift = (current_labor + gap) / current_labor
+//   - new_rate = current_rate × labor_uplift  (applied to ws_rate, user_rate, server_rate, location_rate, tenant_rate, vendor_rate)
+//
+// Edge cases handled inline (current revenue = 0, already above target, etc.)
+function PricingCalculatorModal({ pkg, packages, marketTiers, products, settings, profile, onClose, onApplied }) {
+  // Default reference scenario per design — admin can adjust
+  const [scenario, setScenario] = useState({
+    users:        25,
+    workstations: 30,
+    servers:      1,
+    locations:    1,
+    cloudTenants: 1,
+    vendors:      4,
+    endpoints:    30,         // mirror workstations by default — no density uplift
+    sharedMailboxes: 0,
+    mobileDevices:   0,
+  });
+  // Target GM defaults to settings.target_gross_margin if available, else 0.40
+  const settingsTarget = parseFloat(settings?.target_gross_margin);
+  const [targetGM, setTargetGM] = useState(
+    Number.isFinite(settingsTarget) && settingsTarget > 0 ? settingsTarget : 0.40
+  );
+  // Package includes — load on mount so the engine has them
+  const [includes, setIncludes] = useState([]);
+  const [includesLoading, setIncludesLoading] = useState(true);
+  // Apply state
+  const [applying, setApplying] = useState(false);
+  const [applyError, setApplyError] = useState('');
+
+  useEffect(() => {
+    if (!pkg?.id) return;
+    setIncludesLoading(true);
+    loadPackageIncludes(pkg.id).then(rows => {
+      setIncludes(rows || []);
+      setIncludesLoading(false);
+    });
+  }, [pkg?.id]);
+
+  // Pick the mid-market tier as the reference (matches QuotePage default)
+  const refMarketTier = marketTiers.find(t => t.tier_key === 'mid_market') || marketTiers[0] || null;
+
+  // Build inputs for calcQuote — clean defaults, no add-ons selected, neutral multipliers
+  const inputs = {
+    users:        parseInt(scenario.users)        || 0,
+    workstations: parseInt(scenario.workstations) || 0,
+    servers:      parseInt(scenario.servers)      || 0,
+    locations:    parseInt(scenario.locations)    || 0,
+    cloudTenants: parseInt(scenario.cloudTenants) || 0,
+    vendors:      parseInt(scenario.vendors)      || 0,
+    endpoints:    parseInt(scenario.endpoints)    || parseInt(scenario.workstations) || 0,
+    sharedMailboxes: parseInt(scenario.sharedMailboxes) || 0,
+    mobileDevices:   parseInt(scenario.mobileDevices)   || 0,
+    selectedProducts: [],            // calculator doesn't model add-on selection
+    contractTerm:     12,            // no contract discount applied
+    requestedCoverage: pkg?.coverage || 'business_hours',
+    industryRisk:     'low',
+    compliance:       'none',
+    complexity:       'low',
+    execReporting:    false,
+    manualQuantities: {},
+  };
+
+  // Compute current state at this scenario
+  const currentResult = (refMarketTier && pkg && settings && !includesLoading)
+    ? calcQuote({ inputs, pkg, marketTier: refMarketTier, products, settings,
+        packageIncludes: includes, excludedIncludes: [], includeSwaps: {} })
+    : null;
+
+  // Compute target revenue + suggested rates
+  const targetCalc = (() => {
+    if (!currentResult) return null;
+    const currentRevenue = currentResult.finalMRR;
+    const currentCogs    = currentResult.totalCost;
+    const currentGM      = currentResult.impliedGM;
+    if (!Number.isFinite(currentRevenue) || currentRevenue <= 0) {
+      return { error: 'Reference scenario has zero revenue. Add users or workstations.' };
+    }
+    if (!Number.isFinite(targetGM) || targetGM <= 0 || targetGM >= 1) {
+      return { error: 'Target GM must be between 0 and 1 (e.g., 0.45 for 45%).' };
+    }
+    if (currentGM >= targetGM) {
+      return {
+        currentRevenue, currentCogs, currentGM,
+        alreadyAboveTarget: true,
+        targetRevenue: currentRevenue,  // no change needed
+      };
+    }
+    const targetRevenue = currentCogs / (1 - targetGM);
+    const gap           = targetRevenue - currentRevenue;
+    // Labor portion of revenue = itSubtotal-derived contributions through the engine.
+    // We use itSubtotal directly (pre-multiplier) because the multipliers and discount apply
+    // to the same value proportionally — the uplift factor is invariant under those transforms.
+    // Note: addonRevenue and includedItemsCost are NOT driven by package rates,
+    // so the gap can ONLY be closed by changing labor rates.
+    const currentLabor = currentResult.itSubtotal;
+    if (!Number.isFinite(currentLabor) || currentLabor <= 0) {
+      return { error: 'Cannot suggest rates — labor portion of revenue is zero. Check rate fields.' };
+    }
+    const targetLabor   = currentLabor + gap;
+    const upliftFactor  = targetLabor / currentLabor;
+    // Edge case: when current revenue equals the floor exactly, the labor portion
+    // we're calculating from may not be what's actually driving revenue. Suggest the
+    // uplift but flag it so admin knows to verify.
+    const floorBound = (currentResult.finalMRR <= currentResult.floor + 0.01);
+    const suggestedRates = {
+      ws_rate:       (parseFloat(pkg.ws_rate)       || 0) * upliftFactor,
+      user_rate:     (parseFloat(pkg.user_rate)     || 0) * upliftFactor,
+      server_rate:   (parseFloat(pkg.server_rate)   || 0) * upliftFactor,
+      location_rate: (parseFloat(pkg.location_rate) || 0) * upliftFactor,
+      tenant_rate:   (parseFloat(pkg.tenant_rate)   || 0) * upliftFactor,
+      vendor_rate:   (parseFloat(pkg.vendor_rate)   || 0) * upliftFactor,
+    };
+    return {
+      currentRevenue, currentCogs, currentGM,
+      targetRevenue, gap, currentLabor, upliftFactor, suggestedRates,
+      floorBound,
+    };
+  })();
+
+  async function applyRates() {
+    if (!targetCalc?.suggestedRates) return;
+    setApplying(true);
+    setApplyError('');
+    try {
+      const updates = {
+        ws_rate:       Number(targetCalc.suggestedRates.ws_rate.toFixed(2)),
+        user_rate:     Number(targetCalc.suggestedRates.user_rate.toFixed(2)),
+        server_rate:   Number(targetCalc.suggestedRates.server_rate.toFixed(2)),
+        location_rate: Number(targetCalc.suggestedRates.location_rate.toFixed(2)),
+        tenant_rate:   Number(targetCalc.suggestedRates.tenant_rate.toFixed(2)),
+        vendor_rate:   Number(targetCalc.suggestedRates.vendor_rate.toFixed(2)),
+        updated_by:    profile?.id,
+      };
+      const old = packages.find(p => p.id === pkg.id);
+      const { error } = await supabase.from('packages').update(updates).eq('id', pkg.id);
+      if (error) throw new Error(error.message);
+      // Build a diff of just the rate fields for the activity log
+      const diff = {};
+      for (const k of Object.keys(updates)) {
+        if (k === 'updated_by') continue;
+        if (old?.[k] !== updates[k]) diff[k] = { from: old?.[k], to: updates[k] };
+      }
+      await logActivity({
+        action: 'UPDATE', entityType: 'package',
+        entityId: pkg.id, entityName: pkg.name,
+        changes: { ...diff, _via: 'pricing_calculator', _target_gm: targetGM, _scenario: scenario },
+      });
+      onApplied();
+    } catch (e) {
+      console.error('Apply rates failed:', e);
+      setApplyError(e.message || 'Failed to apply rates.');
+      setApplying(false);
+    }
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  if (includesLoading || !refMarketTier) {
+    return (
+      <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:600 }}>
+        <div style={{ background:'white', borderRadius:8, padding:24, fontSize:12, color:'#6b7280' }}>
+          Loading calculator…
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:600 }}>
+      <div style={{ background:'white', borderRadius:8, padding:20, width:760, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 8px 32px rgba(0,0,0,0.25)' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:6 }}>
+          <h3 style={{ fontSize:15, fontWeight:700, color:'#0f1e3c', margin:0 }}>
+            🧮 Pricing Calculator: {pkg.name}
+          </h3>
+          <button onClick={onClose} style={{ background:'transparent', border:'none', color:'#9ca3af', cursor:'pointer', fontSize:18 }}>✕</button>
+        </div>
+        <p style={{ fontSize:11, color:'#6b7280', marginTop:0, marginBottom:14 }}>
+          Derives suggested per-unit rates that hit the target gross margin at a reference client size.
+          Suggestions are starting points — admin should review and adjust as needed before applying.
+        </p>
+
+        {/* Reference Scenario */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:8 }}>
+            Reference Scenario
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10 }}>
+            {[
+              ['users',         'Users'],
+              ['workstations',  'Workstations'],
+              ['servers',       'Servers'],
+              ['locations',     'Locations'],
+              ['cloudTenants',  'Cloud Tenants'],
+              ['vendors',       'Vendors'],
+              ['endpoints',     'Endpoints'],
+              ['sharedMailboxes','Shared Mailboxes'],
+            ].map(([key, label]) => (
+              <div key={key}>
+                <div style={{ fontSize:10, color:'#6b7280', marginBottom:2 }}>{label}</div>
+                <input type="number" min="0" value={scenario[key]}
+                  onChange={e => setScenario(s => ({ ...s, [key]: e.target.value }))}
+                  style={{ width:'100%', padding:'5px 7px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, fontFamily:'DM Mono, monospace' }} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Target GM */}
+        <div style={{ marginBottom: 14, display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.05em' }}>
+            Target Gross Margin
+          </div>
+          <input type="number" min="0" max="100" step="0.1"
+            value={(targetGM * 100).toFixed(1)}
+            onChange={e => setTargetGM((parseFloat(e.target.value) || 0) / 100)}
+            style={{ width:80, padding:'5px 7px', border:'1px solid #d1d5db', borderRadius:4, fontSize:11, fontFamily:'DM Mono, monospace' }} />
+          <span style={{ fontSize:11, color:'#6b7280' }}>%</span>
+          {Number.isFinite(settingsTarget) && settingsTarget > 0 && (
+            <span style={{ fontSize:9, color:'#9ca3af', fontStyle:'italic' }}>
+              (settings default: {(settingsTarget * 100).toFixed(0)}%)
+            </span>
+          )}
+        </div>
+
+        {/* Current at scenario */}
+        {targetCalc?.error ? (
+          <div style={{ padding:'10px 12px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:4, fontSize:11, color:'#991b1b' }}>
+            ⚠ {targetCalc.error}
+          </div>
+        ) : targetCalc ? (
+          <>
+            <div style={{ background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:6, padding:'10px 12px', marginBottom:14 }}>
+              <div style={{ fontSize:10, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:8 }}>
+                Current at this scenario
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10, fontSize:11 }}>
+                <div>
+                  <div style={{ color:'#6b7280', fontSize:9, textTransform:'uppercase' }}>Revenue</div>
+                  <div style={{ fontFamily:'DM Mono, monospace', fontWeight:700, color:'#0f1e3c' }}>${targetCalc.currentRevenue.toFixed(2)}/mo</div>
+                </div>
+                <div>
+                  <div style={{ color:'#6b7280', fontSize:9, textTransform:'uppercase' }}>COGS</div>
+                  <div style={{ fontFamily:'DM Mono, monospace', fontWeight:700, color:'#0f1e3c' }}>${targetCalc.currentCogs.toFixed(2)}/mo</div>
+                </div>
+                <div>
+                  <div style={{ color:'#6b7280', fontSize:9, textTransform:'uppercase' }}>Implied GM</div>
+                  <div style={{ fontFamily:'DM Mono, monospace', fontWeight:700,
+                    color: targetCalc.currentGM >= targetGM ? '#166534' : targetCalc.currentGM >= targetGM - 0.05 ? '#92400e' : '#991b1b' }}>
+                    {(targetCalc.currentGM * 100).toFixed(1)}%
+                  </div>
+                </div>
+                <div>
+                  <div style={{ color:'#6b7280', fontSize:9, textTransform:'uppercase' }}>Gap</div>
+                  <div style={{ fontFamily:'DM Mono, monospace', fontWeight:700,
+                    color: targetCalc.alreadyAboveTarget ? '#166534' : '#991b1b' }}>
+                    {targetCalc.alreadyAboveTarget
+                      ? `+${((targetCalc.currentGM - targetGM) * 100).toFixed(1)} pts`
+                      : `−${((targetGM - targetCalc.currentGM) * 100).toFixed(1)} pts`}
+                  </div>
+                </div>
+              </div>
+              <div style={{ fontSize:10, color:'#6b7280', marginTop:8, borderTop:'1px solid #e5e7eb', paddingTop:6 }}>
+                <span>Cost breakdown — </span>
+                <span style={{ fontFamily:'DM Mono, monospace' }}>
+                  Tooling ${currentResult.toolingCost.toFixed(2)} · Labor ${currentResult.svcCost.toFixed(2)} · Includes ${currentResult.includedItemsCost.toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Suggested rates */}
+            {targetCalc.alreadyAboveTarget ? (
+              <div style={{ padding:'10px 12px', background:'#dcfce7', border:'1px solid #86efac', borderRadius:6, fontSize:11, color:'#166534', marginBottom:14 }}>
+                ✓ Already above target ({((targetCalc.currentGM - targetGM) * 100).toFixed(1)} points). Current rates are healthy at this scenario — no changes suggested.
+              </div>
+            ) : (
+              <>
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.05em' }}>
+                    Suggested Rates (proportional uplift, {((targetCalc.upliftFactor - 1) * 100).toFixed(1)}%)
+                  </div>
+                </div>
+                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11, marginBottom:14 }}>
+                  <thead>
+                    <tr style={{ background:'#f9fafb' }}>
+                      {['Rate','Current','Suggested','Change'].map(h => (
+                        <th key={h} style={{ padding:'6px 10px', textAlign:'left', color:'#6b7280', fontWeight:600, borderBottom:'1px solid #e5e7eb', fontSize:10, textTransform:'uppercase', letterSpacing:'0.04em' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      ['user_rate',     'User Rate',          pkg.user_rate,     targetCalc.suggestedRates.user_rate],
+                      ['ws_rate',       'Workstation Rate',   pkg.ws_rate,       targetCalc.suggestedRates.ws_rate],
+                      ['server_rate',   'Server Rate',        pkg.server_rate,   targetCalc.suggestedRates.server_rate],
+                      ['location_rate', 'Location Rate',      pkg.location_rate, targetCalc.suggestedRates.location_rate],
+                      ['tenant_rate',   'Cloud Tenant Rate',  pkg.tenant_rate,   targetCalc.suggestedRates.tenant_rate],
+                      ['vendor_rate',   'Extra Vendor Rate',  pkg.vendor_rate,   targetCalc.suggestedRates.vendor_rate],
+                    ].map(([key, label, current, suggested]) => {
+                      const curN = parseFloat(current) || 0;
+                      const pct  = curN > 0 ? ((suggested - curN) / curN) * 100 : 0;
+                      return (
+                        <tr key={key} style={{ borderBottom:'1px solid #f3f4f6' }}>
+                          <td style={{ padding:'6px 10px', color:'#374151', fontWeight:600 }}>{label}</td>
+                          <td style={{ padding:'6px 10px', fontFamily:'DM Mono, monospace', color:'#6b7280' }}>${curN.toFixed(2)}</td>
+                          <td style={{ padding:'6px 10px', fontFamily:'DM Mono, monospace', color:'#6d28d9', fontWeight:700 }}>${suggested.toFixed(2)}</td>
+                          <td style={{ padding:'6px 10px', fontFamily:'DM Mono, monospace', color: pct > 0 ? '#dc2626' : pct < 0 ? '#166534' : '#6b7280' }}>
+                            {pct > 0 ? '+' : ''}{pct.toFixed(1)}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                {/* Disclaimer */}
+                {targetCalc.floorBound && (
+                  <div style={{ background:'#fef3c7', border:'1px solid #fde68a', borderRadius:4, padding:'8px 10px', fontSize:10, color:'#92400e', marginBottom:10 }}>
+                    ⚠ Current revenue is set by the minimum commitment floor (${currentResult.floor.toFixed(2)}). The suggested uplift may not behave as expected at this scenario — try a larger reference scenario (more users/workstations) for cleaner math.
+                  </div>
+                )}
+                <div style={{ background:'#fef3c7', border:'1px solid #fde68a', borderRadius:4, padding:'8px 10px', fontSize:10, color:'#92400e', marginBottom:14 }}>
+                  ⚠ Applying these rates affects all NEW quotes on <strong>{pkg.name}</strong>. Existing locked quotes are unaffected. Existing draft quotes will recompute on next reload — reps may see margin changes.
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          <div style={{ padding:'20px', textAlign:'center', color:'#9ca3af', fontSize:11 }}>
+            Enter a scenario above to see calculations.
+          </div>
+        )}
+
+        {applyError && (
+          <div style={{ padding:'7px 10px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:4, fontSize:11, color:'#dc2626', marginBottom:10 }}>
+            ✗ {applyError}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:6 }}>
+          <button onClick={onClose} disabled={applying}
+            style={{ padding:'7px 14px', background:'#f3f4f6', border:'1px solid #e5e7eb', borderRadius:5, fontSize:11, color:'#374151', fontWeight:500, cursor: applying ? 'not-allowed' : 'pointer' }}>
+            Cancel
+          </button>
+          <button onClick={applyRates}
+            disabled={applying || !targetCalc?.suggestedRates || targetCalc?.error || targetCalc?.alreadyAboveTarget}
+            style={{ padding:'7px 14px',
+              background: (applying || !targetCalc?.suggestedRates || targetCalc?.error || targetCalc?.alreadyAboveTarget) ? '#d4d4d8' : '#7c3aed',
+              color:'white', border:'none', borderRadius:5, fontSize:11, fontWeight:600,
+              cursor: (applying || !targetCalc?.suggestedRates || targetCalc?.error || targetCalc?.alreadyAboveTarget) ? 'not-allowed' : 'pointer' }}>
+            {applying ? 'Applying…' : 'Apply Suggested Rates'}
+          </button>
+        </div>
       </div>
     </div>
   );
