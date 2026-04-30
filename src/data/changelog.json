@@ -1,5 +1,27 @@
 [
   {
+    "version": "3.5.36",
+    "date": "2026-04-30",
+    "summary": "Term Comparison \u2014 explainer text shows reps why contract discounts look the way they do",
+    "audience": "all",
+    "categories": {
+      "new": [
+        "Conditional discount explainer below the Term Comparison card on Managed IT quotes. When the minimum commitment floor is meaningfully constraining the contract discount (effective rate is less than 70% of the headline rate), a prominent yellow info box surfaces with the math: discountable revenue, how much of it is above floor, and what effective discount rate that produces. Includes coaching language for reps: pitch as 'up to X%' or focus on TCV savings rather than monthly percentage",
+        "When the floor is NOT meaningfully constraining the discount (i.e., the discount is close to its headline rate), a subtle collapsible 'How are these discounts calculated?' link appears instead. Reps who want the full math can expand it; reps who don't, don't see it",
+        "Detection threshold: floor is considered 'constraining' when the effective rate is below 70% of the headline rate. Computed from the 36-month term as the canonical reference (highest discount rate, most likely to surface the issue)"
+      ],
+      "improved": [
+        "Pricing engine now exposes discountableSubtotal in calcQuote's return value so the UI can compute floor-vs-subtotal explanations without recomputing the math separately"
+      ],
+      "fixed": [
+        "Investigated reported issue with multi-term contract discount on Managed IT quotes appearing too small (only ~8% reduction at 36mo with a 15% headline rate). Engine math was correct \u2014 the contract_disc_36 = 15% rate is applied only to revenue above the $350 minimum commitment floor (line 358-364 of pricing.js). On a quote with ~$430 discountable subtotal, only $80 is above floor, so 15% \u00d7 $80 = $12 reduction = ~2.8% effective rate. This is by design \u2014 the floor protects against underpricing very small clients \u2014 but was previously undocumented in the rep-facing UI. v3.5.36 makes the math visible so reps and admins understand the dynamic"
+      ],
+      "coming_soon": [
+        "If the visibility-on-small-quotes pattern becomes a recurring sales objection, future option: discount applies to full subtotal then clamps to floor (rather than discount-above-floor). Would make 'up to 15%' literally hit ~15% on most quotes. Holding for now per current admin call to keep the floor-protected design"
+      ]
+    }
+  },
+  {
     "version": "3.5.35",
     "date": "2026-04-30",
     "summary": "Pricing Calculator \u2014 derive package per-unit rates from a target gross margin",

@@ -420,6 +420,7 @@ export function calcQuote({ inputs, pkg, marketTier, products, settings, aiMulti
     // Summary
     opSubtotal, compMult, riskAdjMRR, floor,
     discount, discRate, finalMRR,
+    discountableSubtotal, // v3.5.36: exposed for multi-term explainer UI
     discountedLabor, protectedAddonRevenue, discountableAddonRevenue,
     commission, commissionRate, commissionBase, netAfterCommission,
     // Cost model

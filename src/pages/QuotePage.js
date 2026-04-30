@@ -1053,6 +1053,62 @@ export default function QuotePage() {
                   <div style={{ fontSize:8, color:'#93c5fd', marginTop:6 }}>
                     TCV: {multiTermResults.map(({term: t, result: r}) => `${t}mo = ${fmt$0((r.finalMRR + flexBlockMRR)*t + r.onboarding)}`).join(' · ')}
                   </div>
+
+                  {/* Discount math explainer (v3.5.36) — shows contextual explanation
+                      of why the term discount looks the way it does. When the floor is
+                      meaningfully constraining the discount (effective < ~70% of headline),
+                      the explainer surfaces prominently. Otherwise it's a subtle
+                      collapsible link reps can expand on demand. */}
+                  {(() => {
+                    // Use 36mo result as the canonical reference for floor-vs-discount math
+                    const r36 = multiTermResults.find(t => t.term === 36)?.result;
+                    if (!r36) return null;
+                    const subtotal = r36.discountableSubtotal || 0;
+                    const floor    = r36.floor || 0;
+                    const headlineRate = r36.discRate || 0;
+                    const aboveFloor = Math.max(subtotal - floor, 0);
+                    if (subtotal <= 0 || headlineRate <= 0) return null;
+                    const effectiveRate = aboveFloor > 0 ? (aboveFloor * headlineRate) / subtotal : 0;
+                    // Floor is "meaningfully constraining" when effective is well under headline
+                    const floorConstraining = headlineRate > 0 && effectiveRate < headlineRate * 0.70;
+
+                    // Build the rates-by-term map from settings for the explainer
+                    const ratesByTerm = multiTermResults.map(({ term, result: r }) => ({
+                      term, rate: (r?.discRate || 0)
+                    }));
+
+                    if (floorConstraining) {
+                      // Prominent info box — the rep needs to understand this NOW
+                      return (
+                        <div style={{ marginTop: 8, padding: '8px 10px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: 4 }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: '#854d0e', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>
+                            ⓘ Why the term discount looks small on this quote
+                          </div>
+                          <div style={{ fontSize: 10, color: '#713f12', lineHeight: 1.5 }}>
+                            Contract discounts ({ratesByTerm.map(r => `${r.term}mo: ${(r.rate * 100).toFixed(0)}%`).join(', ')}) only apply to revenue <strong>above</strong> the {fmt$(floor)} minimum commitment floor.
+                            On this quote, discountable revenue is {fmt$(subtotal)}, of which only <strong>{fmt$(aboveFloor)}</strong> sits above the floor — so the headline {(headlineRate * 100).toFixed(0)}% becomes an effective {(effectiveRate * 100).toFixed(1)}%.
+                            <span style={{ display: 'block', marginTop: 4, fontStyle: 'italic', color: '#854d0e' }}>
+                              Pitch as "<strong>up to {(headlineRate * 100).toFixed(0)}%</strong> off" or focus on TCV savings rather than monthly %.
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Floor not meaningfully constraining — subtle collapsible link
+                    return (
+                      <details style={{ marginTop: 8, fontSize: 9, color: '#6b7280' }}>
+                        <summary style={{ cursor: 'pointer', userSelect: 'none', padding: '2px 0' }}>
+                          ⓘ How are these discounts calculated?
+                        </summary>
+                        <div style={{ marginTop: 4, padding: '6px 8px', background: '#f9fafb', borderRadius: 3, lineHeight: 1.5 }}>
+                          Contract discounts are applied to the discountable revenue ({fmt$(subtotal)}/mo on this quote) above the {fmt$(floor)} minimum commitment floor.
+                          Headline rates: {ratesByTerm.map(r => `${r.term}mo ${(r.rate * 100).toFixed(0)}%`).join(' · ')}.
+                          On this quote, {fmt$(aboveFloor)} is above floor, so the discount is close to the headline rate.
+                        </div>
+                      </details>
+                    );
+                  })()}
                 </div>
               )}
 
